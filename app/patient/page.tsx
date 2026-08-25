@@ -3,23 +3,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   AppShell, Group, Title, Button, Text, Avatar,
-  Loader, Center, Card, Stack, Tabs, Badge, TextInput, MantineProvider
+  Loader, Center, Card, Stack, Tabs, Badge, MantineProvider
 } from '@mantine/core';
 import { useMedplum, useMedplumProfile, SignInForm } from '@medplum/react';
+import { DynamicIntakeForm } from '../../components/DynamicIntakeForm';
 
 export default function PatientPortal() {
   const profile = useMedplumProfile();
   const medplum = useMedplum();
   const [mounted, setMounted] = useState(false);
-  
   const [appointments, setAppointments] = useState<any[]>([]);
   const [carePlans, setCarePlans] = useState<any[]>([]);
   const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false);
-
-  // Formulario de Admisión del Paciente (Cuestionario)
-  const [street, setStreet] = useState('');
-  const [city, setCity] = useState('');
-  const [phone, setPhone] = useState('');
 
   const loadPatientData = useCallback(async () => {
     try {
@@ -51,20 +46,9 @@ export default function PatientPortal() {
     );
   }
 
-  if (!mounted) {
-    return <Center h="100vh"><Loader color="grape" /></Center>;
-  }
+  if (!mounted) return <Center h="100vh"><Loader color="grape" /></Center>;
 
   const patientName = profile.name?.[0]?.given?.[0] || 'Paciente';
-
-  const handleIntakeSubmit = () => {
-    if (!street || !city || !phone) {
-      alert('Por favor complete los datos de dirección y teléfono.');
-      return;
-    }
-    setQuestionnaireSubmitted(true);
-    alert('✅ ¡Cuestionario de admisión enviado y sincronizado con éxito en su expediente!');
-  };
 
   return (
     <MantineProvider>
@@ -72,9 +56,7 @@ export default function PatientPortal() {
         <AppShell.Header>
           <Group h="100%" px="md" justify="space-between">
             <Title order={4} style={{ color: '#845ef7' }}>Portal de Salud del Paciente (São Paulo)</Title>
-            <Button variant="light" color="red" onClick={() => { medplum.signOut(); window.location.reload(); }} size="sm">
-              Cerrar Sesión
-            </Button>
+            <Button variant="light" color="red" onClick={() => { medplum.signOut(); window.location.reload(); }} size="sm">Cerrar Sesión</Button>
           </Group>
         </AppShell.Header>
 
@@ -91,16 +73,13 @@ export default function PatientPortal() {
             <Tabs.List mb="md">
               <Tabs.Tab value="appointments">📅 Mis Citas</Tabs.Tab>
               <Tabs.Tab value="careplans">📋 Mis Planes de Atención</Tabs.Tab>
-              <Tabs.Tab value="questionnaire">📝 Cuestionario de Admisión</Tabs.Tab>
+              <Tabs.Tab value="questionnaire">📝 Formulario Inteligente</Tabs.Tab>
             </Tabs.List>
 
-            {/* PESTAÑA 1: MIS CITAS */}
             <Tabs.Panel value="appointments">
               <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Title order={3} mb="md">Próximas Citas Médicas / Estéticas</Title>
-                {appointments.length === 0 ? (
-                  <Text size="sm" c="dimmed">No tiene citas agendadas próximamente.</Text>
-                ) : (
+                <Title order={3} mb="md">Próximas Citas</Title>
+                {appointments.length === 0 ? <Text size="sm" c="dimmed">No tiene citas agendadas.</Text> : (
                   <Stack>
                     {appointments.map((apt: any) => (
                       <Card key={apt.id} withBorder p="sm" radius="md">
@@ -118,18 +97,15 @@ export default function PatientPortal() {
               </Card>
             </Tabs.Panel>
 
-            {/* PESTAÑA 2: PLANES DE ATENCIÓN */}
             <Tabs.Panel value="careplans">
               <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Title order={3} mb="md">Protocolos y Planes de Cuidado</Title>
-                {carePlans.length === 0 ? (
-                  <Text size="sm" c="dimmed">No hay planes de cuidado asignados actualmente por su especialista.</Text>
-                ) : (
+                <Title order={3} mb="md">Protocolos de Cuidado</Title>
+                {carePlans.length === 0 ? <Text size="sm" c="dimmed">No hay planes activos.</Text> : (
                   <Stack>
                     {carePlans.map((cp: any) => (
                       <Card key={cp.id} withBorder p="sm" radius="md">
                         <Title order={5} c="grape">{cp.title || 'Protocolo Clínico'}</Title>
-                        <Text size="sm" mt={4}>{cp.description || 'Sin descripción adicional.'}</Text>
+                        <Text size="sm" mt={4}>{cp.description}</Text>
                         <Badge color="green" mt={8}>Estado: {cp.status}</Badge>
                       </Card>
                     ))}
@@ -138,29 +114,18 @@ export default function PatientPortal() {
               </Card>
             </Tabs.Panel>
 
-            {/* PESTAÑA 3: CUESTIONARIO DE ADMISIÓN */}
             <Tabs.Panel value="questionnaire">
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Title order={3} mb="md">Cuestionario de Admisión del Paciente</Title>
-                <Text size="sm" c="dimmed" mb="lg">
-                  Por favor mantenga actualizada su información demográfica para cumplir con las normativas de atención médica en São Paulo.
-                </Text>
-
-                {questionnaireSubmitted ? (
-                  <Card bg="#e6fcf5" p="md" radius="md" withBorder>
-                    <Text fw={600} c="teal" ta="center">¡Su cuestionario ya ha sido completado y enviado exitosamente!</Text>
-                  </Card>
-                ) : (
-                  <Stack>
-                    <TextInput label="Calle y Número" placeholder="Av. Paulista, 1000" value={street} onChange={(e) => setStreet(e.currentTarget.value)} required />
-                    <TextInput label="Ciudad" placeholder="São Paulo" value={city} onChange={(e) => setCity(e.currentTarget.value)} required />
-                    <TextInput label="Teléfono de Contacto" placeholder="+55 (11) 99999-9999" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} required />
-                    <Button color="grape" onClick={handleIntakeSubmit} mt="md">
-                      Entregar Cuestionario FHIR
-                    </Button>
-                  </Stack>
-                )}
-              </Card>
+              {!questionnaireSubmitted ? (
+                <DynamicIntakeForm 
+                  clinicType="advanced_clinic" 
+                  medplum={medplum} 
+                  onSuccess={() => setQuestionnaireSubmitted(true)} 
+                />
+              ) : (
+                <Card bg="#e6fcf5" p="md" radius="md" withBorder>
+                  <Text fw={600} c="teal" ta="center">¡Su información ha sido verificada y actualizada exitosamente en el sistema de la clínica!</Text>
+                </Card>
+              )}
             </Tabs.Panel>
           </Tabs>
         </AppShell.Main>

@@ -4,12 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   AppShell, Group, Title, Button, Text, Avatar,
   Loader, Center, Table, Badge, Card, Modal, TextInput,
-  Select, Stack, Drawer, MantineProvider, Checkbox
+  Select, Stack, Drawer, MantineProvider
 } from '@mantine/core';
 import { useMedplum, useMedplumProfile, SignInForm } from '@medplum/react';
 import { PatientHeader } from '../../components/PatientHeader';
 import { SoapNoteForm } from '../../components/SoapNoteForm';
 import { AppointmentCalendar } from '../../components/AppointmentCalendar';
+import { DynamicIntakeForm } from '../../components/DynamicIntakeForm';
 
 export default function AdminPortal() {
   const profile = useMedplumProfile();
@@ -17,18 +18,11 @@ export default function AdminPortal() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'patients' | 'calendar' | 'settings'>('patients');
 
-  // Estados de Pacientes y Admisión EMPI
+  // Tipo de suscripción SaaS (Módulo Dinámico)
+  const [clinicConfig, setClinicConfig] = useState<'salon' | 'spa' | 'advanced_clinic'>('advanced_clinic');
+
   const [patients, setPatients] = useState<any[] | null>(null);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [docNumber, setDocNumber] = useState('');
-  const [phone, setPhone] = useState('');
-  const [gender, setGender] = useState<string | null>('female');
-  const [consentGiven, setConsentGiven] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Drawer de Expediente
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -48,32 +42,6 @@ export default function AdminPortal() {
     loadPatients();
   }, [loadPatients]);
 
-  const handleCreatePatient = async () => {
-    if (!firstName || !lastName || !docNumber || !consentGiven) {
-      alert('Por favor complete los campos obligatorios y acepte el consentimiento LGPD.');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      await medplum.createResource({
-        resourceType: 'Patient',
-        name: [{ given: [firstName], family: lastName }],
-        gender: (gender || 'unknown') as 'male' | 'female' | 'other' | 'unknown',
-        telecom: [{ system: 'phone', value: phone }],
-        identifier: [{ system: 'http://brasil.gov.br/cpf', value: docNumber }],
-        active: true
-      });
-      alert('✅ ¡Paciente registrado con éxito en el EMPI!');
-      setIsPatientModalOpen(false);
-      setFirstName(''); setLastName(''); setDocNumber(''); setPhone(''); setConsentGiven(false);
-      loadPatients();
-    } catch (error: any) {
-      alert('❌ Error: ' + error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   if (!profile) {
     return (
       <MantineProvider>
@@ -87,52 +55,25 @@ export default function AdminPortal() {
     );
   }
 
-  if (!mounted) {
-    return <Center h="100vh"><Loader color="teal" /></Center>;
-  }
+  if (!mounted) return <Center h="100vh"><Loader color="teal" /></Center>;
 
   const adminName = profile.name?.[0]?.given?.[0] || 'Administrador';
 
   return (
     <MantineProvider>
-      <AppShell
-        header={{ height: 60 }}
-        navbar={{ width: 250, breakpoint: 'sm' }}
-        padding="md"
-        style={{ backgroundColor: '#f8f9fa' }}
-      >
+      <AppShell header={{ height: 60 }} navbar={{ width: 250, breakpoint: 'sm' }} padding="md" style={{ backgroundColor: '#f8f9fa' }}>
         <AppShell.Header>
           <Group h="100%" px="md" justify="space-between">
             <Title order={4} style={{ color: '#099268' }}>EHR & EMPI SaaS | Panel Administrativo (São Paulo)</Title>
-            <Button variant="light" color="red" onClick={() => { medplum.signOut(); window.location.reload(); }} size="sm">
-              Cerrar Sesión
-            </Button>
+            <Button variant="light" color="red" onClick={() => { medplum.signOut(); window.location.reload(); }} size="sm">Cerrar Sesión</Button>
           </Group>
         </AppShell.Header>
 
         <AppShell.Navbar p="md">
           <Text fw={700} size="sm" c="dimmed" mb="sm">MENÚ EMPRESARIAL</Text>
-          <Button
-            variant={activeTab === 'patients' ? 'light' : 'subtle'}
-            color="teal" fullWidth justify="flex-start" mb="sm"
-            onClick={() => setActiveTab('patients')}
-          >
-            👥 Gestión de Pacientes
-          </Button>
-          <Button
-            variant={activeTab === 'calendar' ? 'light' : 'subtle'}
-            color="teal" fullWidth justify="flex-start" mb="sm"
-            onClick={() => setActiveTab('calendar')}
-          >
-            📅 Agenda, Salas y Teams / Google
-          </Button>
-          <Button
-            variant={activeTab === 'settings' ? 'light' : 'subtle'}
-            color="teal" fullWidth justify="flex-start"
-            onClick={() => setActiveTab('settings')}
-          >
-            ⚙️ Configuración Multi-Tenant
-          </Button>
+          <Button variant={activeTab === 'patients' ? 'light' : 'subtle'} color="teal" fullWidth justify="flex-start" mb="sm" onClick={() => setActiveTab('patients')}>👥 Gestión de Pacientes</Button>
+          <Button variant={activeTab === 'calendar' ? 'light' : 'subtle'} color="teal" fullWidth justify="flex-start" mb="sm" onClick={() => setActiveTab('calendar')}>📅 Agenda y Salas VIP</Button>
+          <Button variant={activeTab === 'settings' ? 'light' : 'subtle'} color="teal" fullWidth justify="flex-start" onClick={() => setActiveTab('settings')}>⚙️ Configuración SaaS</Button>
         </AppShell.Navbar>
 
         <AppShell.Main>
@@ -140,33 +81,21 @@ export default function AdminPortal() {
             <Avatar color="teal" radius="xl" size="lg">{adminName.charAt(0).toUpperCase()}</Avatar>
             <div>
               <Text size="xl" fw={600}>Bienvenido, {adminName}</Text>
-              <Text size="sm" c="dimmed">São Paulo, SP - Brasil | Control Centralizado</Text>
+              <Text size="sm" c="dimmed">São Paulo, SP - Brasil | Control Centralizado SaaS</Text>
             </div>
           </Group>
 
-          {/* VISTA 1: GESTIÓN DE PACIENTES */}
           {activeTab === 'patients' && (
             <Card shadow="sm" padding="lg" radius="md" withBorder>
               <Group justify="space-between" mb="md">
                 <Title order={3}>Índice Maestro de Pacientes (EMPI)</Title>
-                <Button color="teal" radius="md" onClick={() => setIsPatientModalOpen(true)}>
-                  + Nueva Admisión EMPI
-                </Button>
+                <Button color="teal" radius="md" onClick={() => setIsPatientModalOpen(true)}>+ Nueva Admisión EMPI</Button>
               </Group>
 
-              {!patients ? (
-                <Center py="xl"><Loader color="teal" /></Center>
-              ) : patients.length === 0 ? (
-                <Text c="dimmed" ta="center" py="xl">No hay pacientes registrados.</Text>
-              ) : (
+              {!patients ? <Center py="xl"><Loader color="teal" /></Center> : (
                 <Table striped highlightOnHover>
                   <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>ID</Table.Th>
-                      <Table.Th>Nombre Completo</Table.Th>
-                      <Table.Th>CPF / Pasaporte</Table.Th>
-                      <Table.Th>Estado</Table.Th>
-                    </Table.Tr>
+                    <Table.Tr><Table.Th>ID</Table.Th><Table.Th>Nombre Completo</Table.Th><Table.Th>CPF / Pasaporte</Table.Th><Table.Th>Estado</Table.Th></Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
                     {patients.map((p: any) => (
@@ -183,36 +112,36 @@ export default function AdminPortal() {
             </Card>
           )}
 
-          {/* VISTA 2: CALENDARIO, SALAS Y RECURSOS CORPORATIVOS */}
-          {activeTab === 'calendar' && (
-            <AppointmentCalendar medplum={medplum} />
-          )}
+          {activeTab === 'calendar' && <AppointmentCalendar medplum={medplum} />}
 
-          {/* VISTA 3: CONFIGURACIÓN MULTI-TENANT */}
           {activeTab === 'settings' && (
             <Card shadow="sm" padding="lg" radius="md" withBorder>
               <Title order={3} mb="md">Configuración de Marca y Suscripción SaaS</Title>
-              <Text c="dimmed" mb="lg">Administre los colores, logotipos y dominios personalizados para cada clínica cliente.</Text>
-              <TextInput label="Nombre de la Clínica" defaultValue="Cosmetologia e Estética Leoneybis" mb="md" />
-              <TextInput label="URL del Logotipo" defaultValue="https://via.placeholder.com/150" mb="md" />
+              <Select 
+                label="Tipo de Suscripción (Nivel de Formularios)"
+                value={clinicConfig}
+                onChange={(val: any) => setClinicConfig(val)}
+                data={[
+                  { value: 'salon', label: 'Básico (Salón de Belleza)' },
+                  { value: 'spa', label: 'Intermedio (SPA Estético)' },
+                  { value: 'advanced_clinic', label: 'Avanzado (Clínica / Cosmetología Láser)' }
+                ]}
+                mb="md"
+              />
+              <TextInput label="Nombre de la Clínica Inquilina" defaultValue="Cosmetologia e Estética Leoneybis" mb="md" />
               <Button color="teal">Guardar Cambios de Marca</Button>
             </Card>
           )}
 
-          {/* MODAL DE NUEVA ADMISIÓN EMPI */}
-          <Modal opened={isPatientModalOpen} onClose={() => setIsPatientModalOpen(false)} title="Admisión EMPI (Brasil)" centered>
-            <Stack>
-              <TextInput label="Nombre" value={firstName} onChange={(e) => setFirstName(e.currentTarget.value)} required />
-              <TextInput label="Apellido" value={lastName} onChange={(e) => setLastName(e.currentTarget.value)} required />
-              <TextInput label="CPF / Pasaporte" placeholder="000.000.000-00" value={docNumber} onChange={(e) => setDocNumber(e.currentTarget.value)} required />
-              <TextInput label="Teléfono" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} />
-              <Select label="Género" data={[{value: 'female', label: 'Feminino'}, {value: 'male', label: 'Masculino'}]} value={gender} onChange={setGender} />
-              <Checkbox label="Consentimiento LGPD y protección de datos en Brasil." checked={consentGiven} onChange={(e) => setConsentGiven(e.currentTarget.checked)} mt="sm" />
-              <Button color="teal" fullWidth mt="md" onClick={handleCreatePatient} loading={isSubmitting}>Guardar Admisión FHIR</Button>
-            </Stack>
+          {/* Modal con Formulario Dinámico Integrado */}
+          <Modal opened={isPatientModalOpen} onClose={() => setIsPatientModalOpen(false)} title="Registro Inteligente" centered size="lg" bg="#f8f9fa">
+            <DynamicIntakeForm 
+              clinicType={clinicConfig} 
+              medplum={medplum} 
+              onSuccess={() => { setIsPatientModalOpen(false); loadPatients(); }} 
+            />
           </Modal>
 
-          {/* DRAWER DE EXPEDIENTE CON BARRA LATERAL Y SOAP */}
           <Drawer opened={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} position="right" size="xl" title={<Badge color="teal">Expediente Clínico Electrónico (EHR)</Badge>}>
             {selectedPatient && (
               <Group align="flex-start" grow preventGrowOverflow={false}>

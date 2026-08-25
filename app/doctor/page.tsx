@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   AppShell, Group, Title, Button, Text, Avatar,
-  Loader, Center, Table, Badge, Card, Drawer, Stack, MantineProvider
+  Loader, Center, Table, Badge, Card, Drawer, Stack, MantineProvider, Divider
 } from '@mantine/core';
 import { useMedplum, useMedplumProfile, SignInForm } from '@medplum/react';
 import { PatientHeader } from '../../components/PatientHeader';
 import { SoapNoteForm } from '../../components/SoapNoteForm';
+import { DigitalSignaturePad } from '../../components/DigitalSignaturePad';
 
 export default function DoctorPortal() {
   const profile = useMedplumProfile();
@@ -20,10 +21,9 @@ export default function DoctorPortal() {
   const loadPatients = useCallback(async () => {
     try {
       const bundle = await medplum.search('Patient', '_sort=-_lastUpdated');
-      const patientList = bundle.entry?.map((e: any) => e.resource) || [];
-      setPatients(patientList);
+      setPatients(bundle.entry?.map((e: any) => e.resource) || []);
     } catch (error) {
-      console.error("Error al cargar pacientes para el médico:", error);
+      console.error("Error al cargar pacientes:", error);
       setPatients([]);
     }
   }, [medplum]);
@@ -46,9 +46,7 @@ export default function DoctorPortal() {
     );
   }
 
-  if (!mounted) {
-    return <Center h="100vh"><Loader color="blue" /></Center>;
-  }
+  if (!mounted) return <Center h="100vh"><Loader color="blue" /></Center>;
 
   const doctorName = profile.name?.[0]?.given?.[0] || 'Doctor(a)';
 
@@ -58,9 +56,7 @@ export default function DoctorPortal() {
         <AppShell.Header>
           <Group h="100%" px="md" justify="space-between">
             <Title order={4} style={{ color: '#1971c2' }}>EHR Enterprise | Vista Médico (São Paulo)</Title>
-            <Button variant="light" color="red" onClick={() => { medplum.signOut(); window.location.reload(); }} size="sm">
-              Cerrar Sesión
-            </Button>
+            <Button variant="light" color="red" onClick={() => { medplum.signOut(); window.location.reload(); }} size="sm">Cerrar Sesión</Button>
           </Group>
         </AppShell.Header>
 
@@ -69,26 +65,16 @@ export default function DoctorPortal() {
             <Avatar color="blue" radius="xl" size="lg">{doctorName.charAt(0).toUpperCase()}</Avatar>
             <div>
               <Text size="xl" fw={600}>Dr(a). {doctorName}</Text>
-              <Text size="sm" c="dimmed">Panel Clínico y Agenda de Especialistas</Text>
+              <Text size="sm" c="dimmed">Panel Clínico: SOAP y Firmas Digitales ICP-Brasil</Text>
             </div>
           </Group>
 
           <Card shadow="sm" padding="lg" radius="md" withBorder>
             <Title order={3} mb="md">Listado de Pacientes Asignados</Title>
-            
-            {!patients ? (
-              <Center py="xl"><Loader color="blue" /></Center>
-            ) : patients.length === 0 ? (
-              <Text c="dimmed" ta="center" py="xl">No hay pacientes registrados en el sistema actualmente.</Text>
-            ) : (
+            {!patients ? <Center py="xl"><Loader color="blue" /></Center> : (
               <Table striped highlightOnHover>
                 <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>ID</Table.Th>
-                    <Table.Th>Nombre Completo</Table.Th>
-                    <Table.Th>Documento (CPF / Pasaporte)</Table.Th>
-                    <Table.Th>Acción Clínica</Table.Th>
-                  </Table.Tr>
+                  <Table.Tr><Table.Th>ID</Table.Th><Table.Th>Nombre Completo</Table.Th><Table.Th>CPF / Pasaporte</Table.Th><Table.Th>Acción Clínica</Table.Th></Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {patients.map((p: any) => (
@@ -98,7 +84,7 @@ export default function DoctorPortal() {
                       <Table.Td>{p.identifier?.[0]?.value || 'N/A'}</Table.Td>
                       <Table.Td>
                         <Button size="xs" color="blue" onClick={() => { setSelectedPatient(p); setIsDrawerOpen(true); }}>
-                          Abrir Expediente y SOAP
+                          Abrir EHR, SOAP y Firmas
                         </Button>
                       </Table.Td>
                     </Table.Tr>
@@ -108,22 +94,15 @@ export default function DoctorPortal() {
             )}
           </Card>
 
-          {/* EXPEDIENTE CLÍNICO INTEGRAL CON BARRA LATERAL Y FORMULARIO SOAP */}
-          <Drawer
-            opened={isDrawerOpen}
-            onClose={() => setIsDrawerOpen(false)}
-            position="right"
-            size="xl"
-            title={<Badge color="blue">Historia Clínica Electrónica (EHR)</Badge>}
-          >
+          <Drawer opened={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} position="right" size="100%" padding="xl" title={<Badge color="blue" size="lg">Expediente Médico de Nivel Enterprise</Badge>}>
             {selectedPatient && (
               <Group align="flex-start" grow preventGrowOverflow={false}>
-                {/* BARRA LATERAL MODERNA DEL PACIENTE */}
                 <PatientHeader patient={selectedPatient} />
-
-                {/* FORMULARIO DE EVOLUCIÓN CLÍNICA SOAP */}
                 <Stack>
                   <SoapNoteForm patient={selectedPatient} medplum={medplum} />
+                  <Divider my="sm" />
+                  {/* COMPONENTE NUEVO: FIRMA DIGITAL ICP-BRASIL */}
+                  <DigitalSignaturePad patient={selectedPatient} doctorName={doctorName} medplum={medplum} />
                 </Stack>
               </Group>
             )}
