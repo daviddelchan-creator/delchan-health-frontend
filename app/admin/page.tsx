@@ -58,7 +58,7 @@ export default function AdminPortal() {
       await medplum.createResource({
         resourceType: 'Patient',
         name: [{ given: [firstName], family: lastName }],
-        gender,
+        gender: (gender || 'unknown') as 'male' | 'female' | 'other' | 'unknown',
         telecom: [{ system: 'phone', value: phone }],
         identifier: [{ system: 'http://brasil.gov.br/cpf', value: docNumber }],
         active: true
