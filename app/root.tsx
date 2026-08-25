@@ -7,17 +7,17 @@ import { MedplumProvider } from '@medplum/react';
 import '@medplum/react/styles.css';
 import type { JSX, ReactNode } from 'react';
 
+// EL TÚNEL MEJORADO: Usamos la URL real para el servidor, y el proxy local para el navegador
+const URL_SERVIDOR = typeof window === 'undefined' 
+  ? 'https://delchan-health-portal-medplum.6jpght.easypanel.host/' 
+  : window.location.origin + '/api/medplum/';
+
 const medplum = new MedplumClient({
-  // Uncomment this to run against the server on your localhost
-  // baseUrl: 'http://localhost:8103/',
-
-  // Handle unauthenticated requests
+  baseUrl: URL_SERVIDOR,
+  clientId: '756a7e0c-e87f-499d-8ce6-da02a33921ea',
+  
   onUnauthenticated: () => (window.location.href = '/'),
-
-  // Use Next.js fetch
   fetch: (url: string, options?: any) => fetch(url, options),
-
-  // Recommend using cache for React performance
   cacheTime: 10000,
 });
 

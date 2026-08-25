@@ -18,7 +18,7 @@ export default function RootLayout(props: { children: ReactNode }): JSX.Element 
   const { children } = props;
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <ColorSchemeScript />
         <link rel="shortcut icon" href="/favicon.svg" />
