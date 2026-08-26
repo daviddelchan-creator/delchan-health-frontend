@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Card, Title, Text, Button, Stack, Group, Badge, Divider, Grid, Avatar } from '@mantine/core';
+import { Card, Title, Text, Button, Stack, Group, Badge, Divider, Grid, Avatar, ActionIcon } from '@mantine/core';
 import { ModularAnamnesis } from './ModularAnamnesis';
 import { SoapNoteForm } from './SoapNoteForm';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
