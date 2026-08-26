@@ -1,146 +1,81 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import {
-  AppShell, Group, Title, Button, Text, Avatar,
-  Loader, Center, Card, Stack, Tabs, Badge, MantineProvider, Grid
-} from '@mantine/core';
-import { useMedplum, useMedplumProfile, SignInForm } from '@medplum/react';
-import { DynamicIntakeForm } from '../../components/DynamicIntakeForm';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useMedplumProfile, SignInForm } from '@medplum/react';
+import { Center, Card, Title, Text, MantineProvider, Group, ThemeIcon, Box } from '@mantine/core';
 
-export default function PatientPortal() {
+// Tema súper limpio estilo Stripe / Google Cloud para el Login
+const loginTheme = {
+  primaryColor: 'blue',
+  fontFamily: 'Inter, system-ui, sans-serif',
+};
+
+export default function LandingPage() {
+  const router = useRouter();
   const profile = useMedplumProfile();
-  const medplum = useMedplum();
-  const [mounted, setMounted] = useState(false);
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [carePlans, setCarePlans] = useState<any[]>([]);
-  const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false);
 
-  const loadPatientData = useCallback(async () => {
-    try {
-      const aptBundle = await medplum.search('Appointment', '_sort=-_lastUpdated');
-      setAppointments(aptBundle.entry?.map((e: any) => e.resource) || []);
-
-      const cpBundle = await medplum.search('CarePlan', '_sort=-_lastUpdated');
-      setCarePlans(cpBundle.entry?.map((e: any) => e.resource) || []);
-    } catch (error) {
-      console.error("Erro ao carregar dados do paciente:", error);
-    }
-  }, [medplum]);
-
+  // EFECTO DE ENRUTAMIENTO INTELIGENTE (RBAC)
   useEffect(() => {
-    setMounted(true);
-    loadPatientData();
-  }, [loadPatientData]);
+    if (profile) {
+      // Si el usuario ya inició sesión, revisamos su "Rol" en FHIR
+      const userType = profile.resourceType;
 
-  if (!profile) {
+      if (userType === 'Patient') {
+        router.push('/patient'); // Va al portal uva/morado
+      } else if (userType === 'Practitioner') {
+        router.push('/doctor'); // Va al Clinical Hub azul
+      } else {
+        router.push('/admin'); // Por defecto, administradores y recepcionistas van al Command Center
+      }
+    }
+  }, [profile, router]);
+
+  // Si ya hay sesión, mostramos pantalla de carga mientras redirige
+  if (profile) {
     return (
-      <MantineProvider>
-        <Center h="100vh" bg="#f8f9fa">
-          <Card shadow="xl" p="xl" radius="md" w={420} withBorder>
-            <Title order={3} ta="center" mb="lg" c="grape">Área do Cliente</Title>
-            <Text c="dimmed" ta="center" mb="xl" size="sm">Acesse seus agendamentos, tratamentos e histórico estético.</Text>
-            <SignInForm onSuccess={() => window.location.reload()} />
-          </Card>
-        </Center>
-      </MantineProvider>
+      <Center h="100vh" bg="#f8fafc">
+        <Text c="dimmed" size="sm" fw={500}>Redirecionando para o seu portal seguro...</Text>
+      </Center>
     );
   }
 
-  if (!mounted) return <Center h="100vh"><Loader color="grape" /></Center>;
-
-  const patientName = profile.name?.[0]?.given?.[0] || 'Cliente';
-
+  // SI NO HAY SESIÓN: Mostramos el Login Enterprise 2030
   return (
-    <MantineProvider theme={{ primaryColor: 'grape' }}>
-      <AppShell header={{ height: 60 }} padding="md" bg="#fcfcfc">
-        <AppShell.Header>
-          <Group h="100%" px="md" justify="space-between">
-            <Title order={4} c="grape">Delchan Health | Espaço VIP</Title>
-            <Button variant="subtle" color="red" onClick={() => { medplum.signOut(); window.location.reload(); }} size="sm">Sair</Button>
-          </Group>
-        </AppShell.Header>
-
-        <AppShell.Main>
-          <Card shadow="sm" radius="lg" padding="xl" withBorder style={{ maxWidth: '1100px', margin: '0 auto' }}>
-            <Group mb="xl" align="center">
-              <Avatar color="grape" radius="xl" size="xl">{patientName.charAt(0)}</Avatar>
-              <div>
-                <Title order={2} c="dark.8">Olá, {patientName} ✨</Title>
-                <Text size="md" c="dimmed">Bem-vindo(a) ao seu portal de saúde e bem-estar.</Text>
-              </div>
+    <MantineProvider theme={loginTheme}>
+      <Box style={{ 
+        height: '100vh', 
+        backgroundColor: '#f1f5f9', 
+        backgroundImage: 'radial-gradient(#e2e8f0 1px, transparent 1px)', 
+        backgroundSize: '20px 20px' // Fondo técnico de puntos
+      }}>
+        <Center h="100%">
+          <Card shadow="xl" padding={40} radius="md" withBorder w={420} bg="white" style={{ borderColor: '#e2e8f0' }}>
+            <Group justify="center" mb="md">
+              <ThemeIcon size="xl" radius="md" color="blue.9" variant="filled">
+                <Text fw={900} size="lg">DH</Text>
+              </ThemeIcon>
             </Group>
+            
+            <Title order={3} ta="center" c="dark.8" fw={700} style={{ letterSpacing: '-0.5px' }}>
+              Delchan Health <Text span c="blue.6" fw={400}>OS</Text>
+            </Title>
+            
+            <Text c="dimmed" ta="center" size="sm" mt="xs" mb="xl">
+              Sistema Operacional Clínico de Alta Performance. Insira suas credenciais corporativas.
+            </Text>
 
-            <Tabs orientation="vertical" defaultValue="appointments" variant="pills" radius="md" color="grape">
-              <Tabs.List style={{ minWidth: '220px', borderRight: '1px solid #f1f3f5', paddingRight: '1rem' }}>
-                <Tabs.Tab value="appointments">📅 Meus Agendamentos</Tabs.Tab>
-                <Tabs.Tab value="careplans">💆‍♀️ Meus Tratamentos</Tabs.Tab>
-                <Tabs.Tab value="questionnaire">📋 Ficha Cadastral (Atualizar)</Tabs.Tab>
-              </Tabs.List>
+            <SignInForm onSuccess={() => {
+              // El enrutamiento lo maneja el useEffect de arriba automáticamente
+              console.log("Login exitoso");
+            }} />
 
-              <Tabs.Panel value="appointments" pl="xl">
-                <Title order={3} mb="lg" c="dark.7">Próximas Sessões</Title>
-                {appointments.length === 0 ? (
-                  <Card bg="gray.0" radius="md" ta="center" py="xl">
-                    <Text size="md" c="dimmed">Você não possui consultas ou sessões agendadas no momento.</Text>
-                    <Button mt="md" variant="light" color="grape">Agendar Nova Sessão</Button>
-                  </Card>
-                ) : (
-                  <Grid>
-                    {appointments.map((apt: any) => (
-                      <Grid.Col span={{ base: 12, md: 6 }} key={apt.id}>
-                        <Card withBorder p="lg" radius="md" shadow="xs">
-                          <Group justify="space-between" mb="xs">
-                            <Badge color="grape" variant="light">{apt.status === 'booked' ? 'Confirmado' : apt.status}</Badge>
-                          </Group>
-                          <Text fw={700} size="lg">{apt.description || 'Consulta Estética'}</Text>
-                          <Text size="sm" c="dimmed" mt="xs">🗓️ {apt.start ? new Date(apt.start).toLocaleString('pt-BR') : 'Data a definir'}</Text>
-                        </Card>
-                      </Grid.Col>
-                    ))}
-                  </Grid>
-                )}
-              </Tabs.Panel>
-
-              <Tabs.Panel value="careplans" pl="xl">
-                <Title order={3} mb="lg" c="dark.7">Protocolos e Cuidados (Home Care)</Title>
-                {carePlans.length === 0 ? (
-                  <Text size="md" c="dimmed">Nenhum protocolo ativo registrado.</Text>
-                ) : (
-                  <Stack>
-                    {carePlans.map((cp: any) => (
-                      <Card key={cp.id} withBorder p="md" radius="md" bg="grape.0">
-                        <Title order={5} c="grape.9">{cp.title || 'Protocolo Clínico'}</Title>
-                        <Text size="sm" mt="sm" c="dark.7">{cp.description}</Text>
-                        <Group mt="md">
-                          <Badge color="green">Status: {cp.status}</Badge>
-                        </Group>
-                      </Card>
-                    ))}
-                  </Stack>
-                )}
-              </Tabs.Panel>
-
-              <Tabs.Panel value="questionnaire" pl="xl">
-                {!questionnaireSubmitted ? (
-                  <DynamicIntakeForm 
-                    clinicType="advanced_clinic" 
-                    medplum={medplum} 
-                    // No pasamos initialPatient aquí para simular que el paciente llena sus datos, 
-                    // pero en un flujo real podrías pasar profile para pre-llenar.
-                    onSuccess={() => setQuestionnaireSubmitted(true)} 
-                  />
-                ) : (
-                  <Card bg="teal.0" p="xl" radius="md" withBorder ta="center">
-                    <Title order={3} c="teal.9" mb="sm">Tudo Certo!</Title>
-                    <Text fw={500} c="teal.8">Seus dados foram atualizados e sincronizados com a clínica de forma segura (LGPD).</Text>
-                  </Card>
-                )}
-              </Tabs.Panel>
-            </Tabs>
+            <Text c="dimmed" ta="center" size="xs" mt="xl" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
+              Protegido por criptografia de ponta a ponta (HIPAA & LGPD compliance).
+            </Text>
           </Card>
-        </AppShell.Main>
-      </AppShell>
+        </Center>
+      </Box>
     </MantineProvider>
   );
 }

@@ -153,7 +153,7 @@ export function DynamicIntakeForm({ clinicType, medplum, onSuccess, initialPatie
           <Grid.Col span={{ base: 12, md: 2 }}><TextInput label="Edad" value={calculateAge(dob)} readOnly variant="filled" /></Grid.Col>
           <Grid.Col span={{ base: 12, md: 6 }}><Select label="Sexo Biológico" data={['Femenino', 'Masculino', 'Otro']} value={sex} onChange={setSex} /></Grid.Col>
           <Grid.Col span={{ base: 12, md: 6 }}><Select label="Identidad / Orientación Sexual" data={['Heterosexual', 'Homosexual', 'Bisexual', 'Pansexual', 'Asexual', 'Prefiero no decirlo']} value={sexualOrientation} onChange={setSexualOrientation} /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}><TextInput label="Preferencia de Pronombres / Trato" placeholder="Ej. Él, Ella, Elle" value={sexualPreference} onChange={(e) => setSexualPreference(e.currentTarget.value)} /></Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}><TextInput label="Preferencia de Pronombres / Trato" placeholder="Ej. Él, Ella, Elle" value={sexualPreference || ''} onChange={(e) => setSexualPreference(e.currentTarget.value)} /></Grid.Col>
         </Grid>
 
         <Divider my="sm" />

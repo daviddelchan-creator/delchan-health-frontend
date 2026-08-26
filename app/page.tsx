@@ -1,70 +1,79 @@
 "use client";
 
-import { Center, Card, Title, Text, Button, Stack, MantineProvider } from '@mantine/core';
-import { useMedplumProfile, SignInForm } from '@medplum/react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useMedplumProfile, SignInForm } from '@medplum/react';
+import { Center, Card, Title, Text, MantineProvider, Group, ThemeIcon, Box } from '@mantine/core';
 
-export default function SaaSGateway() {
-  const profile = useMedplumProfile();
+// Tema súper limpio estilo Stripe / Google Cloud para el Login (Sin fontFamily para evitar errores)
+const loginTheme = {
+  primaryColor: 'blue',
+};
+
+export default function LandingPage() {
   const router = useRouter();
+  const profile = useMedplumProfile();
 
-  // Si no hay sesión, mostramos el login centralizado
-  if (!profile) {
+  // EFECTO DE ENRUTAMIENTO INTELIGENTE (RBAC)
+  useEffect(() => {
+    if (profile) {
+      // Si el usuario ya inició sesión, revisamos su "Rol" en FHIR
+      const userType = profile.resourceType;
+
+      if (userType === 'Patient') {
+        router.push('/patient'); // Va ao portal do paciente
+      } else if (userType === 'Practitioner') {
+        router.push('/doctor'); // Va ao Clinical Hub (Médicos)
+      } else {
+        router.push('/admin'); // Por defecto, administradores vão ao Command Center
+      }
+    }
+  }, [profile, router]);
+
+  // Si ya hay sesión, mostramos pantalla de carga mientras redirige
+  if (profile) {
     return (
-      <MantineProvider>
-        <Center h="100vh" bg="#f8f9fa">
-          <Card shadow="md" p="xl" radius="md" w={420} withBorder>
-            <Title order={3} ta="center" mb="lg" c="teal">Bienvenido al SaaS Enterprise</Title>
-            <Text c="dimmed" ta="center" mb="xl" size="sm">
-              Inicie sesión para acceder a su entorno de salud.
-            </Text>
-            <SignInForm onSuccess={() => window.location.reload()} />
-          </Card>
-        </Center>
-      </MantineProvider>
+      <Center h="100vh" bg="#f8fafc">
+        <Text c="dimmed" size="sm" fw={500}>Redirecionando para o seu portal seguro...</Text>
+      </Center>
     );
   }
 
-  // Si hay sesión, mostramos el selector de módulos del SaaS
+  // SI NO HAY SESIÓN: Mostramos el Login Enterprise 2030
   return (
-    <MantineProvider>
-      <Center h="100vh" bg="#f8f9fa">
-        <Card shadow="xl" p="xl" radius="md" w={500} withBorder>
-          <Title order={3} ta="center" mb="sm" c="teal">Portal de Acceso SaaS</Title>
-          <Text c="dimmed" ta="center" mb="xl" size="sm">
-            Seleccione el módulo al que desea ingresar según su perfil:
-          </Text>
+    <MantineProvider theme={loginTheme}>
+      <Box style={{ 
+        height: '100vh', 
+        backgroundColor: '#f1f5f9', 
+        backgroundImage: 'radial-gradient(#e2e8f0 1px, transparent 1px)', 
+        backgroundSize: '20px 20px' // Fondo técnico de puntos
+      }}>
+        <Center h="100%">
+          <Card shadow="xl" padding={40} radius="md" withBorder w={420} bg="white" style={{ borderColor: '#e2e8f0' }}>
+            <Group justify="center" mb="md">
+              <ThemeIcon size="xl" radius="md" color="blue.9" variant="filled">
+                <Text fw={900} size="lg">DH</Text>
+              </ThemeIcon>
+            </Group>
+            
+            <Title order={3} ta="center" c="dark.8" fw={700} style={{ letterSpacing: '-0.5px' }}>
+              Delchan Health <Text span c="blue.6" fw={400}>OS</Text>
+            </Title>
+            
+            <Text c="dimmed" ta="center" size="sm" mt="xs" mb="xl">
+              Sistema Operacional Clínico de Alta Performance. Insira suas credenciais corporativas.
+            </Text>
 
-          <Stack>
-            <Button 
-              size="lg" 
-              color="teal" 
-              variant="light" 
-              onClick={() => router.push('/admin')}
-            >
-              👑 Entrar al Panel Administrativo
-            </Button>
-            
-            <Button 
-              size="lg" 
-              color="blue" 
-              variant="light" 
-              onClick={() => router.push('/doctor')}
-            >
-              🩺 Entrar a la Vista del Médico / Especialista
-            </Button>
-            
-            <Button 
-              size="lg" 
-              color="grape" 
-              variant="light" 
-              onClick={() => router.push('/patient')}
-            >
-              👤 Entrar al Portal del Paciente
-            </Button>
-          </Stack>
-        </Card>
-      </Center>
+            <SignInForm onSuccess={() => {
+              console.log("Login exitoso");
+            }} />
+
+            <Text c="dimmed" ta="center" size="xs" mt="xl" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
+              Protegido por criptografia de ponta a ponta (HIPAA & LGPD compliance).
+            </Text>
+          </Card>
+        </Center>
+      </Box>
     </MantineProvider>
   );
 }
