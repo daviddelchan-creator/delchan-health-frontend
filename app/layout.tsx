@@ -6,9 +6,12 @@ import type { JSX, ReactNode } from 'react';
 import Root from './root';
 import { theme } from './theme';
 
+// 1. IMPORTAMOS EL CEREBRO GLOBAL (DICCIONARIO DE DOMINIO)
+import { TenantProvider } from '../contexts/TenantContext';
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const metadata: Metadata = {
-  title: 'Medplum Next.js Demo',
+  title: 'Delchan Health OS', // Título corporativo actualizado
   icons: {
     icon: '/favicon.svg',
   },
@@ -18,7 +21,7 @@ export default function RootLayout(props: { children: ReactNode }): JSX.Element 
   const { children } = props;
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning> {/* Idioma configurado correctamente */}
       <head>
         <ColorSchemeScript />
         <link rel="shortcut icon" href="/favicon.svg" />
@@ -26,7 +29,10 @@ export default function RootLayout(props: { children: ReactNode }): JSX.Element 
       </head>
       <body>
         <MantineProvider theme={theme}>
-          <Root>{children}</Root>
+          {/* 2. ENVOLVEMOS LA RAÍZ CON NUESTRO SISTEMA WHITE-LABEL */}
+          <TenantProvider>
+            <Root>{children}</Root>
+          </TenantProvider>
         </MantineProvider>
       </body>
     </html>
