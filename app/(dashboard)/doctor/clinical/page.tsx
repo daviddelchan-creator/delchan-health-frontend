@@ -2,19 +2,26 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Title, Card, Text, Group, TextInput, Select, Button, Avatar, Badge, Accordion, ActionIcon, Grid, Menu, Divider, Stack
+  Title, Card, Text, Group, TextInput, Select, Button, Avatar, Badge, Accordion, Grid, Menu, Divider, Stack, Drawer
 } from '@mantine/core';
-import { useMedplum } from '@medplum/react';
+import { useMedplum, useMedplumProfile } from '@medplum/react';
+import { PatientWorkspace } from '../../../../components/PatientWorkspace';
 
 export default function ClinicalRecordsList() {
   const medplum = useMedplum();
+  const profile = useMedplumProfile();
   const [patients, setPatients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Estado para controlar la apertura de la ficha médica real
+  const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
 
   // Estados para los Filtros
   const [filterSex, setFilterSex] = useState<string | null>(null);
   const [filterAge, setFilterAge] = useState<string | null>(null);
   const [filterCondition, setFilterCondition] = useState<string | null>(null);
+
+  const doctorName = profile?.name?.[0]?.given?.[0] || 'Doutor';
 
   // Cargamos los pacientes reales de Medplum
   const loadPatients = useCallback(async () => {
@@ -182,10 +189,7 @@ export default function ClinicalRecordsList() {
                           color="teal" 
                           radius="md" 
                           fullWidth 
-                          onClick={() => {
-                            // En tu flujo real, esto abriría el "Drawer" (El Workspace lateral)
-                            alert("Abrindo o PatientWorkspace completo ao lado...");
-                          }}
+                          onClick={() => setSelectedPatient(p)}
                         >
                           Abrir Prontuário Digital
                         </Button>
@@ -199,6 +203,26 @@ export default function ClinicalRecordsList() {
           })}
         </Accordion>
       )}
+
+      {/* DRAWER DEL WORKSPACE CLÍNICO */}
+      <Drawer 
+        opened={!!selectedPatient} 
+        onClose={() => { setSelectedPatient(null); loadPatients(); }} 
+        position="right" 
+        size="100%" 
+        padding={0} 
+        withCloseButton={false}
+      >
+        {selectedPatient && (
+          <PatientWorkspace 
+            patient={selectedPatient} 
+            medplum={medplum} 
+            doctorName={doctorName} 
+            onClose={() => { setSelectedPatient(null); loadPatients(); }} 
+          />
+        )}
+      </Drawer>
+
     </div>
   );
 }
