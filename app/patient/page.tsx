@@ -1,81 +1,190 @@
 "use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useMedplumProfile, SignInForm } from '@medplum/react';
-import { Center, Card, Title, Text, MantineProvider, Group, ThemeIcon, Box } from '@mantine/core';
+import { useState } from 'react';
+import { 
+  MantineProvider, AppShell, Group, Title, Text, Avatar, Card, ActionIcon, Stack, Button, Badge, ThemeIcon, Progress, Divider, Grid 
+} from '@mantine/core';
 
-// Tema súper limpio estilo Stripe / Google Cloud para el Login
-const loginTheme = {
-  primaryColor: 'blue',
-  fontFamily: 'Inter, system-ui, sans-serif',
+// 1. SIMULACIÓN DE BRANDING DINÁMICO (Viene del Admin)
+const tenantConfig = {
+  brandColor: 'violet', // El Admin puede cambiar esto a 'blue', 'teal', 'rose', etc.
+  clinicName: 'Delchan Health',
+  patientName: 'João da Silva',
+  features: {
+    telemedicine: true,
+    healthSync: true, // Integración con Apple/Google Health
+  }
 };
 
-export default function LandingPage() {
-  const router = useRouter();
-  const profile = useMedplumProfile();
+const patientTheme = {
+  primaryColor: tenantConfig.brandColor,
+  defaultRadius: 'xl',
+  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+};
 
-  // EFECTO DE ENRUTAMIENTO INTELIGENTE (RBAC)
-  useEffect(() => {
-    if (profile) {
-      // Si el usuario ya inició sesión, revisamos su "Rol" en FHIR
-      const userType = profile.resourceType;
+export default function PatientMobileApp() {
+  const [activeTab, setActiveTab] = useState('home');
 
-      if (userType === 'Patient') {
-        router.push('/patient'); // Va al portal uva/morado
-      } else if (userType === 'Practitioner') {
-        router.push('/doctor'); // Va al Clinical Hub azul
-      } else {
-        router.push('/admin'); // Por defecto, administradores y recepcionistas van al Command Center
-      }
-    }
-  }, [profile, router]);
-
-  // Si ya hay sesión, mostramos pantalla de carga mientras redirige
-  if (profile) {
-    return (
-      <Center h="100vh" bg="#f8fafc">
-        <Text c="dimmed" size="sm" fw={500}>Redirecionando para o seu portal seguro...</Text>
-      </Center>
-    );
-  }
-
-  // SI NO HAY SESIÓN: Mostramos el Login Enterprise 2030
   return (
-    <MantineProvider theme={loginTheme}>
-      <Box style={{ 
-        height: '100vh', 
-        backgroundColor: '#f1f5f9', 
-        backgroundImage: 'radial-gradient(#e2e8f0 1px, transparent 1px)', 
-        backgroundSize: '20px 20px' // Fondo técnico de puntos
-      }}>
-        <Center h="100%">
-          <Card shadow="xl" padding={40} radius="md" withBorder w={420} bg="white" style={{ borderColor: '#e2e8f0' }}>
-            <Group justify="center" mb="md">
-              <ThemeIcon size="xl" radius="md" color="blue.9" variant="filled">
-                <Text fw={900} size="lg">DH</Text>
-              </ThemeIcon>
-            </Group>
-            
-            <Title order={3} ta="center" c="dark.8" fw={700} style={{ letterSpacing: '-0.5px' }}>
-              Delchan Health <Text span c="blue.6" fw={400}>OS</Text>
-            </Title>
-            
-            <Text c="dimmed" ta="center" size="sm" mt="xs" mb="xl">
-              Sistema Operacional Clínico de Alta Performance. Insira suas credenciais corporativas.
-            </Text>
+    <MantineProvider theme={patientTheme}>
+      {/* Contenedor centralizado para simular la vista móvil en pantallas grandes */}
+      <div style={{ backgroundColor: '#e2e8f0', minHeight: '100vh', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ width: '100%', maxWidth: '480px', backgroundColor: '#f8fafc', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+          
+          <AppShell
+            header={{ height: 70 }}
+            footer={{ height: 80 }}
+            padding="md"
+          >
+            {/* HEADER MÓVIL (Branding y Perfil) */}
+            <AppShell.Header bg="white" style={{ borderBottom: 'none', borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <Group h="100%" px="md" justify="space-between">
+                <Group gap="sm">
+                  {/* Simulación del Logo Delchan Health OS (ADN/Escudo) */}
+                  <ThemeIcon size="lg" radius="md" color={tenantConfig.brandColor} variant="light">
+                    <Text fw={800} size="lg">🧬</Text>
+                  </ThemeIcon>
+                  <Title order={4} c="dark.9" fw={800}>{tenantConfig.clinicName}</Title>
+                </Group>
+                <Avatar color={tenantConfig.brandColor} radius="xl">{tenantConfig.patientName.charAt(0)}</Avatar>
+              </Group>
+            </AppShell.Header>
 
-            <SignInForm onSuccess={() => {
-              // El enrutamiento lo maneja el useEffect de arriba automáticamente
-              console.log("Login exitoso");
-            }} />
+            <AppShell.Main pt={90} pb={100}>
+              <Stack gap="lg">
+                
+                {/* SALUDO Y CALL TO ACTION PRINCIPAL */}
+                <div>
+                  <Text size="sm" c="dimmed" fw={600} tt="uppercase">Bem-vindo de volta,</Text>
+                  <Title order={2} c="dark.9" fw={800} style={{ letterSpacing: '-0.5px' }}>
+                    {tenantConfig.patientName.split(' ')[0]}
+                  </Title>
+                </div>
 
-            <Text c="dimmed" ta="center" size="xs" mt="xl" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
-              Protegido por criptografia de ponta a ponta (HIPAA & LGPD compliance).
-            </Text>
-          </Card>
-        </Center>
-      </Box>
+                {/* ALERTA DE ACCIÓN: LLENAR ANAMNESIS DIGITAL */}
+                <Card p="lg" radius="xl" bg={`${tenantConfig.brandColor}.0`} withBorder style={{ borderColor: 'transparent' }}>
+                  <Group wrap="nowrap" align="flex-start">
+                    <ThemeIcon size="xl" radius="xl" color={tenantConfig.brandColor}>📋</ThemeIcon>
+                    <div>
+                      <Text fw={700} c={`${tenantConfig.brandColor}.9`}>Ação Necessária</Text>
+                      <Text size="sm" c={`${tenantConfig.brandColor}.8`} mt={4} lh={1.4}>
+                        Sua consulta com o Dr. Alberto é amanhã. Preencha sua ficha de anamnese agora para agilizar seu atendimento.
+                      </Text>
+                      <Button color={tenantConfig.brandColor} radius="xl" size="sm" mt="md" fullWidth>
+                        Preencher Ficha Digital
+                      </Button>
+                    </div>
+                  </Group>
+                </Card>
+
+                {/* PRÓXIMA CITA (Con validación de Check-in) */}
+                <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder style={{ borderColor: '#f1f5f9' }}>
+                  <Group justify="space-between" mb="sm">
+                    <Badge color="blue" variant="light" size="sm" fw={700}>Consulta Confirmada</Badge>
+                    <Text size="xs" c="dimmed" fw={600}>Amanhã, 09:00 AM</Text>
+                  </Group>
+                  <Title order={4} c="dark.9" fw={800}>Cardiologia Preventiva</Title>
+                  <Text size="sm" c="dimmed" mb="lg">👨‍⚕️ Dr. Alberto Silva • Unidade Central</Text>
+                  
+                  <Group grow>
+                    <Button variant="outline" color="dark.8" radius="xl">Reagendar</Button>
+                    {tenantConfig.features.telemedicine && (
+                      <Button color="blue" radius="xl" leftSection="🎥">Sala Virtual</Button>
+                    )}
+                  </Group>
+                </Card>
+
+                {/* BOTONES RÁPIDOS (Grid Móvil) */}
+                <Grid gutter="md">
+                  {[
+                    { icon: '📅', label: 'Agendar' },
+                    { icon: '🧪', label: 'Exames' },
+                    { icon: '💊', label: 'Receitas' },
+                    { icon: '💳', label: 'Pagamentos' },
+                  ].map((item, i) => (
+                    <Grid.Col span={3} key={i}>
+                      <Stack gap="xs" align="center">
+                        <ActionIcon size="xl" radius="xl" variant="light" color={tenantConfig.brandColor} style={{ width: '60px', height: '60px' }}>
+                          <Text size="xl">{item.icon}</Text>
+                        </ActionIcon>
+                        <Text size="xs" fw={600} c="dark.8">{item.label}</Text>
+                      </Stack>
+                    </Grid.Col>
+                  ))}
+                </Grid>
+
+                {/* INTEGRACIÓN CON WEARABLES (Apple Health / Google Fit) */}
+                {tenantConfig.features.healthSync && (
+                  <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder style={{ borderColor: '#f1f5f9' }}>
+                    <Group justify="space-between" mb="md">
+                      <Title order={5} c="dark.9" fw={800}>Sincronização de Saúde</Title>
+                      <Badge color="green" variant="light" leftSection="⌚">Conectado</Badge>
+                    </Group>
+                    <Text size="xs" c="dimmed" mb="md">Dados coletados automaticamente do seu Apple Health / Samsung Health.</Text>
+                    
+                    <Stack gap="md">
+                      <div>
+                        <Group justify="space-between" mb={4}>
+                          <Text size="sm" fw={700} c="dark.8">Passos Diários</Text>
+                          <Text size="sm" fw={800} c={tenantConfig.brandColor}>6.430 <Text span size="xs" c="dimmed" fw={500}>/ 10k</Text></Text>
+                        </Group>
+                        <Progress value={64} color={tenantConfig.brandColor} radius="xl" size="md" />
+                      </div>
+                      
+                      <Divider color="#f1f5f9" />
+
+                      <Group justify="space-between">
+                        <Group gap="sm">
+                          <ThemeIcon color="red" variant="light" radius="md">❤️</ThemeIcon>
+                          <div>
+                            <Text size="sm" fw={700} c="dark.8">Frequência Cardíaca</Text>
+                            <Text size="xs" c="dimmed">Média em repouso</Text>
+                          </div>
+                        </Group>
+                        <Title order={3} c="dark.9">72 <Text span size="xs" fw={500} c="dimmed">bpm</Text></Title>
+                      </Group>
+                    </Stack>
+                  </Card>
+                )}
+
+              </Stack>
+            </AppShell.Main>
+
+            {/* BOTTOM NAVIGATION BAR (Estilo App Nativa) */}
+            <AppShell.Footer bg="white" style={{ borderTop: '1px solid #f1f5f9', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '10px 20px' }} zIndex={100}>
+              <Group justify="space-between" align="center" h="100%">
+                <Stack gap={4} align="center" onClick={() => setActiveTab('home')} style={{ cursor: 'pointer', width: '60px' }}>
+                  <Text size="xl" c={activeTab === 'home' ? tenantConfig.brandColor : 'gray.4'}>🏠</Text>
+                  <Text size="xs" fw={700} c={activeTab === 'home' ? tenantConfig.brandColor : 'gray.5'}>Início</Text>
+                </Stack>
+                
+                <Stack gap={4} align="center" onClick={() => setActiveTab('calendar')} style={{ cursor: 'pointer', width: '60px' }}>
+                  <Text size="xl" c={activeTab === 'calendar' ? tenantConfig.brandColor : 'gray.4'}>🗓️</Text>
+                  <Text size="xs" fw={700} c={activeTab === 'calendar' ? tenantConfig.brandColor : 'gray.5'}>Agenda</Text>
+                </Stack>
+
+                <Stack gap={4} align="center" onClick={() => setActiveTab('ai')} style={{ cursor: 'pointer', width: '60px', position: 'relative', top: '-15px' }}>
+                  <ActionIcon size={60} radius="xl" color={tenantConfig.brandColor} variant="filled" style={{ boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.4)' }}>
+                    <Text size="xl">✨</Text>
+                  </ActionIcon>
+                  <Text size="xs" fw={700} c={tenantConfig.brandColor}>IA Assist</Text>
+                </Stack>
+
+                <Stack gap={4} align="center" onClick={() => setActiveTab('records')} style={{ cursor: 'pointer', width: '60px' }}>
+                  <Text size="xl" c={activeTab === 'records' ? tenantConfig.brandColor : 'gray.4'}>📂</Text>
+                  <Text size="xs" fw={700} c={activeTab === 'records' ? tenantConfig.brandColor : 'gray.5'}>Fichas</Text>
+                </Stack>
+
+                <Stack gap={4} align="center" onClick={() => setActiveTab('profile')} style={{ cursor: 'pointer', width: '60px' }}>
+                  <Text size="xl" c={activeTab === 'profile' ? tenantConfig.brandColor : 'gray.4'}>👤</Text>
+                  <Text size="xs" fw={700} c={activeTab === 'profile' ? tenantConfig.brandColor : 'gray.5'}>Perfil</Text>
+                </Stack>
+              </Group>
+            </AppShell.Footer>
+
+          </AppShell>
+        </div>
+      </div>
     </MantineProvider>
   );
 }
