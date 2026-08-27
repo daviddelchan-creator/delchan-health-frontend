@@ -21,7 +21,7 @@ export default function RootLayout(props: { children: ReactNode }): JSX.Element 
   const { children } = props;
 
   return (
-    <html lang="pt-BR" suppressHydrationWarning> {/* Idioma configurado correctamente */}
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <ColorSchemeScript />
         <link rel="shortcut icon" href="/favicon.svg" />
