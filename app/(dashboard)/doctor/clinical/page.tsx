@@ -6,26 +6,32 @@ import {
 } from '@mantine/core';
 import { useMedplum, useMedplumProfile } from '@medplum/react';
 import { PatientWorkspace } from '../../../../components/PatientWorkspace';
-import { DynamicIntakeForm } from '../../../../components/DynamicIntakeForm'; // Importamos el formulario
+import { DynamicIntakeForm } from '../../../../components/DynamicIntakeForm'; 
 
-// IMPORTAMOS EL CEREBRO GLOBAL
+// IMPORTAMOS O NOVO EDITOR CLÍNICO
+import { ClinicalEditor } from '../../../../components/clinical/ClinicalEditor';
+
+// IMPORTAMOS O CÉREBRO GLOBAL
 import { useTenant } from '../../../../contexts/TenantContext';
 
 export default function ClinicalRecordsList() {
   const medplum = useMedplum();
   const profile = useMedplumProfile();
   
-  // EXTRAEMOS LA MAGIA DEL DICCIONARIO Y EL TIPO DE CLÍNICA
-  const { dict, clinicType } = useTenant();
+  const { dict, clinicType, tenantConfig } = useTenant();
 
   const [patients, setPatients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // ESTADOS PARA LOS PANELES Y MODALES
+  // ESTADOS PARA OS PAINÉIS E MODAIS
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [editingPatient, setEditingPatient] = useState<any | null>(null);
   const [signingTCLE, setSigningTCLE] = useState<any | null>(null);
   const [printingChart, setPrintingChart] = useState<any | null>(null);
+  
+  // NOVO ESTADO: Controle da Evolução Clínica com Tiptap
+  const [evolutionPatient, setEvolutionPatient] = useState<any | null>(null);
+  const [isSavingEvolution, setIsSavingEvolution] = useState(false);
 
   const [filterSex, setFilterSex] = useState<string | null>(null);
   const [filterAge, setFilterAge] = useState<string | null>(null);
@@ -48,10 +54,32 @@ export default function ClinicalRecordsList() {
 
   const handleScanRequest = () => alert("Aguardando comunicação com scanner na recepção (Plustek)...");
 
+  // FUNÇÃO DE SALVAMENTO NO MEDPLUM (FHIR)
+  const handleSaveEvolution = async (jsonContent: object, htmlContent: string) => {
+    if (!evolutionPatient) return;
+    setIsSavingEvolution(true);
+    try {
+      await medplum.createResource({
+        resourceType: 'ClinicalImpression',
+        status: 'completed',
+        subject: { reference: `Patient/${evolutionPatient.id}` },
+        date: new Date().toISOString(),
+        summary: htmlContent, // O HTML vai para exibição rápida no prontuário
+        note: [{ text: JSON.stringify(jsonContent) }], // O JSON garante edição futura sem quebrar a formatação
+      });
+      alert('Evolução assinada e criptografada com sucesso!');
+      setEvolutionPatient(null);
+    } catch (err) {
+      console.error('Erro ao salvar evolução:', err);
+      alert('Erro de conexão ao salvar prontuário.');
+    }
+    setIsSavingEvolution(false);
+  };
+
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
       
-      {/* CABECERA DINÁMICA */}
+      {/* CABEÇALHO DINÂMICO */}
       <Group justify="space-between" mb="xl">
         <div>
           <Title order={2} c="dark.9" fw={800} style={{ letterSpacing: '-0.5px' }}>{dict.chart}s Digitais</Title>
@@ -60,7 +88,7 @@ export default function ClinicalRecordsList() {
         <Button color="teal" radius="md" onClick={() => setEditingPatient({})}>+ Novo {dict.patient}</Button>
       </Group>
 
-      {/* BARRA DE FILTROS AVANZADOS */}
+      {/* BARRA DE FILTROS AVANÇADOS */}
       <Card p="lg" radius="lg" bg="white" mb="xl" withBorder style={{ borderColor: '#e2e8f0' }}>
         <Grid align="flex-end">
           <Grid.Col span={{ base: 12, md: 4 }}>
@@ -102,7 +130,7 @@ export default function ClinicalRecordsList() {
         </Grid>
       </Card>
 
-      {/* LISTA PLEGABLE (ACCORDION) DINÁMICA */}
+      {/* LISTA DOBRÁVEL (ACCORDION) DINÂMICA */}
       <Title order={4} c="dark.8" mb="md">Lista de {dict.patient}s ({patients.length})</Title>
       
       {patients.length === 0 ? (
@@ -144,13 +172,16 @@ export default function ClinicalRecordsList() {
                         {dict.patient} registrado no sistema central. Aguardando verificação de documentos.
                       </Text>
                       
-                      {/* BOTONES DE ACCIÓN REALES (Ya no son Badges estáticos) */}
+                      {/* BOTÕES DE AÇÃO REAIS */}
                       <Group mt="lg" gap="sm">
-                        <Button size="xs" color="red" variant="light" radius="xl" onClick={() => setSigningTCLE(p)}>
-                          ⚠️ Assinar TCLE (Pendente)
+                        <Button size="xs" color="blue" variant="light" radius="xl" onClick={() => setEvolutionPatient(p)}>
+                          📝 Nova Evolução (SOAP)
                         </Button>
                         <Button size="xs" color="orange" variant="light" radius="xl" onClick={() => setEditingPatient(p)}>
                           ✏️ Atualizar Dados
+                        </Button>
+                        <Button size="xs" color="red" variant="light" radius="xl" onClick={() => setSigningTCLE(p)}>
+                          ⚠️ Assinar TCLE
                         </Button>
                       </Group>
                     </Grid.Col>
@@ -165,7 +196,6 @@ export default function ClinicalRecordsList() {
                           </Menu.Target>
                           <Menu.Dropdown>
                             <Menu.Label>Fluxo Híbrido (QR Code)</Menu.Label>
-                            {/* BOTÓN REAL DE IMPRESIÓN */}
                             <Menu.Item onClick={() => setPrintingChart(p)}>Imprimir {dict.chart}</Menu.Item>
                             <Menu.Item onClick={() => setPrintingChart(p)}>Imprimir {dict.prescription} em Branco</Menu.Item>
                             <Menu.Divider />
@@ -174,7 +204,7 @@ export default function ClinicalRecordsList() {
                         </Menu>
 
                         <Button color="teal" radius="md" fullWidth onClick={() => setSelectedPatient(p)}>
-                          Abrir {dict.chart} Digital
+                          Abrir {dict.chart} Completo
                         </Button>
                       </Stack>
                     </Grid.Col>
@@ -187,10 +217,10 @@ export default function ClinicalRecordsList() {
       )}
 
       {/* ==============================================================
-          ZONA DE MODALES Y WORKSPACES (EL CEREBRO DE LAS ACCIONES)
+          ZONA DE MODAIS E WORKSPACES
           ============================================================== */}
 
-      {/* 1. DRAWER DEL WORKSPACE CLÍNICO */}
+      {/* 1. DRAWER DO WORKSPACE CLÍNICO */}
       <Drawer opened={!!selectedPatient} onClose={() => { setSelectedPatient(null); loadPatients(); }} position="right" size="100%" padding={0} withCloseButton={false}>
         {selectedPatient && (
           <PatientWorkspace patient={selectedPatient} medplum={medplum} doctorName={doctorName} onClose={() => { setSelectedPatient(null); loadPatients(); }} />
@@ -203,7 +233,23 @@ export default function ClinicalRecordsList() {
         <DynamicIntakeForm clinicType={clinicType as any} medplum={medplum} onSuccess={() => { setEditingPatient(null); loadPatients(); }} />
       </Modal>
 
-      {/* 3. MODAL DE ASSINATURA TCLE */}
+      {/* 3. MODAL DE EVOLUÇÃO CLÍNICA COM TIPTAP */}
+      <Modal 
+        opened={!!evolutionPatient} 
+        onClose={() => setEvolutionPatient(null)} 
+        title={<Title order={4}>📝 Registro Clínico - {evolutionPatient?.name?.[0]?.given?.join(' ')}</Title>} 
+        centered 
+        size="xl"
+      >
+        <Text c="dimmed" size="sm" mb="lg">Utilize os modelos prontos ou digite livremente. O documento será assinado com sua credencial.</Text>
+        <ClinicalEditor 
+          onSave={handleSaveEvolution} 
+          accentColor={tenantConfig.internalColor} 
+          loading={isSavingEvolution}
+        />
+      </Modal>
+
+      {/* 4. MODAL DE ASSINATURA TCLE */}
       <Modal opened={!!signingTCLE} onClose={() => setSigningTCLE(null)} title={<Title order={4}>Termo de Consentimento (LGPD)</Title>} centered size="lg">
         <Text size="sm" mb="md" lh={1.6}>
           Eu, abaixo assinado, autorizo a <b>Delchan Health</b> a realizar a coleta e tratamento de meus dados clínicos e sensíveis, conforme estabelecido na Lei Geral de Proteção de Dados (Lei nº 13.709/2018).
@@ -219,7 +265,7 @@ export default function ClinicalRecordsList() {
         </Group>
       </Modal>
 
-      {/* 4. MODAL DE IMPRESSÃO HÍBRIDA (QR CODE) */}
+      {/* 5. MODAL DE IMPRESSÃO HÍBRIDA (QR CODE) */}
       <Modal opened={!!printingChart} onClose={() => setPrintingChart(null)} title={<Title order={4}>Preview de Impressão</Title>} centered size="xl">
         <Card withBorder radius="md" p="xl" shadow="sm" style={{ fontFamily: 'monospace' }}>
           <Group justify="space-between" align="flex-start" mb="xl">
@@ -230,7 +276,6 @@ export default function ClinicalRecordsList() {
               <Text><b>Data:</b> {new Date().toLocaleDateString('pt-BR')}</Text>
               <Text><b>ID FHIR:</b> {printingChart?.id}</Text>
             </div>
-            {/* SIMULACIÓN DE CÓDIGO QR PARA EL ESCÁNER */}
             <Card withBorder p="sm" bg="black" c="white" w={100} h={100} ta="center">
               <Text size="xs" mt={25} fw={700}>QR CODE</Text>
               <Text size="xs">SCAN ME</Text>

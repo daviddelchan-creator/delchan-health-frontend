@@ -1,14 +1,18 @@
 // SPDX-FileCopyrightText: Copyright Orangebot, Inc. and Medplum contributors
 // SPDX-License-Identifier: Apache-2.0
+
+import '@mantine/core/styles.css';
+import '@mantine/tiptap/styles.css';
+
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import type { Metadata } from 'next';
 import type { JSX, ReactNode } from 'react';
 import Root from './root';
 import { theme } from './theme';
 
-// 1. IMPORTAMOS EL CEREBRO GLOBAL (DICCIONARIO DE DOMINIO)
 import { TenantProvider } from '../contexts/TenantContext';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const metadata: Metadata = {
   title: 'Delchan Health OS',
   icons: {
@@ -28,12 +32,17 @@ export default function RootLayout(props: { children: ReactNode }): JSX.Element 
       </head>
       <body>
         <MantineProvider theme={theme}>
-          {/* ORDEN CORREGIDO: Root (MedplumProvider) ahora envuelve a TenantProvider */}
+          
+          {/* 1. ROOT INICIALIZA LA CONEXIÓN A MEDPLUM PRIMERO */}
           <Root>
+            
+            {/* 2. TENANTPROVIDER AHORA PUEDE LEER USEMEDPLUM() SIN PROBLEMAS */}
             <TenantProvider>
               {children}
             </TenantProvider>
+            
           </Root>
+          
         </MantineProvider>
       </body>
     </html>

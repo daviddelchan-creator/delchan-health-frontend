@@ -1,7 +1,7 @@
 "use client";
 
 import { Paper, Title, Text, Container, Group, Box } from '@mantine/core';
-import { SignInForm } from '@medplum/react';
+import { SignInForm, useMedplum } from '@medplum/react';
 import { useRouter } from 'next/navigation';
 
 // IMPORTAMOS EL CEREBRO GLOBAL
@@ -9,6 +9,7 @@ import { useTenant } from '../contexts/TenantContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const medplum = useMedplum();
   const { tenantConfig } = useTenant();
 
   return (
@@ -45,15 +46,31 @@ export default function LoginPage() {
             Insira suas credenciais corporativas
           </Text>
 
-          {/* MOTOR OFICIAL: Gestiona contraseñas, selección de proyectos y 2FA solo si es requerido */}
+          {/* MOTOR OFICIAL: Gestiona contraseñas, selección de proyectos y 2FA */}
           <div style={{ 
             '--medplum-primary-color': tenantConfig.internalColor,
             '--mantine-color-blue-filled': tenantConfig.internalColor
           } as React.CSSProperties}>
             <SignInForm 
               onSuccess={() => {
-                console.log("Login 100% completo. Token firme.");
-                router.push('/admin');
+                console.log("Login 100% completo. Verificando perfil do usuário...");
+                
+                // Esperamos medio segundo para que el perfil se cargue en memoria
+                setTimeout(() => {
+                  const profile = medplum.getProfile();
+                  
+                  // ENRUTAMIENTO INTELIGENTE OMNICANAL
+                  if (profile?.resourceType === 'Patient') {
+                    // Si es paciente, va a la App / PWA del Paciente
+                    router.push('/patient');
+                  } else if (profile?.resourceType === 'Practitioner') {
+                    // Si es Médico o Especialista, va a su panel clínico
+                    router.push('/doctor');
+                  } else {
+                    // Si es Project Admin u otro personal, va al panel administrativo general
+                    router.push('/admin');
+                  }
+                }, 500);
               }} 
             />
           </div>

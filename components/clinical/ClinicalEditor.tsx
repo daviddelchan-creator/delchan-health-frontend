@@ -1,10 +1,11 @@
 "use client";
 
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import { RichTextEditor } from '@mantine/tiptap';
+import { RichTextEditor, Link } from '@mantine/tiptap';
 import { Button, Group, Paper, Stack } from '@mantine/core';
+import '@mantine/tiptap/styles.css';
 
 interface ClinicalEditorProps {
   onSave: (contentJson: object, contentHtml: string) => void;
@@ -16,7 +17,7 @@ export function ClinicalEditor({ onSave, accentColor = '#14b8a6', loading = fals
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: 'Descreva a anamnese, hipótese diagnóstica e conduta terapêutica...' }),
+      Placeholder.configure({ placeholder: 'Descreva a anamnese, evolução clínica ou conduta terapêutica...' }),
     ],
     content: '',
     immediatelyRender: false,
@@ -33,10 +34,19 @@ export function ClinicalEditor({ onSave, accentColor = '#14b8a6', loading = fals
   const handleInsertTemplate = (type: 'soap' | 'anamnese') => {
     if (type === 'soap') {
       editor.commands.setContent(`
+        <h2>Evolução Clínica (SOAP)</h2>
         <h3>S - Subjetivo</h3><p>Queixa principal e histórico relatado pelo paciente...</p>
-        <h3>O - Objetivo</h3><p>Exame físico, sinais vitais, dados laboratoriais...</p>
-        <h3>A - Avaliação</h3><p>Diagnóstico principal / CID-10 e diagnósticos diferenciais...</p>
-        <h3>P - Plano</h3><p>Conduta médica, prescrições e orientações gerais...</p>
+        <h3>O - Objetivo</h3><p>Exame físico, sinais vitais, resultados de exames...</p>
+        <h3>A - Avaliação</h3><p>Hipótese diagnóstica, CID-10 e evolução do quadro...</p>
+        <h3>P - Plano</h3><p>Conduta médica, prescrições, atestados e orientações...</p>
+      `);
+    } else if (type === 'anamnese') {
+      editor.commands.setContent(`
+        <h2>Anamnese Inicial</h2>
+        <p><strong>HMA (História da Moléstia Atual):</strong> </p>
+        <p><strong>HMP (História Médica Pregressa):</strong> </p>
+        <p><strong>Alergias:</strong> Nenhuma relatada.</p>
+        <p><strong>Medicações em Uso:</strong> </p>
       `);
     }
   };
@@ -46,11 +56,14 @@ export function ClinicalEditor({ onSave, accentColor = '#14b8a6', loading = fals
       <Stack gap="sm">
         <Group justify="space-between">
           <Group gap="xs">
-            <Button size="xs" variant="light" color="gray" onClick={() => handleInsertTemplate('soap')}>
-              + Modelo SOAP
+            <Button size="xs" variant="light" color="blue" onClick={() => handleInsertTemplate('soap')}>
+              📋 Modelo SOAP
             </Button>
-            <Button size="xs" variant="light" color="gray" onClick={() => window.print()}>
-              🖨️ Imprimir
+            <Button size="xs" variant="light" color="violet" onClick={() => handleInsertTemplate('anamnese')}>
+              📝 Anamnese
+            </Button>
+            <Button size="xs" variant="default" onClick={() => window.print()}>
+              🖨️ Imprimir / PDF
             </Button>
           </Group>
           <Button color={accentColor} onClick={handleSave} loading={loading}>
@@ -58,20 +71,21 @@ export function ClinicalEditor({ onSave, accentColor = '#14b8a6', loading = fals
           </Button>
         </Group>
 
-        <RichTextEditor editor={editor} style={{ minHeight: 280, borderRadius: 8 }}>
+        <RichTextEditor editor={editor} style={{ minHeight: 400, borderRadius: 8 }}>
           <RichTextEditor.Toolbar sticky stickyOffset={60}>
             <RichTextEditor.ControlsGroup>
               <RichTextEditor.Bold />
               <RichTextEditor.Italic />
-              <RichTextEditor.Underline />
               <RichTextEditor.Strikethrough />
               <RichTextEditor.ClearFormatting />
             </RichTextEditor.ControlsGroup>
+
             <RichTextEditor.ControlsGroup>
               <RichTextEditor.H1 />
               <RichTextEditor.H2 />
               <RichTextEditor.H3 />
             </RichTextEditor.ControlsGroup>
+
             <RichTextEditor.ControlsGroup>
               <RichTextEditor.BulletList />
               <RichTextEditor.OrderedList />
