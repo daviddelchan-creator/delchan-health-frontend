@@ -9,9 +9,8 @@ import { theme } from './theme';
 // 1. IMPORTAMOS EL CEREBRO GLOBAL (DICCIONARIO DE DOMINIO)
 import { TenantProvider } from '../contexts/TenantContext';
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const metadata: Metadata = {
-  title: 'Delchan Health OS', // Título corporativo actualizado
+  title: 'Delchan Health OS',
   icons: {
     icon: '/favicon.svg',
   },
@@ -29,10 +28,12 @@ export default function RootLayout(props: { children: ReactNode }): JSX.Element 
       </head>
       <body>
         <MantineProvider theme={theme}>
-          {/* 2. ENVOLVEMOS LA RAÍZ CON NUESTRO SISTEMA WHITE-LABEL */}
-          <TenantProvider>
-            <Root>{children}</Root>
-          </TenantProvider>
+          {/* ORDEN CORREGIDO: Root (MedplumProvider) ahora envuelve a TenantProvider */}
+          <Root>
+            <TenantProvider>
+              {children}
+            </TenantProvider>
+          </Root>
         </MantineProvider>
       </body>
     </html>

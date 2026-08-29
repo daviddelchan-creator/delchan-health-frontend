@@ -1,13 +1,12 @@
 "use client";
 
-import { AppShell, Group, Title, Button, Text, Avatar, Stack, NavLink, MantineProvider, TextInput, ActionIcon } from '@mantine/core';
+import { AppShell, Group, Title, Button, Text, Avatar, Stack, NavLink, MantineProvider, TextInput, ActionIcon, Center, Loader } from '@mantine/core';
 import { useMedplum, useMedplumProfile } from '@medplum/react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 // IMPORTAMOS EL CEREBRO GLOBAL
 import { useTenant } from '../../contexts/TenantContext';
-// Importamos TenantProvider y useTenantModules para solucionar el error de contexto
-import { TenantProvider, useTenantModules } from '../../core/hooks/TenantContext';
 
 function DynamicSidebar({ children }: { children: React.ReactNode }) {
   const medplum = useMedplum();
@@ -15,9 +14,57 @@ function DynamicSidebar({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   
-  // EXTRAEMOS LA CONFIGURACIÓN MAESTRA DEL MODO DIOS
   const { tenantConfig } = useTenant();
-  const { activeModules } = useTenantModules();
+  const activeModules = ['agenda', 'clinical', 'crm', 'billing']; 
+
+  // ==========================================
+  // 🛡️ CONTROL DE HIDRATACIÓN (EVITA EL ERROR SSR)
+  // ==========================================
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted && !medplum.isLoading() && !medplum.getActiveLogin()) {
+      router.push('/');
+    }
+  }, [medplum, router, isMounted]);
+
+  // Si React todavía está renderizando en el servidor, devolvemos 'null'
+  // para que no haya conflictos visuales con el cliente.
+  if (!isMounted) {
+    return null;
+  }
+
+  // ==========================================
+
+  if (medplum.isLoading()) {
+    return (
+      <Center h="100vh" bg="#f8fafc">
+        <Stack align="center">
+          <Loader color={tenantConfig.internalColor} size="lg" />
+          <Text c="dimmed" fw={600}>Validando token de segurança...</Text>
+        </Stack>
+      </Center>
+    );
+  }
+
+  if (!medplum.getActiveLogin()) {
+    return null;
+  }
+
+  if (!profile) {
+    return (
+      <Center h="100vh" bg="#f8fafc">
+        <Stack align="center">
+          <Loader color={tenantConfig.internalColor} size="lg" type="dots" />
+          <Text c="dimmed" fw={600}>Carregando perfil do usuário...</Text>
+        </Stack>
+      </Center>
+    );
+  }
 
   const rolePrefix = pathname.startsWith('/doctor') ? '/doctor' : '/admin';
   const userName = profile?.name?.[0]?.given?.[0] || 'U';
@@ -31,34 +78,24 @@ function DynamicSidebar({ children }: { children: React.ReactNode }) {
       bg="#f8fafc" 
     >
       
-      {/* SIDEBAR DINÁMICO (WHITE-LABEL) */}
+      {/* SIDEBAR DINÁMICO */}
       <AppShell.Navbar bg="white" style={{ borderRight: '1px solid #f1f5f9' }} p="md" zIndex={90}>
         <Group mb="xl" px="xs" mt="xs">
           <Avatar size="md" color={tenantConfig.internalColor} radius="sm">
             {tenantConfig.name.substring(0, 2).toUpperCase()}
           </Avatar>
           <div>
-            {/* NOMBRE DE EMPRESA DINÁMICO */}
             <Title order={4} c="dark.9" fw={800}>{tenantConfig.name}</Title>
             <Text size="xs" c="dimmed">Unidade Central</Text>
           </div>
         </Group>
 
-        {/* BOTÓN CON COLOR DINÁMICO */}
         <Button fullWidth color={tenantConfig.internalColor} size="md" radius="md" mb="xl">
           + Nova Consulta
         </Button>
 
         <Stack gap="xs">
-          <NavLink 
-            label="📊 Painel" 
-            active={pathname === rolePrefix} 
-            onClick={() => router.push(rolePrefix)} 
-            fw={600} 
-            variant="filled"
-            color={tenantConfig.internalColor}
-            style={{ borderRadius: '8px' }}
-          />
+          <NavLink label="📊 Painel" active={pathname === rolePrefix} onClick={() => router.push(rolePrefix)} fw={600} variant="filled" color={tenantConfig.internalColor} style={{ borderRadius: '8px' }} />
 
           {activeModules.includes('agenda') && (
             <NavLink label="📅 Agenda" active={pathname.includes(`${rolePrefix}/agenda`)} onClick={() => router.push(`${rolePrefix}/agenda`)} fw={600} variant="filled" color={tenantConfig.internalColor} style={{ borderRadius: '8px' }} />
@@ -76,7 +113,6 @@ function DynamicSidebar({ children }: { children: React.ReactNode }) {
             <NavLink label="💳 Faturamento / PDV" active={pathname.includes(`${rolePrefix}/billing`)} onClick={() => router.push(`${rolePrefix}/billing`)} fw={600} variant="filled" color={tenantConfig.internalColor} style={{ borderRadius: '8px' }} />
           )}
 
-          {/* VISTAS EXCLUSIVAS DEL ADMIN */}
           {rolePrefix === '/admin' && (
             <>
               <Text fw={700} size="xs" c="dimmed" px="xs" mt="xl" mb="xs" tt="uppercase">Administração</Text>
@@ -84,7 +120,6 @@ function DynamicSidebar({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {/* VISTAS EXCLUSIVAS DEL DOCTOR / ESPECIALISTA */}
           {rolePrefix === '/doctor' && (
             <>
               <Text fw={700} size="xs" c="dimmed" px="xs" mt="xl" mb="xs" tt="uppercase">Meu Perfil</Text>
@@ -97,12 +132,7 @@ function DynamicSidebar({ children }: { children: React.ReactNode }) {
       {/* HEADER SUPERIOR */}
       <AppShell.Header bg="white" style={{ borderBottom: '1px solid #f1f5f9' }} zIndex={100}>
         <Group h="100%" px="xl" justify="space-between">
-          <TextInput 
-            placeholder="🔍 Buscar pacientes, prontuários..." 
-            w={400} 
-            radius="md"
-            styles={{ input: { backgroundColor: '#f8fafc', border: 'none' } }}
-          />
+          <TextInput placeholder="🔍 Buscar pacientes, prontuários..." w={400} radius="md" styles={{ input: { backgroundColor: '#f8fafc', border: 'none' } }} />
           <Group gap="lg">
             <ActionIcon variant="subtle" color="gray" size="lg" radius="xl">🔔</ActionIcon>
             <ActionIcon variant="subtle" color="gray" size="lg" radius="xl">⏱️</ActionIcon>
@@ -134,10 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         Card: { defaultProps: { shadow: 'xs', withBorder: true }, styles: { root: { borderColor: '#f1f5f9' } } }
       }
     }}>
-      {/* DEVOLVEMOS EL PROVIDER AQUÍ PARA QUE USETENANTMODULES FUNCIONE */}
-      <TenantProvider>
-        <DynamicSidebar>{children}</DynamicSidebar>
-      </TenantProvider>
+      <DynamicSidebar>{children}</DynamicSidebar>
     </MantineProvider>
   );
 }

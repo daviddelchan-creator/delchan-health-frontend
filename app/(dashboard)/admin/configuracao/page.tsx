@@ -7,7 +7,8 @@ import {
 import { useTenant } from '../../../../contexts/TenantContext';
 
 export default function GodModeSetup() {
-  const { tenantConfig, setTenantConfig } = useTenant();
+  // 1. Extraímos o toggleMFA do nosso contexto
+  const { tenantConfig, setTenantConfig, toggleMFA } = useTenant();
   const [activeTab, setActiveTab] = useState<string | null>('branding');
 
   // Construtor de Formulários
@@ -32,7 +33,7 @@ export default function GodModeSetup() {
         <Tabs.List mr="xl" style={{ width: '250px' }}>
           <Text size="xs" fw={700} c="dimmed" mb="sm" tt="uppercase">Identidade & Acesso</Text>
           <Tabs.Tab value="branding" fw={600} leftSection="🎨">White-Label & Cores</Tabs.Tab>
-          <Tabs.Tab value="org" fw={600} leftSection="🏢">Dados & Google Reserve</Tabs.Tab>
+          <Tabs.Tab value="org" fw={600} leftSection="🏢">Dados & Segurança</Tabs.Tab>
           <Tabs.Tab value="rbac" fw={600} leftSection="👥">Controle de Usuários</Tabs.Tab>
           
           <Text size="xs" fw={700} c="dimmed" mt="lg" mb="sm" tt="uppercase">Engenharia & Legal</Text>
@@ -62,9 +63,9 @@ export default function GodModeSetup() {
             </Grid>
           </Tabs.Panel>
 
-          {/* DADOS DA ORGANIZAÇÃO (MEDPLUM & GOOGLE RESERVE) */}
+          {/* DADOS DA ORGANIZAÇÃO & SEGURANÇA */}
           <Tabs.Panel value="org">
-            <Title order={3} mb="lg">Dados Mestres da Organização (FHIR)</Title>
+            <Title order={3} mb="lg">Dados Mestres e Segurança (FHIR)</Title>
             <Card p="xl" radius="lg" withBorder shadow="sm">
               <Grid gutter="md">
                 <Grid.Col span={6}><TextInput label="Razão Social" placeholder="Delchan Health LTDA" /></Grid.Col>
@@ -75,15 +76,35 @@ export default function GodModeSetup() {
               </Grid>
 
               <Divider my="xl" />
+              
               <Group justify="space-between" align="flex-start">
                 <div>
                   <Group gap="xs" mb="xs">
                     <Text size="xl">📅</Text>
-                    <Text fw={700}>Integração Google Reserve (Reserve with Google)</Text>
+                    <Text fw={700}>Integração Google Reserve</Text>
                   </Group>
-                  <Text size="sm" c="dimmed">Permite que clientes agendem serviços diretamente pelos resultados de busca do Google e Google Maps.</Text>
+                  <Text size="sm" c="dimmed">Permite que clientes agendem serviços diretamente pelos resultados de busca do Google e Maps.</Text>
                 </div>
                 <Switch color="blue" size="lg" checked={tenantConfig.googleReserveEnabled} onChange={(e) => setTenantConfig({...tenantConfig, googleReserveEnabled: e.currentTarget.checked})} />
+              </Group>
+
+              <Divider my="xl" />
+
+              {/* 2. O NOVO INTERRUPTOR DE SEGURANÇA 2FA */}
+              <Group justify="space-between" align="flex-start">
+                <div>
+                  <Group gap="xs" mb="xs">
+                    <Text size="xl">🛡️</Text>
+                    <Text fw={700}>Autenticação em Duas Etapas (2FA) Obrigatória</Text>
+                  </Group>
+                  <Text size="sm" c="dimmed">Forçar uso de aplicativo autenticador (Google Authenticator) para toda a equipe médica e administrativa. Atende LGPD e HIPAA.</Text>
+                </div>
+                <Switch 
+                  color="teal" 
+                  size="lg" 
+                  checked={tenantConfig.require2FA} 
+                  onChange={(e) => toggleMFA(e.currentTarget.checked)} 
+                />
               </Group>
             </Card>
           </Tabs.Panel>

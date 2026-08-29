@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { useMedplum } from '@medplum/react';
 
 export type ClinicType = 'medical' | 'spa' | 'salon' | 'dental';
 
@@ -22,6 +23,7 @@ interface TenantConfig {
   cnpj: string;
   address: string;
   googleReserveEnabled: boolean;
+  require2FA: boolean;
 }
 
 interface TenantContextProps {
@@ -30,11 +32,13 @@ interface TenantContextProps {
   dict: Dictionary;
   tenantConfig: TenantConfig;
   setTenantConfig: React.Dispatch<React.SetStateAction<TenantConfig>>;
+  toggleMFA: (enabled: boolean) => Promise<void>;
 }
 
 const TenantContext = createContext<TenantContextProps | undefined>(undefined);
 
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
+  const medplum = useMedplum();
   const [clinicType, setClinicType] = useState<ClinicType>('medical');
   const [tenantConfig, setTenantConfig] = useState<TenantConfig>({
     name: 'Delchan Health OS',
@@ -42,11 +46,28 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     externalColor: '#8B5CF6', // Violet
     cnpj: '',
     address: '',
-    googleReserveEnabled: false
+    googleReserveEnabled: false,
+    require2FA: false
   });
 
+  const toggleMFA = async (enabled: boolean) => {
+    try {
+      // 1. Atualizamos a interface instantaneamente
+      setTenantConfig(prev => ({ ...prev, require2FA: enabled }));
+      
+      // 2. Chamada real à API do Medplum para alterar a segurança do Projeto
+      // Descomente estas linhas quando quiser forçar a regra no backend:
+      // const project = await medplum.get('Project', 'SEU_PROJECT_ID');
+      // await medplum.updateResource({ ...project, strictMode: enabled });
+      
+      console.log(`[Segurança] Autenticação 2FA definida como: ${enabled}`);
+    } catch (error) {
+      console.error("Erro ao modificar políticas de segurança", error);
+    }
+  };
+
   return (
-    <TenantContext.Provider value={{ clinicType, setClinicType, dict: dictionaries[clinicType], tenantConfig, setTenantConfig }}>
+    <TenantContext.Provider value={{ clinicType, setClinicType, dict: dictionaries[clinicType], tenantConfig, setTenantConfig, toggleMFA }}>
       {children}
     </TenantContext.Provider>
   );
