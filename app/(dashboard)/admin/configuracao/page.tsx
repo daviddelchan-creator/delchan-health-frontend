@@ -102,6 +102,7 @@ export default function GodModeSetup() {
           <Text size="xs" fw={700} c="dimmed" mt="lg" mb="sm" tt="uppercase">Engenharia Clínica</Text>
           <Tabs.Tab value="layout" fw={600} leftSection="📱">Layout do Prontuário</Tabs.Tab>
           <Tabs.Tab value="builder" fw={600} leftSection="⚙️">Construtor de Formulários</Tabs.Tab>
+          <Tabs.Tab value="templates" fw={600} leftSection="📝">Modelos de Evolução</Tabs.Tab>
         </Tabs.List>
 
         <div style={{ flex: 1 }}>
@@ -285,6 +286,56 @@ export default function GodModeSetup() {
                       </Table.Tbody>
                     </Table>
                   )}
+                </Card>
+              </Grid.Col>
+            </Grid>
+          </Tabs.Panel>
+
+          {/* =========================================================
+    6. GESTOR DE MODELOS / PLANTILLAS CLÍNICAS
+    ========================================================= */}
+          <Tabs.Panel value="templates">
+            <Group justify="space-between" mb="lg">
+              <div>
+                <Title order={3}>Modelos de Evolução & Anamnese</Title>
+                <Text c="dimmed" size="sm">Crie e edite plantillas reutilizáveis para os especialistas.</Text>
+              </div>
+              <Button color="teal" onClick={() => alert("Nova plantilla vinculada ao Tenant com sucesso!")}>+ Nova Plantilla</Button>
+            </Group>
+
+            <Grid gutter="xl">
+              <Grid.Col span={{ base: 12, md: 5 }}>
+                <Card p="xl" radius="lg" withBorder>
+                  <TextInput label="Título da Plantilla" placeholder="Ex: Modelo Ortopédico, Ficha de Estética..." mb="md" />
+                  <Textarea label="Estrutura Padrão (HTML / Texto)" placeholder="<h3>Avaliação...</h3><p>Conduta...</p>" minRows={6} mb="md" />
+                  <Button fullWidth color={tenantConfig.internalColor}>Salvar Plantilla no Servidor</Button>
+                </Card>
+              </Grid.Col>
+
+              <Grid.Col span={{ base: 12, md: 7 }}>
+                <Card p="xl" radius="lg" withBorder>
+                  <Title order={5} mb="md">Plantillas Ativas na Organização</Title>
+                  <Table>
+                    <Table.Thead bg="#f8fafc">
+                      <Table.Tr>
+                        <Table.Th>TÍTULO</Table.Th>
+                        <Table.Th>ESPECIALIDADE / TIPO</Table.Th>
+                        <Table.Th>AÇÕES</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      <Table.Tr>
+                        <Table.Td fw={600}>📋 Padrão SOAP</Table.Td>
+                        <Table.Td><Badge color="blue" variant="light">Médico / Geral</Badge></Table.Td>
+                        <Table.Td><Button size="xs" variant="default">Editar</Button></Table.Td>
+                      </Table.Tr>
+                      <Table.Tr>
+                        <Table.Td fw={600}>📝 Anamnese Inicial</Table.Td>
+                        <Table.Td><Badge color="violet" variant="light">Multiuso</Badge></Table.Td>
+                        <Table.Td><Button size="xs" variant="default">Editar</Button></Table.Td>
+                      </Table.Tr>
+                    </Table.Tbody>
+                  </Table>
                 </Card>
               </Grid.Col>
             </Grid>
