@@ -9,7 +9,7 @@ const nextConfig = {
     return [
       {
         source: '/api/medplum/:path*',
-        // ¡Aquí está la magia! Apuntamos a la API real que descubriste con F12
+        // Apuntamos exactamente al dominio del backend (ubuntu-medplum-1) en Easypanel
         destination: 'https://delchan-health-portal-medplum.6jpght.easypanel.host/:path*'
       }
     ];

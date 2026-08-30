@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Group, Title, Button, Text, Loader, Center, Card, Modal, Drawer, Grid, Stack, Avatar, Accordion, Badge, Divider, Select, Tabs, ThemeIcon, Table, TextInput, Switch, ActionIcon
+  Group, Title, Button, Text, Loader, Center, Card, Modal, Drawer, Grid, RingProgress, Stack, Avatar, Accordion, Badge, Divider, Menu, Select, Tabs, ThemeIcon, Table, TextInput, Switch, ActionIcon
 } from '@mantine/core';
-import { useMedplum, useMedplumProfile } from '@medplum/react-hooks'; // CORRECCIÓN DE HOOKS
+
+// 1. CORRECCIÓN: Los hooks ahora vienen correctamente de @medplum/react-hooks
+import { useMedplum, useMedplumProfile } from '@medplum/react-hooks'; 
 import { DynamicIntakeForm } from '../../../components/DynamicIntakeForm';
 import { PatientWorkspace } from '../../../components/PatientWorkspace';
 import { useTenant } from '../../../contexts/TenantContext';
@@ -12,19 +14,24 @@ import { useTenant } from '../../../contexts/TenantContext';
 export default function AdminPortal() {
   const profile = useMedplumProfile();
   const medplum = useMedplum();
-  const { clinicType, setClinicType, dict, tenantConfig } = useTenant();
-  const primaryColor = tenantConfig.internalColor || '#0d9488';
+  
+  // 2. CORRECCIÓN: Extraemos solo lo que existe en el TenantContext y definimos el color
+  const { dict, tenantConfig } = useTenant();
+  const primaryColor = tenantConfig?.internalColor || '#0d9488';
+  
+  // 3. CORRECCIÓN: El tipo de clínica ahora es un estado local para no causar errores
+  const [clinicType, setClinicType] = useState<string | null>('medical');
   
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('operacional');
   const [patients, setPatients] = useState<any[]>([]);
   
-  // ESTADOS DE ACCIONES DE PACIENTES
+  // ESTADOS DE ACCIONES DE PACIENTES (Workspace, Editar, TCLE)
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [editingPatient, setEditingPatient] = useState<any | null>(null);
   const [tcleModalData, setTcleModalData] = useState<{ patient: any, status: string } | null>(null);
 
-  // ESTADOS DEL MÓDULO FINANCIERO
+  // ESTADOS DEL MÓDULO FINANCIERO NATIVO
   const [transactionModal, setTransactionModal] = useState<'receita' | 'despesa' | null>(null);
   const [txDesc, setTxDesc] = useState('');
   const [txValor, setTxValor] = useState('');
@@ -36,7 +43,8 @@ export default function AdminPortal() {
     { id: 3, data: 'Ontem, 18:00', desc: 'Compra de Insumos', tipo: 'Despesa', valor: -1250, status: 'Liquidado' },
   ]);
 
-  const [integrationApp, setIntegrationApp] = useState<'odoo' | 'govbr' | null>(null);
+  // ESTADOS DE LA APP STORE (Integraciones Externas)
+  const [integrationApp, setIntegrationApp] = useState<'odoo' | 'govbr' | 'asaas' | null>(null);
 
   const lucroLiquido = financials.bruto - financials.repasses - financials.despesas;
 
@@ -49,10 +57,11 @@ export default function AdminPortal() {
 
   useEffect(() => { setMounted(true); loadPatients(); }, [loadPatients]);
 
-  if (!mounted || !profile) return <Center h="100vh" bg="#f8f9fa"><Loader color={primaryColor} /></Center>;
+  if (!mounted || !profile) return <Center h="80vh"><Loader color="teal" /></Center>;
 
   const today = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 
+  // Procesar nueva transacción manual
   const handleSaveTransaction = () => {
     const valorNum = parseFloat(txValor);
     if (!txDesc || isNaN(valorNum)) return alert("Preencha os campos corretamente.");
@@ -73,7 +82,9 @@ export default function AdminPortal() {
       despesas: transactionModal === 'despesa' ? prev.despesas + valorNum : prev.despesas
     }));
     
-    setTransactionModal(null); setTxDesc(''); setTxValor('');
+    setTransactionModal(null);
+    setTxDesc('');
+    setTxValor('');
   };
 
   return (
@@ -88,7 +99,8 @@ export default function AdminPortal() {
           </div>
           <Group>
             <Select 
-              value={clinicType} onChange={(val) => setClinicType(val as any)}
+              value={clinicType} 
+              onChange={setClinicType}
               data={[
                 { value: 'medical', label: '🏥 Clínica Médica' },
                 { value: 'spa', label: '💆‍♀️ Spa & Estética' },
@@ -279,11 +291,11 @@ export default function AdminPortal() {
           {selectedPatient && <PatientWorkspace patient={selectedPatient} medplum={medplum} doctorName="Admin" onClose={() => setSelectedPatient(null)} />}
         </Drawer>
 
-        <Modal opened={!!editingPatient} onClose={() => setEditingPatient(null)} title={<Title order={4}>Atualizar Dados</Title>} centered size="xl" radius="xl" bg="#f8fafc">
+        <Modal opened={!!editingPatient} onClose={() => setEditingPatient(null)} title="Atualizar Dados" centered size="xl" radius="xl" bg="#f8fafc">
           <DynamicIntakeForm clinicType={clinicType as any} medplum={medplum} onSuccess={() => { setEditingPatient(null); loadPatients(); }} />
         </Modal>
 
-        <Modal opened={!!tcleModalData} onClose={() => setTcleModalData(null)} title={<Title order={4}>Central de Assinaturas</Title>} centered size="xl" radius="xl">
+        <Modal opened={!!tcleModalData} onClose={() => setTcleModalData(null)} title="Central de Assinaturas" centered size="xl" radius="xl">
           {tcleModalData?.status === 'signed_physical' ? (
             <Card radius="xl" p="xl" bg="#f0fdfa" style={{ border: '1px solid #ccfbf1' }}>
               <Group wrap="nowrap" align="flex-start">
@@ -320,7 +332,7 @@ export default function AdminPortal() {
           )}
         </Modal>
 
-        <Modal opened={!!transactionModal} onClose={() => setTransactionModal(null)} title={<Title order={4}>Registrar Lançamento</Title>} centered radius="xl">
+        <Modal opened={!!transactionModal} onClose={() => setTransactionModal(null)} title="Registrar Lançamento" centered radius="xl">
           <Stack gap="md">
             <TextInput label="Descrição" placeholder="Ex: Pagamento Consulta" value={txDesc} onChange={(e) => setTxDesc(e.currentTarget.value)} />
             <TextInput label="Valor (R$)" placeholder="150.00" type="number" value={txValor} onChange={(e) => setTxValor(e.currentTarget.value)} />
@@ -330,7 +342,7 @@ export default function AdminPortal() {
           </Stack>
         </Modal>
 
-        <Drawer opened={!!integrationApp} onClose={() => setIntegrationApp(null)} position="right" size="md" title={<Title order={4}>Configuração</Title>}>
+        <Drawer opened={!!integrationApp} onClose={() => setIntegrationApp(null)} position="right" size="md" title="Configuração">
           <Stack gap="lg" p="md">
             {integrationApp === 'odoo' && (
               <>

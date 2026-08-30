@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Stack, Divider, Title, Text, Group, ActionIcon, Avatar, Modal, TextInput, Button, Select } from '@mantine/core';
 import { Patient } from '@medplum/fhirtypes';
-import { useMedplum } from '@medplum/react';
+import { useMedplum } from '@medplum/react-hooks';
 import { useTenant } from '../../contexts/TenantContext';
 
 interface PatientSidebarProps {
