@@ -3,6 +3,7 @@
 
 import '@mantine/core/styles.css';
 import '@mantine/tiptap/styles.css';
+import '@mantine/charts/styles.css'; // <-- AÑADIDO: Fundamental para los gráficos del nuevo Dashboard SaaS
 
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import type { Metadata } from 'next';
@@ -12,7 +13,6 @@ import { theme } from './theme';
 
 import { TenantProvider } from '../contexts/TenantContext';
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const metadata: Metadata = {
   title: 'Delchan Health OS',
   icons: {
@@ -36,7 +36,7 @@ export default function RootLayout(props: { children: ReactNode }): JSX.Element 
           {/* 1. ROOT INICIALIZA LA CONEXIÓN A MEDPLUM PRIMERO */}
           <Root>
             
-            {/* 2. TENANTPROVIDER AHORA PUEDE LEER USEMEDPLUM() SIN PROBLEMAS */}
+            {/* 2. TENANTPROVIDER LEE EL TENANT Y CONTROLA EL GOD MODE */}
             <TenantProvider>
               {children}
             </TenantProvider>
