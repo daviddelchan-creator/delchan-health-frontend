@@ -1,26 +1,23 @@
-// SPDX-FileCopyrightText: Copyright Orangebot, Inc. and Medplum contributors
-// SPDX-License-Identifier: Apache-2.0
-'use client';
-import '@mantine/core/styles.css';
+"use client";
+
 import { MedplumClient } from '@medplum/core';
-import { MedplumProvider } from '@medplum/react';
-import '@medplum/react/styles.css';
-import type { JSX, ReactNode } from 'react';
+import { MedplumProvider } from '@medplum/react-hooks';
+import { ReactNode } from 'react';
 
-// EL TÚNEL MEJORADO: Usamos la URL real para el servidor, y el proxy local para el navegador
-const URL_SERVIDOR = typeof window === 'undefined' 
-  ? 'https://delchan-health-portal-medplum.6jpght.easypanel.host/' 
-  : window.location.origin + '/api/medplum/';
-
+// Conexión a tu servidor real en Easypanel
 const medplum = new MedplumClient({
-  baseUrl: URL_SERVIDOR,
-  clientId: '756a7e0c-e87f-499d-8ce6-da02a33921ea',
-  
-  onUnauthenticated: () => (window.location.href = '/'),
-  fetch: (url: string, options?: any) => fetch(url, options),
-  cacheTime: 10000,
+  baseUrl: 'https://delchan-app.6jpght.easypanel.host/', 
+  onUnauthenticated: () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+  },
 });
 
-export default function Root(props: { children: ReactNode }): JSX.Element {
-  return <MedplumProvider medplum={medplum}>{props.children}</MedplumProvider>;
+export default function Root({ children }: { children: ReactNode }) {
+  return (
+    <MedplumProvider medplum={medplum}>
+      {children}
+    </MedplumProvider>
+  );
 }

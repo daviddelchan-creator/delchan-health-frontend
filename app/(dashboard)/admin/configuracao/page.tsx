@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   Title, Text, Card, Grid, TextInput, Button, Group, ColorInput, Switch, Tabs, Stack, Badge, ActionIcon, Center, Checkbox, Table, Loader, Textarea 
 } from '@mantine/core';
-import { useMedplum } from '@medplum/react';
+import { useMedplum } from '@medplum/react-hooks';
 import { useTenant } from '../../../../contexts/TenantContext';
 
 export default function SuperAdminGodMode() {

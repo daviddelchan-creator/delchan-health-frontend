@@ -1,8 +1,11 @@
 // SPDX-FileCopyrightText: Copyright Orangebot, Inc. and Medplum contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// @ts-ignore
 import '@mantine/core/styles.css';
+// @ts-ignore
 import '@mantine/tiptap/styles.css';
+// @ts-ignore
 import '@mantine/charts/styles.css'; // <-- AÑADIDO: Fundamental para los gráficos del nuevo Dashboard SaaS
 
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
@@ -10,7 +13,6 @@ import type { Metadata } from 'next';
 import type { JSX, ReactNode } from 'react';
 import Root from './root';
 import { theme } from './theme';
-
 import { TenantProvider } from '../contexts/TenantContext';
 
 export const metadata: Metadata = {
