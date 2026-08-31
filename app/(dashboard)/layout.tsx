@@ -1,10 +1,11 @@
 "use client";
 
-import { AppShell, Group, Avatar, Text, UnstyledButton, Stack, Badge, Card, Center, Box, Button } from '@mantine/core';
+import { AppShell, Group, Avatar, Text, UnstyledButton, Stack, Badge, Card, Center, Box, Button, Drawer } from '@mantine/core';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
 import { useMedplumProfile } from '@medplum/react-hooks';
 import { useTenant } from '../../contexts/TenantContext';
+import { DoctorProfile } from '../../components/profile/DoctorProfile';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -13,6 +14,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { tenantConfig } = useTenant();
   
   const [mounted, setMounted] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false); // Estado para controlar el drawer del perfil
+
   useEffect(() => setMounted(true), []);
 
   const isAdmin = pathname?.startsWith('/admin');
@@ -36,7 +39,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <Group>
               <Center bg="teal.9" c="white" w={32} h={32} style={{ borderRadius: 8, fontWeight: 900 }}>+</Center>
               
-              {/* CORRECCIÓN DE HIDRATACIÓN: component="div" evita que el Badge rompa el HTML */}
               <Text component="div" fw={800} size="xl" c="dark.9" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 Delchan <Badge size="sm" variant="light" color="gray">OS</Badge>
               </Text>
@@ -49,7 +51,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </Group>
             <Group>
               <Button color="teal.9" radius="xl" onClick={() => router.push('/doctor/pacientes/novo')}>+ Novo Registro</Button>
-              <Avatar color="dark" radius="xl">DR</Avatar>
+              
+              {/* Botón interactivo para abrir el perfil */}
+              <UnstyledButton onClick={() => setProfileOpen(true)}>
+                <Avatar color="dark" radius="xl" style={{ cursor: 'pointer' }}>DR</Avatar>
+              </UnstyledButton>
             </Group>
           </Group>
         </AppShell.Header>
@@ -98,6 +104,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <AppShell.Main>
         {children}
       </AppShell.Main>
+
+      {/* DRAWER DEL PERFIL DEL DOCTOR */}
+      <Drawer 
+        opened={profileOpen} 
+        onClose={() => setProfileOpen(false)} 
+        position="right" 
+        size="100%" 
+        title={<Text fw={900} size="lg">Perfil e Métricas Profissionais</Text>}
+        padding="xl"
+      >
+        <DoctorProfile practitioner={profile} />
+      </Drawer>
     </AppShell>
   );
 }

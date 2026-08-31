@@ -1,246 +1,222 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { 
-  Group, Title, Text, ActionIcon, Tabs, Card, Avatar, Select, Grid, Box, Table, Badge, Button, Center, Loader, Stack, Divider
-} from '@mantine/core';
-
-// IMPORTAMOS EL CEREBRO GLOBAL
+import { useState, useEffect } from 'react';
+import { Box, Group, Avatar, Text, Button, ActionIcon, Grid, Card, Badge, Tabs, RingProgress, Stack, ThemeIcon, ScrollArea, Select, Textarea, Loader, Center } from '@mantine/core';
+import { IconX, IconEdit, IconShieldCheck, IconCalendarEvent, IconStethoscope, IconFileDescription, IconCheck } from '@tabler/icons-react';
 import { useTenant } from '../contexts/TenantContext';
+// IMPORTACIÓN CLAVE: Componente UI nativo de Medplum para renderizar el Questionnaire
+import { QuestionnaireForm } from '@medplum/react'; 
 
-// IMPORTAMOS LOS MÓDULOS
-import { PatientSidebar } from './patient/PatientSidebar';
-import { ClinicalEditor } from './clinical/ClinicalEditor';
-import { SmartFormNails as DynamicClinicalForm } from './modules/DynamicClinicalForm';
-
-interface PatientWorkspaceProps {
-  patient: any;
-  medplum: any;
-  doctorName: string;
-  onClose: () => void;
-}
-
-export function PatientWorkspace({ patient, medplum, doctorName, onClose }: PatientWorkspaceProps) {
-  const { dict, tenantConfig } = useTenant();
+export function PatientWorkspace({ patient, medplum, doctorName, onClose }: any) {
+  const { tenantConfig } = useTenant();
+  const primaryColor = tenantConfig?.internalColor || '#0d9488';
   
-  const [activeTab, setActiveTab] = useState<string | null>('timeline');
+  const [activeTab, setActiveTab] = useState<string | null>('visao-geral');
+  const [questionnaire, setQuestionnaire] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // ESTADOS DEL HISTORIAL
   const [history, setHistory] = useState<any[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-
-  // ESTADOS DEL MOTOR DE FORMULARIOS DINÁMICOS
-  const [availableForms, setAvailableForms] = useState<{value: string, label: string, resource: any}[]>([]);
-  const [activeFormId, setActiveFormId] = useState<string | null>(null);
-  const [isLoadingForms, setIsLoadingForms] = useState(false);
   
-  const [filledForms, setFilledForms] = useState<any[]>([
-    { id: '1', name: 'Triagem Inicial', date: '15/08/2026', status: 'Assinado' }
-  ]);
+  // Estado del Editor de Evolución
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>('');
+  const [clinicalText, setClinicalText] = useState('');
 
-  const fullName = patient.name ? `${patient.name[0].given.join(' ')} ${patient.name[0].family}` : `${dict.patient} Não Identificado`;
+  const fullName = patient?.name?.[0] ? `${patient.name[0].given?.join(' ')} ${patient.name[0].family}` : 'Paciente';
+  const birthDate = patient?.birthDate ? new Date(patient.birthDate) : null;
+  const age = birthDate ? new Date().getFullYear() - birthDate.getFullYear() : '--';
 
-  // CARGAR HISTORIAL DE EVOLUCIONES
-  const loadHistory = useCallback(async () => {
-    setIsLoadingHistory(true);
-    try {
-      const bundle = await medplum.search('ClinicalImpression', `subject=Patient/${patient.id}&_sort=-date`);
+  // Cargar historial y el formulario dinámico creado en Admin
+  useEffect(() => {
+    // 1. Cargar Notas Previas
+    medplum.search('ClinicalImpression', `subject=Patient/${patient.id}`).then((bundle: any) => {
       setHistory(bundle.entry?.map((e: any) => e.resource) || []);
-    } catch (error) { console.error("Erro", error); }
-    setIsLoadingHistory(false);
+    }).catch(console.error);
+
+    // 2. Cargar el último Formulario Creado en el Construtor
+    medplum.searchOne('Questionnaire', 'status=active').then((q) => {
+      if (q) setQuestionnaire(q);
+    }).catch(console.error);
   }, [medplum, patient.id]);
 
-  // CARGAR FORMULARIOS (QUESTIONNAIRES) DESDE LA BASE DE DATOS
-  const loadAvailableForms = useCallback(async () => {
-    setIsLoadingForms(true);
+  // Guardar respuestas de la ficha de admisión
+  const handleFichaSubmit = async (response: any) => {
     try {
-      const bundle = await medplum.search('Questionnaire', '_sort=-date');
-      if (bundle.entry) {
-        const forms = bundle.entry.map((e: any) => ({
-          value: e.resource.id,
-          label: `📄 ${e.resource.title || e.resource.name}`,
-          resource: e.resource
-        }));
-        setAvailableForms(forms);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar formulários:", error);
+      response.subject = { reference: `Patient/${patient.id}` };
+      response.author = { display: doctorName };
+      await medplum.createResource(response);
+      alert('Ficha salva com sucesso na base FHIR!');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar ficha.');
     }
-    setIsLoadingForms(false);
-  }, [medplum]);
+  };
 
-  useEffect(() => { 
-    loadHistory(); 
-    loadAvailableForms();
-  }, [loadHistory, loadAvailableForms]);
-
-  // GUARDAR EVOLUCIÓN DESDE EL EDITOR TIPTAP
-  const handleSaveEvolution = async (jsonContent: object, htmlContent: string) => {
+  // Guardar nota clínica de texto libre
+  const handleSaveNote = async () => {
     setIsSaving(true);
     try {
-      await medplum.createResource({
+      const newNote = await medplum.createResource({
         resourceType: 'ClinicalImpression',
         status: 'completed',
         subject: { reference: `Patient/${patient.id}` },
-        summary: htmlContent, 
-        note: [{ text: JSON.stringify(jsonContent) }], 
+        assessor: { display: doctorName },
         date: new Date().toISOString(),
+        summary: clinicalText
       });
+      setHistory([newNote, ...history]);
+      setClinicalText('');
       alert("Evolução salva com sucesso!");
-      loadHistory(); 
-      setActiveTab('timeline'); 
-    } catch (error) { 
-      alert("Falha ao salvar a evolução."); 
-    }
+    } catch (error) { alert("Erro ao salvar a evolução."); }
     setIsSaving(false);
   };
 
-  // GUARDAR FORMULARIO LLENO
-  const handleSaveForm = (formName: string) => {
-    setFilledForms([{ id: Date.now().toString(), name: formName, date: 'Agora', status: 'Aguardando TCLE' }, ...filledForms]);
-    setActiveFormId(null);
+  // Aplicar plantilla predefinida desde Admin
+  const applyTemplate = (templateName: string) => {
+    setSelectedTemplate(templateName);
+    if (templateName === 'soap') {
+      setClinicalText("S (Subjetivo):\n\nO (Objetivo):\n\nA (Avaliação):\n\nP (Plano):");
+    } else if (templateName === 'anamnese') {
+      setClinicalText("HDA (História da Doença Atual):\n\nHPP (História Patológica Pregressa):\n\nMedicamentos em uso:\n\nAlergias:");
+    }
   };
 
-  // ENCONTRAR EL RECURSO COMPLETO DEL FORMULARIO SELECCIONADO
-  const selectedFormResource = availableForms.find(f => f.value === activeFormId)?.resource;
-
   return (
-    <div style={{ backgroundColor: '#f8fafc', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <Box style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8f9fa' }}>
       
-      {/* HEADER */}
-      <div style={{ backgroundColor: 'white', padding: '15px 30px', borderBottom: '1px solid #e2e8f0' }}>
-        <Group justify="space-between">
-          <Group>
-            <Avatar color={tenantConfig.internalColor} radius="xl" size="md">{fullName.charAt(0)}</Avatar>
-            <div>
-              <Title order={4} c="dark.9" fw={800}>{fullName}</Title>
-              <Text size="xs" c="dimmed">ID: {patient.id?.slice(0, 8)} • Prontuário Digital</Text>
-            </div>
-          </Group>
-          <ActionIcon size="lg" radius="md" variant="subtle" color="gray" onClick={onClose}>✕</ActionIcon>
-        </Group>
-      </div>
-
-      {/* CUERPO DEL WORKSPACE */}
-      <Grid gutter={0} style={{ flex: 1, overflow: 'hidden' }}>
-        
-        {/* COLUMNA IZQUIERDA: SIDEBAR */}
-        <Grid.Col span={3} bg="white" p="xl" style={{ borderRight: '1px solid #e2e8f0', overflowY: 'auto', maxHeight: 'calc(100vh - 70px)' }}>
-          <PatientSidebar patient={patient} />
-        </Grid.Col>
-
-        {/* COLUMNA DERECHA: PESTAÑAS */}
-        <Grid.Col span={9} p="xl" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 70px)' }}>
-          <Tabs value={activeTab} onChange={setActiveTab} color={tenantConfig.internalColor}>
-            
-            <Tabs.List mb="md">
-              <Tabs.Tab value="timeline" fw={600}>Linha do Tempo</Tabs.Tab>
-              <Tabs.Tab value="evolucao" fw={600}>📝 Nova Evolução</Tabs.Tab>
-              <Tabs.Tab value="formularios" fw={600}>📋 Módulos & Anexos</Tabs.Tab>
+      {/* HEADER DEL PACIENTE */}
+      <Box p="md" bg="white" style={{ borderBottom: '1px solid #e2e8f0' }}>
+        <Group justify="space-between" align="center">
+          <Tabs value={activeTab} onChange={setActiveTab} color={primaryColor} radius="xl" variant="pills">
+            <Tabs.List>
+              <Tabs.Tab value="visao-geral" fw={600}>Visão Geral</Tabs.Tab>
+              <Tabs.Tab value="ficha" fw={600}>Ficha de Admissão</Tabs.Tab>
+              <Tabs.Tab value="evolucao" fw={600}>Evolução Clínica</Tabs.Tab>
             </Tabs.List>
-
-            {/* 1. LÍNEA DE TIEMPO */}
-            <Tabs.Panel value="timeline">
-              {isLoadingHistory ? <Center p="xl"><Loader color={tenantConfig.internalColor} /></Center> : (
-                <Stack gap="md">
-                  {history.length === 0 && <Text c="dimmed" fs="italic">Nenhum registro encontrado para este paciente.</Text>}
-                  {history.map((record: any) => (
-                    <Card key={record.id} p="lg" radius="lg" bg="white" withBorder style={{ borderColor: '#e2e8f0' }}>
-                      <Group justify="space-between" mb="xs">
-                        <Badge color={tenantConfig.internalColor} variant="light">Evolução Clínica</Badge>
-                        <Badge color="gray" variant="dot">FHIR ID: {record.id.slice(0,6)}</Badge>
-                      </Group>
-                      <Divider my="sm" color="#f1f5f9" />
-                      <div dangerouslySetInnerHTML={{ __html: record.summary || '' }} style={{ fontSize: '14px', color: '#334155' }} />
-                    </Card>
-                  ))}
-                </Stack>
-              )}
-            </Tabs.Panel>
-
-            {/* 2. NOVA EVOLUÇÃO (EDITOR TIPTAP) */}
-            <Tabs.Panel value="evolucao">
-              <ClinicalEditor 
-                onSave={handleSaveEvolution} 
-                accentColor={tenantConfig.internalColor} 
-                loading={isSaving}
-              />
-            </Tabs.Panel>
-
-            {/* 3. MÓDULOS E FORMULÁRIOS DINÁMICOS */}
-            <Tabs.Panel value="formularios">
-              <Grid gutter="xl">
-                <Grid.Col span={{ base: 12, md: 4 }}>
-                  <Card p="xl" radius="lg" bg="white" withBorder style={{ borderColor: '#e2e8f0' }}>
-                    <Title order={5} c="dark.9" fw={700} mb="md">Anexar Novo Formulário</Title>
-                    <Text size="sm" c="dimmed" mb="lg">Selecione o módulo configurado no painel administrativo.</Text>
-                    
-                    {isLoadingForms ? <Center><Loader size="sm" color={tenantConfig.internalColor} /></Center> : (
-                      <Select 
-                        placeholder="Buscar na biblioteca..."
-                        data={availableForms}
-                        value={activeFormId}
-                        onChange={setActiveFormId}
-                        searchable size="md"
-                        nothingFoundMessage="Nenhum módulo criado no God Mode."
-                      />
-                    )}
-                    
-                    <Button fullWidth mt="md" color={tenantConfig.internalColor} disabled={!activeFormId}>
-                      Carregar Módulo
-                    </Button>
-                  </Card>
-                </Grid.Col>
-
-                <Grid.Col span={{ base: 12, md: 8 }}>
-                  {selectedFormResource && (
-                    <Box mb="xl">
-                      {/* O Renderizador agora recebe o JSON do banco de dados dinamicamente */}
-                      <DynamicClinicalForm 
-                        questionnaire={selectedFormResource} 
-                        onRequestSignature={() => {
-                          alert("Notificação Push enviada!");
-                          handleSaveForm(selectedFormResource.title || selectedFormResource.name);
-                        }} 
-                      />
-                    </Box>
-                  )}
-
-                  <Card p="xl" radius="lg" bg="white" withBorder style={{ borderColor: '#e2e8f0' }}>
-                    <Title order={5} c="dark.9" fw={700} mb="md">Documentos Anexados</Title>
-                    <Table>
-                      <Table.Thead bg="#f8fafc">
-                        <Table.Tr>
-                          <Table.Th>DOCUMENTO / MÓDULO</Table.Th>
-                          <Table.Th>DATA</Table.Th>
-                          <Table.Th>STATUS (TCLE)</Table.Th>
-                          <Table.Th>AÇÃO</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {filledForms.map((form) => (
-                          <Table.Tr key={form.id}>
-                            <Table.Td fw={600} c="dark.8">📄 {form.name}</Table.Td>
-                            <Table.Td c="dimmed">{form.date}</Table.Td>
-                            <Table.Td>
-                              <Badge color={form.status === 'Assinado' ? 'teal' : 'red'} variant="light">{form.status}</Badge>
-                            </Table.Td>
-                            <Table.Td>
-                              <Button size="xs" variant="default">Visualizar</Button>
-                            </Table.Td>
-                          </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  </Card>
-                </Grid.Col>
-              </Grid>
-            </Tabs.Panel>
-
           </Tabs>
-        </Grid.Col>
-      </Grid>
-    </div>
+
+          <Group>
+            <ActionIcon variant="light" color="gray" radius="xl" size="lg" onClick={onClose}>
+              <IconX size={20} />
+            </ActionIcon>
+          </Group>
+        </Group>
+      </Box>
+
+      {/* CONTENIDO DINÁMICO */}
+      <ScrollArea style={{ flex: 1 }} p="xl">
+        
+        {/* PESTAÑA: VISÃO GERAL */}
+        {activeTab === 'visao-geral' && (
+          <Grid gutter="lg">
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card p="xl" radius="2xl" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', height: '100%' }}>
+                <Group wrap="nowrap" mb="xl">
+                  <Avatar color={primaryColor} radius="md" size="xl" style={{ fontWeight: 800 }}>{fullName.charAt(0)}</Avatar>
+                  <div>
+                    <Text fw={800} size="lg" c="dark.9">{fullName}</Text>
+                    <Text size="xs" c="dimmed">ID: {patient.id?.slice(0, 8)}</Text>
+                  </div>
+                </Group>
+                <Grid mt="md">
+                  <Grid.Col span={6}><Text size="xs" c="dimmed" fw={600}>IDADE</Text><Text fw={800} size="xl">{age} anos</Text></Grid.Col>
+                  <Grid.Col span={6}><Text size="xs" c="dimmed" fw={600}>SANGUE</Text><Text fw={800} size="xl">O+</Text></Grid.Col>
+                </Grid>
+              </Card>
+            </Grid.Col>
+            
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card p="xl" radius="2xl" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', height: '100%' }}>
+                <Text size="sm" fw={700} mb="md">Adesão ao Tratamento</Text>
+                <Group justify="center" mt="md">
+                  <RingProgress size={140} thickness={14} roundCaps sections={[{ value: 85, color: primaryColor }]} label={<Text ta="center" fw={900} size="xl">85%</Text>} />
+                </Group>
+              </Card>
+            </Grid.Col>
+
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Stack gap="md" style={{ height: '100%' }}>
+                <Card p="md" radius="2xl" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', flex: 1 }}>
+                  <Group justify="space-between" mb="sm"><Text size="sm" fw={700}><IconCalendarEvent size={16} style={{ verticalAlign: 'middle' }}/> Próximos Agendamentos</Text></Group>
+                  <Group justify="space-between" p="sm" style={{ border: '1px solid #f1f5f9', borderRadius: '12px' }}>
+                    <Group gap="sm"><ThemeIcon color="gray" variant="light" radius="xl"><IconStethoscope size={14}/></ThemeIcon><div><Text size="xs" fw={700}>Consulta de Retorno</Text><Text size="xs" c="dimmed">Amanhã • 14:30</Text></div></Group>
+                  </Group>
+                </Card>
+              </Stack>
+            </Grid.Col>
+          </Grid>
+        )}
+
+        {/* PESTAÑA: FICHA DE ADMISIÓN (CARGA DINÁMICA DE ADMIN) */}
+        {activeTab === 'ficha' && (
+          <Card p="xl" radius="2xl" withBorder shadow="sm" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <Text fw={700} size="lg" mb="sm">Ficha Dinâmica de Admissão</Text>
+            <Text c="dimmed" size="sm" mb="xl">Formulário configurado pelo administrador da clínica.</Text>
+            
+            {questionnaire ? (
+              // MOTOR MEDPLUM RENDEREA EL FORMULARIO CREADO EN EL CONSTRUTOR
+              <Box bg="#f8fafc" p="lg" style={{ borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                <QuestionnaireForm questionnaire={questionnaire} onSubmit={handleFichaSubmit} />
+              </Box>
+            ) : (
+              <Center py="xl"><Loader color={primaryColor} type="dots" /></Center>
+            )}
+          </Card>
+        )}
+
+        {/* PESTAÑA: EVOLUCIÓN CON PLANTILLAS */}
+        {activeTab === 'evolucao' && (
+          <Grid gutter="xl">
+            {/* HISTORIAL */}
+            <Grid.Col span={4}>
+              <Text fw={700} size="sm" mb="md" c="dark.7">Histórico Clínico</Text>
+              <ScrollArea style={{ height: '500px' }} pr="sm">
+                {history.map((note, i) => (
+                  <Card key={i} p="md" radius="lg" mb="sm" withBorder shadow="sm">
+                    <Group justify="space-between" mb="xs">
+                      <Badge color="gray" variant="light" size="xs">{new Date(note.date).toLocaleDateString()}</Badge>
+                      <ThemeIcon color="teal" variant="light" size="sm" radius="xl"><IconCheck size={12}/></ThemeIcon>
+                    </Group>
+                    <Text size="xs" fw={700} c="dark.9" mb={4}>{note.assessor?.display}</Text>
+                    <Text size="xs" c="dimmed" lineClamp={3}>{note.summary}</Text>
+                  </Card>
+                ))}
+              </ScrollArea>
+            </Grid.Col>
+
+            {/* EDITOR Y PLANTILLAS */}
+            <Grid.Col span={8}>
+              <Card p="xl" radius="2xl" withBorder shadow="sm" style={{ height: '100%' }}>
+                <Group justify="space-between" mb="lg">
+                  <Text fw={700} size="lg"><IconFileDescription size={20} style={{ verticalAlign: 'middle' }}/> Nova Evolução</Text>
+                  <Select 
+                    placeholder="Aplicar Plantilla (Tiptap)" 
+                    data={[{value: 'soap', label: 'Evolução SOAP'}, {value: 'anamnese', label: 'Anamnese Geral'}]} 
+                    value={selectedTemplate}
+                    onChange={(val) => applyTemplate(val as string)}
+                    radius="md"
+                    styles={{ input: { borderColor: primaryColor } }}
+                  />
+                </Group>
+                
+                {/* Aquí en el futuro se montará el @mantine/tiptap real */}
+                <Textarea 
+                  minRows={15} 
+                  autosize 
+                  radius="md" 
+                  value={clinicalText}
+                  onChange={(e) => setClinicalText(e.currentTarget.value)}
+                  placeholder="Escreva livremente ou selecione uma plantilla acima..."
+                  styles={{ input: { backgroundColor: '#fcfcfd', fontSize: '15px', lineHeight: '1.6' } }}
+                />
+
+                <Group justify="flex-end" mt="xl">
+                  <Button color={primaryColor} radius="xl" loading={isSaving} onClick={handleSaveNote}>Assinar e Salvar (FHIR)</Button>
+                </Group>
+              </Card>
+            </Grid.Col>
+          </Grid>
+        )}
+
+      </ScrollArea>
+    </Box>
   );
 }

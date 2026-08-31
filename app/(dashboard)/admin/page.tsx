@@ -5,33 +5,31 @@ import {
   Group, Title, Button, Text, Loader, Center, Card, Modal, Drawer, Grid, RingProgress, Stack, Avatar, Accordion, Badge, Divider, Menu, Select, Tabs, ThemeIcon, Table, TextInput, Switch, ActionIcon
 } from '@mantine/core';
 
-// 1. CORRECCIÓN: Los hooks ahora vienen correctamente de @medplum/react-hooks
 import { useMedplum, useMedplumProfile } from '@medplum/react-hooks'; 
 import { DynamicIntakeForm } from '../../../components/DynamicIntakeForm';
 import { PatientWorkspace } from '../../../components/PatientWorkspace';
+import { StaffManager } from '../../../components/admin/StaffManager';
 import { useTenant } from '../../../contexts/TenantContext';
 
 export default function AdminPortal() {
   const profile = useMedplumProfile();
   const medplum = useMedplum();
   
-  // 2. CORRECCIÓN: Extraemos solo lo que existe en el TenantContext y definimos el color
   const { dict, tenantConfig } = useTenant();
   const primaryColor = tenantConfig?.internalColor || '#0d9488';
   
-  // 3. CORRECCIÓN: El tipo de clínica ahora es un estado local para no causar errores
   const [clinicType, setClinicType] = useState<string | null>('medical');
   
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('operacional');
   const [patients, setPatients] = useState<any[]>([]);
   
-  // ESTADOS DE ACCIONES DE PACIENTES (Workspace, Editar, TCLE)
+  // ESTADOS DE ACCIONES DE PACIENTES
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [editingPatient, setEditingPatient] = useState<any | null>(null);
   const [tcleModalData, setTcleModalData] = useState<{ patient: any, status: string } | null>(null);
 
-  // ESTADOS DEL MÓDULO FINANCIERO NATIVO
+  // ESTADOS DEL MÓDULO FINANCIERO
   const [transactionModal, setTransactionModal] = useState<'receita' | 'despesa' | null>(null);
   const [txDesc, setTxDesc] = useState('');
   const [txValor, setTxValor] = useState('');
@@ -43,7 +41,6 @@ export default function AdminPortal() {
     { id: 3, data: 'Ontem, 18:00', desc: 'Compra de Insumos', tipo: 'Despesa', valor: -1250, status: 'Liquidado' },
   ]);
 
-  // ESTADOS DE LA APP STORE (Integraciones Externas)
   const [integrationApp, setIntegrationApp] = useState<'odoo' | 'govbr' | 'asaas' | null>(null);
 
   const lucroLiquido = financials.bruto - financials.repasses - financials.despesas;
@@ -61,7 +58,6 @@ export default function AdminPortal() {
 
   const today = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Procesar nueva transacción manual
   const handleSaveTransaction = () => {
     const valorNum = parseFloat(txValor);
     if (!txDesc || isNaN(valorNum)) return alert("Preencha os campos corretamente.");
@@ -121,10 +117,11 @@ export default function AdminPortal() {
           <Tabs.List>
             <Tabs.Tab value="operacional" fw={600} fz="sm">🏥 Operacional & EMPI</Tabs.Tab>
             <Tabs.Tab value="financeiro" fw={600} fz="sm">💰 Fluxo de Caixa</Tabs.Tab>
+            <Tabs.Tab value="seguranca" fw={600} fz="sm">🔒 Equipe & Acesso</Tabs.Tab>
             <Tabs.Tab value="integracoes" fw={600} fz="sm">🔌 App Store</Tabs.Tab>
           </Tabs.List>
 
-          {/* 1. MÓDULO OPERACIONAL (PACIENTES) */}
+          {/* 1. MÓDULO OPERACIONAL */}
           <Tabs.Panel value="operacional" pt="xl">
             <Card radius="20px" p="xl" withBorder style={{ borderColor: '#e2e8f0' }}>
               <Group justify="space-between" mb="lg">
@@ -244,7 +241,12 @@ export default function AdminPortal() {
             </Card>
           </Tabs.Panel>
 
-          {/* 3. MÓDULO APP STORE */}
+          {/* 3. MÓDULO EQUIPE & ACESSO */}
+          <Tabs.Panel value="seguranca" pt="xl">
+            <StaffManager />
+          </Tabs.Panel>
+
+          {/* 4. MÓDULO APP STORE */}
           <Tabs.Panel value="integracoes" pt="xl">
             <Text c="dimmed" mb="xl" size="sm">Aplicativos dedicados para expandir Delchan Health OS. Instale ou configure conexões externas.</Text>
             
