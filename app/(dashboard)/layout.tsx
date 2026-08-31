@@ -1,6 +1,5 @@
 "use client";
 
-// Se agregó 'Button' a las importaciones
 import { AppShell, Group, Avatar, Text, UnstyledButton, Stack, Badge, Card, Center, Box, Button } from '@mantine/core';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
@@ -36,17 +35,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <Group h="100%" px="xl" justify="space-between">
             <Group>
               <Center bg="teal.9" c="white" w={32} h={32} style={{ borderRadius: 8, fontWeight: 900 }}>+</Center>
-              <Text fw={800} size="xl" c="dark.9">Delchan <Badge size="sm" variant="light" color="gray">OS</Badge></Text>
+              
+              {/* CORRECCIÓN DE HIDRATACIÓN: component="div" evita que el Badge rompa el HTML */}
+              <Text component="div" fw={800} size="xl" c="dark.9" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                Delchan <Badge size="sm" variant="light" color="gray">OS</Badge>
+              </Text>
               
               <Group ml="xl" gap="sm">
-                <UnstyledButton px="md" py="xs" style={{ borderRadius: 20, color: '#64748b', fontWeight: 600 }}>Início</UnstyledButton>
-                <UnstyledButton px="md" py="xs" bg="dark.9" c="white" style={{ borderRadius: 20, fontWeight: 600 }}>Pacientes</UnstyledButton>
-                <UnstyledButton px="md" py="xs" style={{ borderRadius: 20, color: '#64748b', fontWeight: 600 }}>Agenda</UnstyledButton>
-                <UnstyledButton px="md" py="xs" style={{ borderRadius: 20, color: '#64748b', fontWeight: 600 }}>Financeiro</UnstyledButton>
+                <UnstyledButton onClick={() => router.push('/doctor')} px="md" py="xs" bg={pathname === '/doctor' ? 'dark.9' : 'transparent'} c={pathname === '/doctor' ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Início</UnstyledButton>
+                <UnstyledButton onClick={() => router.push('/doctor/pacientes')} px="md" py="xs" bg={pathname?.includes('/pacientes') ? 'dark.9' : 'transparent'} c={pathname?.includes('/pacientes') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Pacientes</UnstyledButton>
+                <UnstyledButton onClick={() => router.push('/doctor/agenda')} px="md" py="xs" bg={pathname?.includes('/agenda') ? 'dark.9' : 'transparent'} c={pathname?.includes('/agenda') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Agenda</UnstyledButton>
               </Group>
             </Group>
             <Group>
-              <Button color="teal.9" radius="xl">+ Novo Registro</Button>
+              <Button color="teal.9" radius="xl" onClick={() => router.push('/doctor/pacientes/novo')}>+ Novo Registro</Button>
               <Avatar color="dark" radius="xl">DR</Avatar>
             </Group>
           </Group>
@@ -67,22 +69,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
           <Text size="xs" fw={700} c="dimmed" mb="sm" px="xs" lts={1}>SUPER ADMIN</Text>
           <Stack gap="xs">
-            <UnstyledButton p="sm" bg="teal.0" c="teal.9" style={{ borderRadius: 8, fontWeight: 600, borderLeft: '3px solid #0d9488' }}>
+            <UnstyledButton onClick={() => router.push('/admin')} p="sm" bg={pathname === '/admin' ? 'teal.0' : 'transparent'} c={pathname === '/admin' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 600, borderLeft: pathname === '/admin' ? '3px solid #0d9488' : 'none' }}>
               Dashboard
             </UnstyledButton>
-            <UnstyledButton p="sm" c="gray.7" style={{ borderRadius: 8, fontWeight: 500 }}>Clínicas / Tenants</UnstyledButton>
-            <UnstyledButton p="sm" c="gray.7" style={{ borderRadius: 8, fontWeight: 500 }}>Módulos SaaS</UnstyledButton>
-            <UnstyledButton p="sm" c="gray.7" style={{ borderRadius: 8, fontWeight: 500 }}>White-Label</UnstyledButton>
-            <UnstyledButton p="sm" c="gray.7" style={{ borderRadius: 8, fontWeight: 500 }}>Segurança & Acesso</UnstyledButton>
-            <UnstyledButton p="sm" c="gray.7" style={{ borderRadius: 8, fontWeight: 500 }}>Layout Prontuário</UnstyledButton>
-            <UnstyledButton p="sm" c="gray.7" style={{ borderRadius: 8, fontWeight: 500 }}>Construtor de Módulos</UnstyledButton>
-            <UnstyledButton p="sm" c="gray.7" style={{ borderRadius: 8, fontWeight: 500 }}>Plantillas</UnstyledButton>
+            <UnstyledButton onClick={() => router.push('/admin/tenants')} p="sm" c={pathname?.includes('/tenants') ? 'dark.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Clínicas / Tenants</UnstyledButton>
+            <UnstyledButton onClick={() => router.push('/admin/modulos')} p="sm" c={pathname?.includes('/modulos') ? 'dark.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Módulos SaaS</UnstyledButton>
+            <UnstyledButton onClick={() => router.push('/admin/whitelabel')} p="sm" c={pathname?.includes('/whitelabel') ? 'dark.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>White-Label</UnstyledButton>
+            <UnstyledButton onClick={() => router.push('/admin/seguranca')} p="sm" c={pathname?.includes('/seguranca') ? 'dark.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Segurança & Acesso</UnstyledButton>
+            <UnstyledButton onClick={() => router.push('/admin/prontuario')} p="sm" c={pathname?.includes('/prontuario') ? 'dark.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Layout Prontuário</UnstyledButton>
+            <UnstyledButton onClick={() => router.push('/admin/construtor')} p="sm" c={pathname?.includes('/construtor') ? 'dark.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Construtor de Módulos</UnstyledButton>
+            <UnstyledButton onClick={() => router.push('/admin/plantillas')} p="sm" c={pathname?.includes('/plantillas') ? 'dark.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Plantillas</UnstyledButton>
           </Stack>
 
           <Box mt="auto">
             <Card p="md" radius="md" bg="teal.0">
               <Text fw={700} size="sm" c="teal.9">Modo Deus ativo</Text>
-              <Text size="xs" c="teal.7" mt={4}>Você está editando a Instância global. Alterações afetam todos os tenants, exceto overrides de White-Label.</Text>
+              <Text size="xs" c="teal.7" mt={4}>Você está editando a Instância global. Alterações afetam todos os tenants.</Text>
               <Group mt="md" gap={5}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#0d9488' }} />
                 <Text size="xs" c="teal.7" fw={600}>Auditoria ligada</Text>

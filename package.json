@@ -24,6 +24,7 @@
     "@medplum/react": "5.0.4",
     "@medplum/react-hooks": "^4.5.2",
     "@next/bundle-analyzer": "15.5.6",
+    "@tabler/icons-react": "^3.46.0",
     "@tiptap/extension-placeholder": "^3.30.5",
     "@tiptap/react": "^3.30.5",
     "@tiptap/starter-kit": "^3.30.5",
