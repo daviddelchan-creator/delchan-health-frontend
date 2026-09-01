@@ -1,24 +1,95 @@
 "use client";
 
-import { Card, Group, Avatar, Text, Badge, Button, Grid, RingProgress, Stack, ThemeIcon, ActionIcon, Box } from '@mantine/core';
-import { IconDotsCircleHorizontal, IconVideo, IconTrendingUp, IconCalendarEvent, IconStethoscope, IconShieldCheck } from '@tabler/icons-react';
+import { Card, Group, Avatar, Text, Badge, Button, Grid, RingProgress, Stack, ThemeIcon, ActionIcon, Box, UnstyledButton, FileButton, Loader, Indicator } from '@mantine/core';
+import { IconDotsCircleHorizontal, IconTrendingUp, IconCalendarEvent, IconStethoscope, IconShieldCheck } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
 import { useTenant } from '../../contexts/TenantContext';
+import { useSearchResources, useMedplum } from '@medplum/react-hooks';
+import { Appointment, Encounter, Patient, Reference } from '@medplum/fhirtypes';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useState } from 'react';
 
-export function DoctorProfile({ practitioner }: { practitioner?: any }) {
+interface DoctorProfileProps {
+  practitioner?: any;
+  onClose?: () => void;
+}
+
+export function DoctorProfile({ practitioner, onClose }: DoctorProfileProps) {
+  const router = useRouter();
+  const medplum = useMedplum();
   const { tenantConfig } = useTenant();
   const primaryColor = tenantConfig?.internalColor || '#0d9488';
 
-  const name = practitioner?.name?.[0] ? `${practitioner.name[0].given?.join(' ')} ${practitioner.name[0].family}` : 'Dr. Rafael Monteiro';
+  const [uploading, setUploading] = useState(false);
+
+  const name = practitioner?.name?.[0] ? `${practitioner.name[0].given?.join(' ')} ${practitioner.name[0].family}` : 'Dr(a). Não Identificado';
   const role = practitioner?.telecom?.[0]?.value ? 'Especialista' : 'Dermatologista • CRM 148.392 - SP';
+  const photoUrl = practitioner?.photo?.[0]?.url;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  
+  const [appointments] = useSearchResources('Appointment', {
+    actor: `Practitioner/${practitioner?.id}`,
+    date: `ge${todayStr}`,
+    _sort: 'date',
+    _count: 5
+  });
+
+  const [encounters] = useSearchResources('Encounter', {
+    participant: `Practitioner/${practitioner?.id}`,
+    _sort: '-date',
+    _count: 5,
+    _include: 'Encounter:subject'
+  });
+
+  const recentPatients = (encounters || [])
+    .map((enc: Encounter) => enc.subject as Reference<Patient>)
+    .filter((v: Reference<Patient> | undefined, i: number, a: (Reference<Patient> | undefined)[]) => 
+      v && a.findIndex((t: Reference<Patient> | undefined) => t?.reference === v?.reference) === i
+    )
+    .slice(0, 3);
+
+  const navigateTo = (path: string) => {
+    if (onClose) onClose();
+    router.push(path);
+  };
+
+  const handlePhotoUpload = async (file: File | null) => {
+    if (!file) return;
+    try {
+      setUploading(true);
+      const binary = await medplum.createBinary(file, file.name, file.type);
+      await medplum.updateResource({
+        ...practitioner,
+        photo: [{ url: binary.url, contentType: file.type }]
+      });
+      window.location.reload();
+    } catch (err) {
+      console.error('Erro ao atualizar foto:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <Grid gutter="lg" style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px' }}>
       <Grid.Col span={{ base: 12, md: 4 }}>
         <Card radius="2xl" p="xl" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', height: '100%' }}>
+          
           <Group justify="space-between" align="flex-start" mb="xl">
-            <Avatar color="dark.9" radius="xl" size={80} style={{ fontWeight: 800, fontSize: '24px' }}>
-              {name.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
-            </Avatar>
+            <FileButton onChange={handlePhotoUpload} accept="image/png,image/jpeg">
+              {(props) => (
+                <UnstyledButton {...props} style={{ position: 'relative' }}>
+                  <Indicator inline size={24} offset={7} position="bottom-end" color={primaryColor} withBorder label="✎">
+                    <Avatar src={photoUrl} color="dark.9" radius="xl" size={80} style={{ fontWeight: 800, fontSize: '24px', opacity: uploading ? 0.5 : 1 }}>
+                      {!photoUrl && !uploading && name.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                      {uploading && <Loader size="sm" color="dark" />}
+                    </Avatar>
+                  </Indicator>
+                </UnstyledButton>
+              )}
+            </FileButton>
             <ActionIcon variant="light" color="gray" radius="xl"><IconDotsCircleHorizontal size={20} /></ActionIcon>
           </Group>
           
@@ -41,28 +112,37 @@ export function DoctorProfile({ practitioner }: { practitioner?: any }) {
           </Grid>
 
           <Group grow>
-            <Button color="dark.9" radius="xl">Agendar consulta</Button>
+            <Button color="dark.9" radius="xl" onClick={() => navigateTo('/doctor/agenda')}>Agendar consulta</Button>
             <Button variant="default" radius="xl">Mensagem</Button>
           </Group>
 
           <Box mt="xl" pt="md" style={{ borderTop: '1px solid #e2e8f0' }}>
             <Group justify="space-between" mb="md">
               <Text fw={700} size="sm">Pacientes Recentes</Text>
-              <Text size="xs" c="dimmed" style={{ cursor: 'pointer' }}>Ver todos {'>'}</Text>
+              <Text size="xs" c="dimmed" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/doctor/pacientes')}>Ver todos {'>'}</Text>
             </Group>
             <Stack gap="sm">
-              {['Ana Beatriz L.', 'Carlos Eduardo M.', 'Juliana Rios'].map((paciente, idx) => (
-                <Group key={idx} justify="space-between">
-                  <Group gap="sm">
-                    <Avatar color={['grape', 'blue', 'pink'][idx]} radius="xl" size="md">{paciente.split(' ')[0][0]}{paciente.split(' ')[1][0]}</Avatar>
-                    <div>
-                      <Text size="sm" fw={600}>{paciente}</Text>
-                      <Text size="xs" c="dimmed">🕒 há 2d</Text>
-                    </div>
-                  </Group>
-                  <Text c="dimmed" size="xs">{'>'}</Text>
-                </Group>
-              ))}
+              {recentPatients.length > 0 ? recentPatients.map((ref, idx) => {
+                const patientName = ref?.display || 'Paciente';
+                const initials = patientName.substring(0, 2).toUpperCase();
+                const colors = ['grape', 'blue', 'pink', 'orange', 'teal'];
+                return (
+                  <UnstyledButton key={idx} onClick={() => navigateTo(`/doctor/pacientes/${ref?.reference?.split('/')[1]}`)}>
+                    <Group justify="space-between" style={{ padding: '4px', borderRadius: '8px', transition: 'background 0.2s' }} bg="transparent" >
+                      <Group gap="sm">
+                        <Avatar color={colors[idx % colors.length]} radius="xl" size="md">{initials}</Avatar>
+                        <div>
+                          <Text size="sm" fw={600} c="dark.9">{patientName}</Text>
+                          <Text size="xs" c="dimmed">🕒 Último atendimento</Text>
+                        </div>
+                      </Group>
+                      <Text c="dimmed" size="xs">{'>'}</Text>
+                    </Group>
+                  </UnstyledButton>
+                );
+              }) : (
+                <Text size="sm" c="dimmed" ta="center" py="md">Nenhum paciente recente</Text>
+              )}
             </Stack>
           </Box>
         </Card>
@@ -71,7 +151,7 @@ export function DoctorProfile({ practitioner }: { practitioner?: any }) {
       <Grid.Col span={{ base: 12, md: 4 }}>
         <Stack gap="lg" style={{ height: '100%' }}>
           <Group grow>
-            <Card radius="xl" p="md" withBorder shadow="sm" style={{ borderColor: '#e2e8f0' }}>
+            <Card onClick={() => navigateTo('/doctor/dashboard')} radius="xl" p="md" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', transition: 'transform 0.2s', cursor: 'pointer' }}>
               <Group justify="space-between" mb="sm">
                 <ThemeIcon color="gray" variant="light" radius="xl" size="sm"><IconStethoscope size={14}/></ThemeIcon>
                 <Badge color="teal" variant="light" size="xs">+12%</Badge>
@@ -80,7 +160,7 @@ export function DoctorProfile({ practitioner }: { practitioner?: any }) {
               <Text fw={800} size="xl" c="dark.9">1.850</Text>
               <Text size="xs" c="dimmed">Últimos 90 dias</Text>
             </Card>
-            <Card radius="xl" p="md" withBorder shadow="sm" style={{ borderColor: '#e2e8f0' }}>
+            <Card onClick={() => navigateTo('/doctor/dashboard')} radius="xl" p="md" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', transition: 'transform 0.2s', cursor: 'pointer' }}>
               <Group justify="space-between" mb="sm">
                 <ThemeIcon color="gray" variant="light" radius="xl" size="sm"><IconTrendingUp size={14}/></ThemeIcon>
                 <Badge color="dark" variant="filled" size="xs">Meta</Badge>
@@ -91,9 +171,9 @@ export function DoctorProfile({ practitioner }: { practitioner?: any }) {
             </Card>
           </Group>
 
-          <Card radius="2xl" p="xl" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', flex: 1 }}>
+          <Card onClick={() => navigateTo('/doctor/dashboard')} radius="2xl" p="xl" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', flex: 1, cursor: 'pointer' }}>
             <Group justify="space-between" mb="xl">
-              <Text fw={700} size="sm">Satisfação</Text>
+              <Text fw={700} size="sm">Satisfação (Avaliações)</Text>
               <Text size="xs" c="dimmed">Baseado em 326 avaliações</Text>
             </Group>
             
@@ -125,7 +205,7 @@ export function DoctorProfile({ practitioner }: { practitioner?: any }) {
           <Card p="lg" radius="2xl" withBorder shadow="sm" style={{ borderColor: '#e2e8f0' }}>
             <Group justify="space-between" mb="md">
               <Text size="sm" fw={700}><IconShieldCheck size={16} style={{ verticalAlign: 'middle' }}/> Convênios Ativos</Text>
-              <Text size="xs" c="dimmed">3 vínculos</Text>
+              <Text size="xs" c="dimmed">2 vínculos</Text>
             </Group>
             <Stack gap="sm">
               <Group justify="space-between" p="sm" style={{ border: '1px solid #f1f5f9', borderRadius: '12px' }}>
@@ -148,25 +228,34 @@ export function DoctorProfile({ practitioner }: { practitioner?: any }) {
           <Card p="lg" radius="2xl" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', flex: 1 }}>
             <Group justify="space-between" mb="md">
               <Text size="sm" fw={700}><IconCalendarEvent size={16} style={{ verticalAlign: 'middle' }}/> Próximos Agendamentos</Text>
-              <Badge color={primaryColor} size="sm">Hoje • 4</Badge>
+              <Text size="xs" c="dimmed" style={{ cursor: 'pointer' }} onClick={() => navigateTo('/doctor/agenda')}>Ver toda a agenda {'>'}</Text>
             </Group>
             <Stack gap="sm">
-              {[
-                { name: 'Mariana Lopes', type: 'Retorno • Presencial', time: '09:30', color: 'teal' },
-                { name: 'Fernanda Costa', type: 'Primeira consulta • Presencial', time: '10:15', color: 'blue' },
-                { name: 'Patrícia Lima', type: 'Procedimento • Presencial', time: '11:00', color: 'pink' }
-              ].map((apt, idx) => (
-                <Group key={idx} justify="space-between" wrap="nowrap">
-                  <Group gap="sm" wrap="nowrap">
-                    <Avatar color={apt.color} radius="xl" size="md" variant="light">{apt.name.split(' ')[0][0]}{apt.name.split(' ')[1][0]}</Avatar>
-                    <div>
-                      <Text size="sm" fw={700} truncate>{apt.name}</Text>
-                      <Text size="xs" c="dimmed" truncate>{apt.type}</Text>
-                    </div>
-                  </Group>
-                  <Badge color="dark" variant="filled">{apt.time}</Badge>
-                </Group>
-              ))}
+              {appointments && appointments.length > 0 ? appointments.map((apt: Appointment, idx) => {
+                 const startTime = apt.start ? format(new Date(apt.start), 'HH:mm') : '--:--';
+                 const isToday = apt.start && new Date(apt.start).toDateString() === new Date().toDateString();
+                 
+                 const patientParticipant = apt.participant?.find(p => p.actor?.reference?.startsWith('Patient/'));
+                 const patientName = patientParticipant?.actor?.display || 'Paciente';
+                 const initials = patientName.substring(0, 2).toUpperCase();
+                 
+                 return (
+                  <UnstyledButton key={apt.id || idx} onClick={() => navigateTo(`/doctor/agenda?id=${apt.id}`)}>
+                    <Group justify="space-between" wrap="nowrap" style={{ padding: '8px', borderRadius: '8px' }} bg="transparent">
+                      <Group gap="sm" wrap="nowrap">
+                        <Avatar color="blue" radius="xl" size="md" variant="light">{initials}</Avatar>
+                        <div>
+                          <Text size="sm" fw={700} truncate>{patientName}</Text>
+                          <Text size="xs" c="dimmed" truncate>{apt.serviceType?.[0]?.text || 'Consulta'}</Text>
+                        </div>
+                      </Group>
+                      <Badge color={isToday ? primaryColor : 'dark'} variant="filled">{isToday ? `Hoje • ${startTime}` : startTime}</Badge>
+                    </Group>
+                  </UnstyledButton>
+                 );
+              }) : (
+                <Text size="sm" c="dimmed" ta="center" py="md">Nenhum agendamento futuro</Text>
+              )}
             </Stack>
           </Card>
         </Stack>

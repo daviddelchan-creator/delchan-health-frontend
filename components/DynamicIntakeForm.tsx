@@ -1,225 +1,283 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Card, TextInput, Button, Stack, Title, Text, Group, Divider, Badge, Checkbox, Select, Textarea, Grid } from '@mantine/core';
+import { useState } from 'react';
+import { 
+  Grid, TextInput, Select, Button, Avatar, Group, Text, 
+  FileButton, Indicator, Stack, Box, Alert, Divider
+} from '@mantine/core';
+import { IconCameraPlus, IconUserCircle, IconAlertCircle } from '@tabler/icons-react';
+import { Patient, ContactPoint, Address, Identifier } from '@medplum/fhirtypes';
 
-type ClinicType = 'salon' | 'spa' | 'advanced_clinic';
+interface DynamicIntakeFormProps {
+  medplum: any;
+  clinicType?: any;
+  onSuccess?: (patient: Patient) => void;
+}
 
-export function DynamicIntakeForm({ clinicType, medplum, onSuccess, initialPatient }: { clinicType: ClinicType, medplum: any, onSuccess: () => void, initialPatient?: any }) {
-  // 1. Datos Básicos
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [dob, setDob] = useState('');
-  const [sex, setSex] = useState<string | null>('');
-  const [sexualOrientation, setSexualOrientation] = useState<string | null>('');
-  const [sexualPreference, setSexualPreference] = useState<string | null>('');
+const ESTADOS_BR = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
+export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicIntakeFormProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // 2. Contacto
-  const [phone, setPhone] = useState('');
+  // 1. Foto
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  // 2. Identidad
+  const [nombre, setNombre] = useState('');
+  const [apellidos, setApellidos] = useState('');
+  const [fechaNacimiento, setFechaNacimiento] = useState('');
+  const [sexo, setSexo] = useState<string | null>('');
+  const [identidad, setIdentidad] = useState<string | null>('');
+  const [pronombres, setPronombres] = useState('');
+
+  // 3. Documentación (Legal & SUS)
+  const [nacionalidade, setNacionalidade] = useState<string | null>('Brasileiro(a)');
+  const [tipoDocumento, setTipoDocumento] = useState<string | null>('CPF');
+  const [numeroDocumento, setNumeroDocumento] = useState('');
+  const [cartaoSus, setCartaoSus] = useState(''); // Importante para la salud pública en BR
+
+  // 4. Contacto y Dirección
+  const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
-  const [zip, setZip] = useState('');
-  const [address, setAddress] = useState('');
+  const [cep, setCep] = useState('');
+  const [logradouro, setLogradouro] = useState('');
+  const [numeroEnd, setNumeroEnd] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [estado, setEstado] = useState<string | null>('');
 
-  // 3. Nacionalidad
-  const [nationality, setNationality] = useState<string | null>('brasileiro');
-  const [foreignDocType, setForeignDocType] = useState<string | null>('passport');
-  const [docNumber, setDocNumber] = useState('');
-
-  // 4. Perfil Clínico
-  const [allergies, setAllergies] = useState('');
-  const [prohibitedTreatments, setProhibitedTreatments] = useState('');
-  const [isDiabetic, setIsDiabetic] = useState(false);
-  const [isHypertensive, setIsHypertensive] = useState(false);
-  const [infectiousDiseases, setInfectiousDiseases] = useState('');
-  const [consent, setConsent] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // PRE-LLENAR DATOS SI ESTAMOS EDITANDO UN PACIENTE EXISTENTE
-  useEffect(() => {
-    if (initialPatient) {
-      setFirstName(initialPatient.name?.[0]?.given?.[0] || '');
-      setLastName(initialPatient.name?.[0]?.family || '');
-      setDob(initialPatient.birthDate || '');
-      
-      const g = initialPatient.gender;
-      setSex(g === 'male' ? 'Masculino' : g === 'female' ? 'Femenino' : g === 'other' ? 'Otro' : '');
-
-      const phoneObj = initialPatient.telecom?.find((t: any) => t.system === 'phone');
-      setPhone(phoneObj?.value || '');
-      
-      const emailObj = initialPatient.telecom?.find((t: any) => t.system === 'email');
-      setEmail(emailObj?.value || '');
-
-      setAddress(initialPatient.address?.[0]?.text || '');
-      setZip(initialPatient.address?.[0]?.postalCode || '');
-
-      const doc = initialPatient.identifier?.[0];
-      if (doc) {
-        setDocNumber(doc.value || '');
-        if (doc.system?.includes('cpf')) {
-          setNationality('brasileiro');
-        } else {
-          setNationality('estrangeiro');
-          if (doc.system?.includes('passport')) setForeignDocType('passport');
-          else if (doc.system?.includes('rnm')) setForeignDocType('rnm');
-          else setForeignDocType('protocolo');
-        }
-      }
-      setConsent(true); // Asumimos consentimiento si ya existe en base de datos
+  const handlePhotoChange = (file: File | null) => {
+    setPhotoFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => setPhotoPreview(e.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setPhotoPreview(null);
     }
-  }, [initialPatient]);
-
-  const calculateAge = (birthDateString: string) => {
-    if (!birthDateString) return '';
-    const today = new Date();
-    const birthDate = new Date(birthDateString);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-    return age;
   };
 
-  const handleSubmit = async () => {
-    if (!firstName || !lastName || !docNumber || !consent) {
-      alert('Nombre, Documento y Consentimiento LGPD son obligatorios.');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nombre || !apellidos) {
+      setError("Nome e sobrenome são obrigatórios.");
       return;
     }
-    setIsSubmitting(true);
+
+    setLoading(true);
+    setError(null);
+
     try {
-      let docSystem = 'http://brasil.gov.br/cpf';
-      if (nationality === 'estrangeiro') {
-        if (foreignDocType === 'passport') docSystem = 'http://hl7.org/fhir/sid/passport';
-        if (foreignDocType === 'rnm') docSystem = 'http://gov.br/rnm';
-        if (foreignDocType === 'protocolo') docSystem = 'http://gov.br/protocolo-refugio';
+      let photoData = undefined;
+      
+      if (photoFile && medplum) {
+        const binary = await medplum.createBinary(photoFile, photoFile.name, photoFile.type);
+        photoData = [{ url: binary.url, contentType: photoFile.type }];
       }
 
-      // Estructura oficial del recurso Paciente FHIR
-      const patientData = {
+      let fhirGender: "male" | "female" | "other" | "unknown" = "unknown";
+      if (sexo === 'Masculino') fhirGender = 'male';
+      if (sexo === 'Feminino') fhirGender = 'female';
+      if (sexo === 'Outro') fhirGender = 'other';
+
+      // Estructurar Identificadores (Documentos)
+      const identifiers: Identifier[] = [];
+      if (numeroDocumento) {
+        let systemUrl = 'https://delchan.com/fhir/documento-identidade';
+        if (tipoDocumento === 'CPF') systemUrl = 'http://receita.fazenda.gov.br/sistemas/cpf';
+        else if (tipoDocumento === 'Passaporte') systemUrl = 'http://hl7.org/fhir/sid/passport';
+
+        identifiers.push({
+          type: { text: tipoDocumento || 'Documento' },
+          system: systemUrl,
+          value: numeroDocumento
+        });
+      }
+      if (cartaoSus) {
+        identifiers.push({
+          type: { text: 'Cartão Nacional de Saúde (CNS)' },
+          system: 'http://datasus.gov.br/cns',
+          value: cartaoSus
+        });
+      }
+
+      // Estructurar Contacto
+      const telecom: ContactPoint[] = [];
+      if (telefone) telecom.push({ system: 'phone', value: telefone, use: 'mobile' });
+      if (email) telecom.push({ system: 'email', value: email, use: 'home' });
+
+      // Estructurar Dirección
+      const addressData: Address[] = [];
+      if (logradouro || cidade || cep) {
+        addressData.push({
+          use: 'home',
+          line: [logradouro, numeroEnd].filter(Boolean),
+          district: bairro,
+          city: cidade,
+          state: estado || undefined,
+          postalCode: cep
+        });
+      }
+
+      const newPatient: Patient = {
         resourceType: 'Patient',
-        id: initialPatient?.id, // Si existe, Medplum entenderá que es una actualización
-        name: [{ given: [firstName], family: lastName }],
-        birthDate: dob,
-        gender: (sex === 'Masculino' ? 'male' : sex === 'Femenino' ? 'female' : sex === 'Otro' ? 'other' : 'unknown'),
-        telecom: [
-          { system: 'phone', value: phone, use: 'mobile' },
-          { system: 'email', value: email, use: 'home' }
-        ],
-        address: [{ text: address, postalCode: zip }],
-        identifier: [{ system: docSystem, value: docNumber }],
-        active: true,
-        text: {
-          status: 'generated',
-          div: `<div xmlns="http://www.w3.org/1999/xhtml">Orientación: ${sexualOrientation}. Preferencia: ${sexualPreference}</div>`
-        }
+        name: [{ given: [nombre], family: apellidos }],
+        birthDate: fechaNacimiento || undefined,
+        gender: fhirGender,
+        photo: photoData,
+        identifier: identifiers.length > 0 ? identifiers : undefined,
+        telecom: telecom.length > 0 ? telecom : undefined,
+        address: addressData.length > 0 ? addressData : undefined,
+        extension: [
+          { url: 'https://delchan.com/fhir/identidad-sexual', valueString: identidad || undefined },
+          { url: 'https://delchan.com/fhir/pronombres', valueString: pronombres || undefined },
+          { url: 'https://delchan.com/fhir/nacionalidade', valueString: nacionalidade || undefined }
+        ]
       };
 
-      // VERIFICACIÓN: CREAR O ACTUALIZAR (Mantiene Log de Auditoría)
-      let patient;
-      if (initialPatient?.id) {
-        patient = await medplum.updateResource(patientData);
-      } else {
-        patient = await medplum.createResource(patientData);
+      const created = await medplum.createResource(newPatient);
+      
+      if (onSuccess) {
+        onSuccess(created);
       }
-
-      // Crear Condiciones / Alergias vinculadas
-      if (isDiabetic) await medplum.createResource({ resourceType: 'Condition', subject: { reference: `Patient/${patient.id}` }, code: { text: 'Diabetes' }});
-      if (isHypertensive) await medplum.createResource({ resourceType: 'Condition', subject: { reference: `Patient/${patient.id}` }, code: { text: 'Hipertensión' }});
-      if (allergies) await medplum.createResource({ resourceType: 'AllergyIntolerance', patient: { reference: `Patient/${patient.id}` }, code: { text: allergies }});
-
-      alert(initialPatient ? '✅ Expediente actualizado correctamente. (Log guardado)' : '✅ Paciente registrado con éxito.');
-      onSuccess();
-    } catch (error: any) {
-      alert('❌ Error: ' + error.message);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Erro ao criar o paciente.");
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Card shadow="sm" padding="xl" radius="md" withBorder>
-      <Group justify="space-between" mb="lg">
-        <Title order={3} c="grape">{initialPatient ? 'Editar Expediente Clínico' : 'Ficha de Admisión Integral'}</Title>
-        <Badge color={clinicType === 'advanced_clinic' ? 'red' : clinicType === 'spa' ? 'blue' : 'green'} size="lg">
-          Módulo: {clinicType.toUpperCase()}
-        </Badge>
-      </Group>
-      
-      <Stack>
-        <Title order={5} c="dimmed">1. Identidad y Perfil Demográfico</Title>
-        <Grid>
-          <Grid.Col span={{ base: 12, md: 6 }}><TextInput label="Nombre Completo" value={firstName} onChange={(e) => setFirstName(e.currentTarget.value)} required /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}><TextInput label="Apellidos" value={lastName} onChange={(e) => setLastName(e.currentTarget.value)} required /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}><TextInput type="date" label="Fecha de Nacimiento" value={dob} onChange={(e) => setDob(e.currentTarget.value)} /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 2 }}><TextInput label="Edad" value={calculateAge(dob)} readOnly variant="filled" /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}><Select label="Sexo Biológico" data={['Femenino', 'Masculino', 'Otro']} value={sex} onChange={setSex} /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}><Select label="Identidad / Orientación Sexual" data={['Heterosexual', 'Homosexual', 'Bisexual', 'Pansexual', 'Asexual', 'Prefiero no decirlo']} value={sexualOrientation} onChange={setSexualOrientation} /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}><TextInput label="Preferencia de Pronombres / Trato" placeholder="Ej. Él, Ella, Elle" value={sexualPreference || ''} onChange={(e) => setSexualPreference(e.currentTarget.value)} /></Grid.Col>
-        </Grid>
+    <form onSubmit={handleSubmit}>
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} title="Erro" color="red" mb="lg" radius="md">
+          {error}
+        </Alert>
+      )}
 
-        <Divider my="sm" />
-
-        <Title order={5} c="dimmed">2. Estatus Legal y Documentación</Title>
-        {/* CORRECCIÓN: Usamos Select en lugar de Radio para evitar el error de hidratación */}
-        <Select
-          label="Nacionalidad del Paciente"
-          data={[{ value: 'brasileiro', label: 'Brasileño/a' }, { value: 'estrangeiro', label: 'Extranjero/a' }]}
-          value={nationality}
-          onChange={setNationality}
-          mb="sm"
-        />
-        
-        <Grid>
-          {nationality === 'estrangeiro' && (
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <Select 
-                label="Tipo de Documento (Extranjeros)" 
-                data={[{ value: 'passport', label: 'Pasaporte' }, { value: 'rnm', label: 'RNM (Migratório)' }, { value: 'protocolo', label: 'Protocolo de Refúgio' }]} 
-                value={foreignDocType} 
-                onChange={setForeignDocType} 
-              />
-            </Grid.Col>
-          )}
-          <Grid.Col span={{ base: 12, md: nationality === 'estrangeiro' ? 6 : 12 }}>
-            <TextInput label={nationality === 'brasileiro' ? "CPF (000.000.000-00)" : "Número de Documento"} value={docNumber} onChange={(e) => setDocNumber(e.currentTarget.value)} required />
-          </Grid.Col>
-        </Grid>
-
-        <Divider my="sm" />
-
-        <Title order={5} c="dimmed">3. Contacto y Disponibilidad Digital</Title>
-        <Grid>
-          <Grid.Col span={{ base: 12, md: 6 }}><TextInput label="Teléfono / WhatsApp" placeholder="+55 11 99999-9999" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}><TextInput label="Correo Electrónico" placeholder="paciente@email.com" value={email} onChange={(e) => setEmail(e.currentTarget.value)} /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}><TextInput label="CEP (Código Postal)" placeholder="00000-000" value={zip} onChange={(e) => setZip(e.currentTarget.value)} /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 8 }}><TextInput label="Dirección Completa" placeholder="Av. Paulista, 1000" value={address} onChange={(e) => setAddress(e.currentTarget.value)} /></Grid.Col>
-        </Grid>
-
-        <Divider my="sm" />
-
-        <Title order={5} c="dimmed">4. Cuestionario de Salud y Riesgos</Title>
-        <Group mt="xs" mb="md">
-          <Checkbox label="Paciente Diabético" checked={isDiabetic} onChange={(e) => setIsDiabetic(e.currentTarget.checked)} color="grape" />
-          <Checkbox label="Paciente Hipertenso" checked={isHypertensive} onChange={(e) => setIsHypertensive(e.currentTarget.checked)} color="grape" />
+      {/* FOTO */}
+      <Box bg="#f8f9fa" p="md" mb="xl" style={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+        <Group wrap="nowrap">
+          <FileButton onChange={handlePhotoChange} accept="image/png,image/jpeg">
+            {(props) => (
+              <Box {...props} style={{ cursor: 'pointer', position: 'relative' }}>
+                <Indicator inline size={28} offset={6} position="bottom-end" color="teal.6" withBorder label={<IconCameraPlus size={14} />}>
+                  <Avatar src={photoPreview} size={90} radius="md" color="teal" variant="light">
+                    {!photoPreview && <IconUserCircle size={50} stroke={1.5} />}
+                  </Avatar>
+                </Indicator>
+              </Box>
+            )}
+          </FileButton>
+          <Stack gap={4} ml="sm">
+            <Text fw={700} size="md" c="dark.9">Foto de Perfil</Text>
+            <Text size="sm" c="dimmed">Clique no ícone para capturar ou fazer upload da foto.</Text>
+            <Text size="xs" c="dimmed">Formatos aceitos: JPG, PNG.</Text>
+          </Stack>
         </Group>
+      </Box>
 
-        <Grid>
-          <Grid.Col span={12}><TextInput label="Alergias Conocidas" placeholder="Ej. Látex, Penicilina..." value={allergies} onChange={(e) => setAllergies(e.currentTarget.value)} /></Grid.Col>
-          <Grid.Col span={12}><TextInput label="Tratamientos Prohibidos" placeholder="Ej. No aplicar láser..." value={prohibitedTreatments} onChange={(e) => setProhibitedTreatments(e.currentTarget.value)} /></Grid.Col>
-          
-          {(clinicType === 'spa' || clinicType === 'advanced_clinic') && (
-            <Grid.Col span={12}>
-              <Textarea label="Condiciones Médicas Graves / Infecciosas" placeholder="Declare condiciones relevantes (VIH, Hepatitis...)" value={infectiousDiseases} onChange={(e) => setInfectiousDiseases(e.currentTarget.value)} />
-            </Grid.Col>
-          )}
-        </Grid>
+      {/* 1. IDENTIDADE */}
+      <Text fw={700} size="sm" c="dimmed" mb="md" tt="uppercase" lts={1}>
+        1. Identidade e Perfil Demográfico
+      </Text>
+      <Grid gutter="md" mb="xl">
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput label="Nome Completo" placeholder="Ex: Rafael" value={nombre} onChange={(e) => setNombre(e.currentTarget.value)} required radius="md" size="md" withAsterisk />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput label="Sobrenome" placeholder="Ex: Monteiro" value={apellidos} onChange={(e) => setApellidos(e.currentTarget.value)} required radius="md" size="md" withAsterisk />
+        </Grid.Col>
 
-        <Divider my="lg" />
-        <Checkbox label="Doy mi consentimiento (LGPD) para el tratamiento de mis datos de salud." checked={consent} onChange={(e) => setConsent(e.currentTarget.checked)} color="grape" size="md" />
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput type="date" label="Data de Nascimento" value={fechaNacimiento} onChange={(e) => setFechaNacimiento(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Select label="Sexo Biológico" placeholder="Selecione" data={['Masculino', 'Feminino', 'Outro']} value={sexo} onChange={setSexo} radius="md" size="md" />
+        </Grid.Col>
 
-        <Button color="grape" onClick={handleSubmit} loading={isSubmitting} mt="xl" size="lg">
-          {initialPatient ? 'Guardar Cambios en FHIR' : 'Registrar Nuevo Expediente'}
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Select label="Identidade / Orientação Sexual (Opcional)" placeholder="Selecione" data={['Heterossexual', 'Homossexual', 'Bissexual', 'Assexual', 'Prefere não informar']} value={identidad} onChange={setIdentidad} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput label="Preferência de Pronomes / Trato" placeholder="Ex: Ele/Dele, Ela/Dela" value={pronombres} onChange={(e) => setPronombres(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+      </Grid>
+
+      <Divider my="xl" color="gray.2" />
+
+      {/* 2. DOCUMENTAÇÃO */}
+      <Text fw={700} size="sm" c="dimmed" mb="md" tt="uppercase" lts={1}>
+        2. Documentação e Status Legal
+      </Text>
+      <Grid gutter="md" mb="xl">
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <Select label="Nacionalidade" placeholder="Selecione" data={['Brasileiro(a)', 'Estrangeiro(a)']} value={nacionalidade} onChange={setNacionalidade} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <Select label="Tipo de Documento" placeholder="Selecione" data={['CPF', 'Passaporte', 'RNM', 'Protocolo de Refúgio', 'Protocolo de Residência']} value={tipoDocumento} onChange={setTipoDocumento} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <TextInput label="Número do Documento" placeholder="000.000.000-00" value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 12 }}>
+          <TextInput label="Cartão Nacional de Saúde (CNS) - SUS" placeholder="Opcional" value={cartaoSus} onChange={(e) => setCartaoSus(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+      </Grid>
+
+      <Divider my="xl" color="gray.2" />
+
+      {/* 3. CONTATO E ENDEREÇO */}
+      <Text fw={700} size="sm" c="dimmed" mb="md" tt="uppercase" lts={1}>
+        3. Contato e Endereço
+      </Text>
+      <Grid gutter="md" mb="xl">
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput label="Telefone / WhatsApp" placeholder="(00) 00000-0000" value={telefone} onChange={(e) => setTelefone(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput label="Email" type="email" placeholder="email@exemplo.com" value={email} onChange={(e) => setEmail(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <TextInput label="CEP" placeholder="00000-000" value={cep} onChange={(e) => setCep(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput label="Logradouro (Rua, Av.)" placeholder="Rua das Flores" value={logradouro} onChange={(e) => setLogradouro(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 2 }}>
+          <TextInput label="Número" placeholder="123" value={numeroEnd} onChange={(e) => setNumeroEnd(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <TextInput label="Bairro" placeholder="Centro" value={bairro} onChange={(e) => setBairro(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <TextInput label="Cidade" placeholder="São Paulo" value={cidade} onChange={(e) => setCidade(e.currentTarget.value)} radius="md" size="md" />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <Select label="Estado (UF)" placeholder="UF" data={ESTADOS_BR} value={estado} onChange={setEstado} radius="md" size="md" searchable />
+        </Grid.Col>
+      </Grid>
+
+      <Group justify="flex-end" mt="xl" pt="md" style={{ borderTop: '1px solid #e2e8f0' }}>
+        <Button 
+          type="submit" 
+          color="teal.6" 
+          size="md" 
+          radius="xl" 
+          loading={loading}
+          style={{ transition: 'all 0.2s' }}
+        >
+          Salvar e Criar Prontuário
         </Button>
-      </Stack>
-    </Card>
+      </Group>
+    </form>
   );
 }

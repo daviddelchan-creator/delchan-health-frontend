@@ -1,94 +1,166 @@
 "use client";
 
-import { Group, Avatar, Text, Stack, UnstyledButton, Box, ThemeIcon, Center } from '@mantine/core';
-// CORRECCIÓN CRÍTICA: Importación desde react-hooks
-import { useMedplum } from '@medplum/react-hooks'; 
+import { useState } from 'react';
+import { Stack, Divider, Title, Text, Group, ActionIcon, Avatar, Modal, TextInput, Button, Select } from '@mantine/core';
+import { Patient } from '@medplum/fhirtypes';
+import { useMedplum } from '@medplum/react-hooks';
 import { useTenant } from '../../contexts/TenantContext';
-import { IconFileDescription, IconPill, IconHeartRateMonitor, IconStethoscope, IconFileText, IconChevronRight } from '@tabler/icons-react';
 
-export function PatientSidebar({ patient, activeTab = 'resumo', setActiveTab }: any) {
-  const medplum = useMedplum();
+interface PatientSidebarProps {
+  patient: Patient;
+}
+
+export function PatientSidebar({ patient }: PatientSidebarProps) {
   const { tenantConfig } = useTenant();
+  const medplum = useMedplum();
   
-  // Extraemos el color de la clínica o usamos el Teal por defecto
-  const primaryColor = tenantConfig?.internalColor || '#0d9488';
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Procesamiento seguro de datos FHIR
-  const fullName = patient?.name?.[0] ? `${patient.name[0].given?.join(' ')} ${patient.name[0].family}` : 'Paciente Não Identificado';
-  const patientId = patient?.identifier?.[0]?.value || patient?.id?.substring(0, 8) || 'Sem ID';
-  const birthDate = patient?.birthDate ? new Date(patient.birthDate) : null;
-  const age = birthDate ? new Date().getFullYear() - birthDate.getFullYear() : '--';
+  // Estados temporales para los formularios de los modales
+  const [insuranceData, setInsuranceData] = useState({ provider: '', memberId: '' });
+  const [allergyData, setAllergyData] = useState({ substance: '', criticality: '' });
+  const [problemData, setProblemData] = useState({ condition: '', date: '' });
 
-  const menuItems = [
-    { id: 'resumo', icon: IconFileDescription, label: 'Visão Geral', desc: 'Resumo clínico e histórico' },
-    { id: 'alergias', icon: IconPill, label: 'Alergias', desc: 'Alertas críticos' },
-    { id: 'cronicos', icon: IconStethoscope, label: 'Problemas Crônicos', desc: 'CID + Linha do tempo' },
-    { id: 'vitais', icon: IconHeartRateMonitor, label: 'Sinais Vitais', desc: 'PA, FC, Temp' },
-    { id: 'docs', icon: IconFileText, label: 'Documentos', desc: 'Anexos e laudos' }
-  ];
+  const fullName = patient.name?.[0] ? `${patient.name[0].given?.join(' ')} ${patient.name[0].family}` : 'Paciente sem nome';
+  const birthDate = patient.birthDate ? new Date(patient.birthDate) : null;
+  const age = birthDate ? new Date().getFullYear() - birthDate.getFullYear() : 'N/A';
+  const genderMap: Record<string, string> = { male: 'Masculino', female: 'Feminino', other: 'Outro', unknown: 'Não informado' };
+  const gender = patient.gender ? genderMap[patient.gender] : 'Não informado';
+
+  // Configuración de visibilidad desde el God Mode
+  const modules = tenantConfig.sidebarModules || { insurance: true, allergies: true, problems: true, vitals: true };
+
+  // Funciones de Guardado en Medplum (FHIR)
+  const saveInsurance = async () => {
+    setIsSaving(true);
+    try {
+      await medplum.createResource({
+        resourceType: 'Coverage',
+        status: 'active',
+        subscriber: { reference: `Patient/${patient.id}` },
+        beneficiary: { reference: `Patient/${patient.id}` },
+        payor: [{ display: insuranceData.provider }],
+        identifier: [{ value: insuranceData.memberId }]
+      });
+      alert('Convênio salvo com sucesso!');
+      setActiveModal(null);
+    } catch (err) { alert('Erro ao salvar convênio.'); }
+    setIsSaving(false);
+  };
+
+  const saveAllergy = async () => {
+    setIsSaving(true);
+    try {
+      await medplum.createResource({
+        resourceType: 'AllergyIntolerance',
+        clinicalStatus: { coding: [{ code: 'active' }] },
+        patient: { reference: `Patient/${patient.id}` },
+        code: { text: allergyData.substance },
+        criticality: allergyData.criticality === 'Alta' ? 'high' : allergyData.criticality === 'Média' ? 'unable-to-assess' : 'low'
+      });
+      alert('Alergia salva com sucesso!');
+      setActiveModal(null);
+    } catch (err) { alert('Erro ao salvar alergia.'); }
+    setIsSaving(false);
+  };
+
+  const saveProblem = async () => {
+    setIsSaving(true);
+    try {
+      await medplum.createResource({
+        resourceType: 'Condition',
+        clinicalStatus: { coding: [{ code: 'active' }] },
+        subject: { reference: `Patient/${patient.id}` },
+        code: { text: problemData.condition },
+        recordedDate: problemData.date || new Date().toISOString()
+      });
+      alert('Problema crônico salvo com sucesso!');
+      setActiveModal(null);
+    } catch (err) { alert('Erro ao salvar problema.'); }
+    setIsSaving(false);
+  };
 
   return (
-    <Box w={320} bg="white" style={{ borderRight: '1px solid #e2e8f0', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      
-      {/* 1. HEADER DEL PACIENTE (Estética Premium) */}
-      <Box p="lg" style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: '#fcfcfd' }}>
-        <Group wrap="nowrap">
-          <Avatar color={primaryColor} radius="xl" size="lg">
-            {fullName.charAt(0)}
-          </Avatar>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Text size="sm" fw={700} c="dark.9" truncate>{fullName}, {age}a</Text>
-            <Text size="xs" c="dimmed" truncate>ID: {patientId} • Convênio Padrão</Text>
+    <>
+      <Stack gap="md">
+        <Group wrap="nowrap" align="flex-start" mb="sm">
+          <Avatar color={tenantConfig.internalColor} radius="md" size="xl">{fullName.charAt(0)}</Avatar>
+          <div>
+            <Title order={4} c="dark.9" fw={800} lh={1.1}>{fullName}</Title>
+            <Text size="xs" c="dimmed" mt={4}>ID: {patient.id?.slice(0, 8)}</Text>
           </div>
         </Group>
-      </Box>
 
-      {/* 2. MENÚ DE NAVEGACIÓN CLÍNICA */}
-      <Stack gap="xs" p="md" style={{ flex: 1, overflowY: 'auto' }}>
-        {menuItems.map(item => {
-          const isActive = activeTab === item.id;
-          return (
-            <UnstyledButton
-              key={item.id}
-              onClick={() => setActiveTab && setActiveTab(item.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 14px',
-                borderRadius: '16px',
-                backgroundColor: isActive ? `${primaryColor}10` : 'transparent',
-                border: `1px solid ${isActive ? `${primaryColor}30` : 'transparent'}`,
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <ThemeIcon 
-                variant={isActive ? 'filled' : 'light'} 
-                color={isActive ? primaryColor : 'gray'} 
-                size="lg" 
-                radius="xl"
-              >
-                <item.icon size={18} />
-              </ThemeIcon>
-              <div style={{ flex: 1 }}>
-                <Text size="sm" fw={isActive ? 700 : 500} c={isActive ? primaryColor : 'dark.7'}>
-                  {item.label}
-                </Text>
-                <Text size="xs" c={isActive ? primaryColor : 'dimmed'} style={{ opacity: isActive ? 0.8 : 1 }}>
-                  {item.desc}
-                </Text>
-              </div>
-              <IconChevronRight size={16} color={isActive ? primaryColor : '#cbd5e1'} />
-            </UnstyledButton>
-          )
-        })}
+        <Stack gap="xs" mb="sm">
+          <Group gap="xs"><Text size="sm">🎂</Text><Text size="sm" fw={500} c="dark.7">{patient.birthDate || 'Data não registrada'} ({age} anos)</Text></Group>
+          <Group gap="xs"><Text size="sm">⚥</Text><Text size="sm" fw={500} c="dark.7">{gender}</Text></Group>
+        </Stack>
+        
+        <Divider color="#e2e8f0" />
+        
+        {modules.insurance && (
+          <div>
+            <Group justify="space-between" mb="xs">
+              <Group gap="xs"><Text size="sm">🛡️</Text><Title order={6} c="dark.9">Convênio / Seguro</Title></Group>
+              <ActionIcon variant="subtle" color="blue" onClick={() => setActiveModal('insurance')}>+</ActionIcon>
+            </Group>
+            <Text size="sm" c="dimmed" fs="italic" pl="lg">Nenhum convênio registrado.</Text>
+            <Divider color="#e2e8f0" mt="md" />
+          </div>
+        )}
 
-        {menuItems.length === 0 && (
-          <Center py="xl" style={{ flexDirection: 'column', textAlign: 'center' }}>
-            <Text size="xs" c="dimmed">Nenhuma seção ativa</Text>
-          </Center>
+        {modules.allergies && (
+          <div>
+            <Group justify="space-between" mb="xs">
+              <Group gap="xs"><Text size="sm">⚠️</Text><Title order={6} c="dark.9">Alergias</Title></Group>
+              <ActionIcon variant="subtle" color="blue" onClick={() => setActiveModal('allergy')}>+</ActionIcon>
+            </Group>
+            <Text size="sm" c="dimmed" fs="italic" pl="lg">Nenhuma alergia registrada.</Text>
+            <Divider color="#e2e8f0" mt="md" />
+          </div>
+        )}
+
+        {modules.problems && (
+          <div>
+            <Group justify="space-between" mb="xs">
+              <Group gap="xs"><Text size="sm">🩺</Text><Title order={6} c="dark.9">Problemas Crônicos</Title></Group>
+              <ActionIcon variant="subtle" color="blue" onClick={() => setActiveModal('problem')}>+</ActionIcon>
+            </Group>
+            <Text size="sm" c="dimmed" fs="italic" pl="lg">Nenhum problema registrado.</Text>
+            <Divider color="#e2e8f0" mt="md" />
+          </div>
+        )}
+
+        {modules.vitals && (
+          <div>
+            <Group justify="space-between" mb="xs">
+              <Group gap="xs"><Text size="sm">❤️</Text><Title order={6} c="dark.9">Sinais Vitais</Title></Group>
+              <ActionIcon variant="subtle" color="blue" onClick={() => alert('Modal de Sinais Vitais em breve')}>+</ActionIcon>
+            </Group>
+            <Text size="sm" c="dimmed" fs="italic" pl="lg">Sem medições recentes.</Text>
+          </div>
         )}
       </Stack>
-    </Box>
+
+      {/* MODALES FUNCIONALES CONECTADOS A MEDPLUM */}
+      <Modal opened={activeModal === 'insurance'} onClose={() => setActiveModal(null)} title={<Title order={5}>Adicionar Convênio</Title>} centered>
+        <TextInput label="Provedor de Saúde" placeholder="Ex: Amil, Unimed..." mb="sm" value={insuranceData.provider} onChange={(e) => setInsuranceData({...insuranceData, provider: e.currentTarget.value})} />
+        <TextInput label="Número da Carteirinha" mb="xl" value={insuranceData.memberId} onChange={(e) => setInsuranceData({...insuranceData, memberId: e.currentTarget.value})} />
+        <Button fullWidth color="teal" loading={isSaving} onClick={saveInsurance}>Salvar Convênio</Button>
+      </Modal>
+
+      <Modal opened={activeModal === 'allergy'} onClose={() => setActiveModal(null)} title={<Title order={5}>Registrar Alergia</Title>} centered>
+        <TextInput label="Substância / Medicamento" placeholder="Ex: Penicilina, Amendoim..." mb="sm" value={allergyData.substance} onChange={(e) => setAllergyData({...allergyData, substance: e.currentTarget.value})} />
+        <Select label="Criticidade" data={['Baixa', 'Média', 'Alta']} mb="xl" value={allergyData.criticality} onChange={(val) => setAllergyData({...allergyData, criticality: val || ''})} />
+        <Button fullWidth color="red" loading={isSaving} onClick={saveAllergy}>Salvar Alergia</Button>
+      </Modal>
+
+      <Modal opened={activeModal === 'problem'} onClose={() => setActiveModal(null)} title={<Title order={5}>Novo Problema Crônico</Title>} centered>
+        <TextInput label="Condição Clínica (CID-10)" placeholder="Ex: Hipertensão (I10)" mb="sm" value={problemData.condition} onChange={(e) => setProblemData({...problemData, condition: e.currentTarget.value})} />
+        <TextInput label="Data do Diagnóstico" type="date" mb="xl" value={problemData.date} onChange={(e) => setProblemData({...problemData, date: e.currentTarget.value})} />
+        <Button fullWidth color="orange" loading={isSaving} onClick={saveProblem}>Salvar Problema</Button>
+      </Modal>
+    </>
   );
 }

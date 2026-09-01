@@ -1,63 +1,42 @@
 import { NextResponse } from 'next/server';
 import { MedplumClient } from '@medplum/core';
 
-export async function POST(request: Request) {
+// Este endpoint recibe el PDF directamente del software del escáner (ej. NAPS2)
+export async function POST(req: Request) {
   try {
-    console.log("🔔 [WEBHOOK] Alerta: Nueva petición recibida desde el escáner físico.");
+    const formData = await req.formData();
+    const file = formData.get('file') as File;
+    const patientId = formData.get('barcode') as string || file.name.replace('.pdf', '');
 
-    // 1. Recibir el archivo del escáner (Ej: Plustek / Barcode Utility)
-    const formData = await request.formData();
-    const file = formData.get('document'); // El PDF o imagen escaneada
-
-    if (!file) {
-      console.error("❌ [WEBHOOK] Error: No se recibió ningún documento.");
-      return NextResponse.json({ error: 'Nenhum documento recebido do scanner' }, { status: 400 });
+    if (!file || !patientId) {
+      return NextResponse.json({ error: 'Arquivo ou ID do paciente ausente' }, { status: 400 });
     }
 
-    console.log(`📄 [OCR] Documento recibido. Enviando al motor de Google Cloud Document AI...`);
+    // Inicializamos Medplum con credenciales de sistema/robot
+    const medplum = new MedplumClient({ baseUrl: process.env.MEDPLUM_BASE_URL });
+    await medplum.startClientLogin(process.env.MEDPLUM_CLIENT_ID!, process.env.MEDPLUM_CLIENT_SECRET!);
 
-    // 2. SIMULACIÓN DEL MOTOR OCR (Inteligencia Artificial)
-    // En producción, aquí enviamos el 'file' a Google Document AI o AWS Textract.
-    // Simulamos que la IA leyó el código QR y la caligrafía del doctor/paciente:
-    const ocrResult = {
-      patientId: "paciente-12345", // Leído del Código QR impreso en la hoja
-      weight: "78kg",              // Leído de la escritura a mano
-      bloodPressure: "120/80",     // Leído de la escritura a mano
-      clinicalNotes: "Paciente relata leve dor de cabeça e cansaço." // Caligrafía extraída
-    };
+    // 1. Subimos el PDF a la bóveda binaria de Medplum
+    const binary = await medplum.createBinary(file, file.name, file.type);
 
-    console.log("✅ [OCR] Extracción completada con éxito:", ocrResult);
-
-    // 3. CONEXIÓN AL CEREBRO CLÍNICO (MEDPLUM)
-    // Aquí es donde el servidor convierte el texto extraído en recursos FHIR (Observation).
-    
-    /* 
-    // TODO: Descomentar esto cuando agreguemos las credenciales del servidor al .env
-    const medplum = new MedplumClient({ baseUrl: 'https://api.medplum.com/' });
-    await medplum.startClientLogin(process.env.MEDPLUM_CLIENT_ID, process.env.MEDPLUM_CLIENT_SECRET);
-    
-    // Guardamos la Presión Arterial estructurada en el expediente del paciente
-    await medplum.createResource({
-      resourceType: 'Observation',
-      status: 'final',
-      category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'vital-signs' }] }],
-      code: { coding: [{ system: 'http://loinc.org', code: '85354-9', display: 'Blood pressure panel' }] },
-      subject: { reference: `Patient/${ocrResult.patientId}` },
-      valueString: ocrResult.bloodPressure,
-      meta: { source: 'Scanner Plustek - OCR Automático' } // El rastro de auditoría
-    });
-    console.log("🏥 [MEDPLUM] Observación médica guardada en el servidor FHIR.");
-    */
-
-    // 4. Responder al escáner que todo salió bien (para que la luz del escáner se ponga verde)
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Documento processado via IA e salvo no prontuário digital (Medplum).',
-      extractedData: ocrResult 
+    // 2. Creamos un DocumentReference vinculado al Paciente
+    const documentReference = await medplum.createResource({
+      resourceType: 'DocumentReference',
+      status: 'current',
+      subject: { reference: `Patient/${patientId}` },
+      type: { text: 'Ficha de Admissão Assinada' },
+      content: [{
+        attachment: {
+          url: binary.url,
+          contentType: 'application/pdf',
+          title: `Scan Automático - ${new Date().toISOString()}`
+        }
+      }]
     });
 
-  } catch (error) {
-    console.error("❌ [WEBHOOK] Fallo crítico en el servidor:", error);
-    return NextResponse.json({ error: 'Falha interna no processamento' }, { status: 500 });
+    return NextResponse.json({ success: true, document: documentReference.id });
+  } catch (error: any) {
+    console.error('Erro no roteamento do scanner:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

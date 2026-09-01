@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { Box, Group, Avatar, Text, Button, ActionIcon, Grid, Card, Badge, Tabs, RingProgress, Stack, ThemeIcon, ScrollArea, Select, Textarea, Loader, Center } from '@mantine/core';
 import { IconX, IconEdit, IconShieldCheck, IconCalendarEvent, IconStethoscope, IconFileDescription, IconCheck } from '@tabler/icons-react';
 import { useTenant } from '../contexts/TenantContext';
-// IMPORTACIÓN CLAVE: Componente UI nativo de Medplum para renderizar el Questionnaire
-import { QuestionnaireForm } from '@medplum/react'; 
+import { QuestionnaireForm } from '@medplum/react';
+import { PatientHeader } from './PatientHeader'; 
 
 export function PatientWorkspace({ patient, medplum, doctorName, onClose }: any) {
   const { tenantConfig } = useTenant();
@@ -16,7 +16,6 @@ export function PatientWorkspace({ patient, medplum, doctorName, onClose }: any)
   const [isSaving, setIsSaving] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   
-  // Estado del Editor de Evolución
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>('');
   const [clinicalText, setClinicalText] = useState('');
 
@@ -24,20 +23,16 @@ export function PatientWorkspace({ patient, medplum, doctorName, onClose }: any)
   const birthDate = patient?.birthDate ? new Date(patient.birthDate) : null;
   const age = birthDate ? new Date().getFullYear() - birthDate.getFullYear() : '--';
 
-  // Cargar historial y el formulario dinámico creado en Admin
   useEffect(() => {
-    // 1. Cargar Notas Previas
     medplum.search('ClinicalImpression', `subject=Patient/${patient.id}`).then((bundle: any) => {
       setHistory(bundle.entry?.map((e: any) => e.resource) || []);
     }).catch(console.error);
 
-    // 2. Cargar el último Formulario Creado en el Construtor
-    medplum.searchOne('Questionnaire', 'status=active').then((q) => {
+    medplum.searchOne('Questionnaire', 'status=active').then((q: any) => {
       if (q) setQuestionnaire(q);
     }).catch(console.error);
   }, [medplum, patient.id]);
 
-  // Guardar respuestas de la ficha de admisión
   const handleFichaSubmit = async (response: any) => {
     try {
       response.subject = { reference: `Patient/${patient.id}` };
@@ -50,7 +45,6 @@ export function PatientWorkspace({ patient, medplum, doctorName, onClose }: any)
     }
   };
 
-  // Guardar nota clínica de texto libre
   const handleSaveNote = async () => {
     setIsSaving(true);
     try {
@@ -69,7 +63,6 @@ export function PatientWorkspace({ patient, medplum, doctorName, onClose }: any)
     setIsSaving(false);
   };
 
-  // Aplicar plantilla predefinida desde Admin
   const applyTemplate = (templateName: string) => {
     setSelectedTemplate(templateName);
     if (templateName === 'soap') {
@@ -108,19 +101,8 @@ export function PatientWorkspace({ patient, medplum, doctorName, onClose }: any)
         {activeTab === 'visao-geral' && (
           <Grid gutter="lg">
             <Grid.Col span={{ base: 12, md: 4 }}>
-              <Card p="xl" radius="2xl" withBorder shadow="sm" style={{ borderColor: '#e2e8f0', height: '100%' }}>
-                <Group wrap="nowrap" mb="xl">
-                  <Avatar color={primaryColor} radius="md" size="xl" style={{ fontWeight: 800 }}>{fullName.charAt(0)}</Avatar>
-                  <div>
-                    <Text fw={800} size="lg" c="dark.9">{fullName}</Text>
-                    <Text size="xs" c="dimmed">ID: {patient.id?.slice(0, 8)}</Text>
-                  </div>
-                </Group>
-                <Grid mt="md">
-                  <Grid.Col span={6}><Text size="xs" c="dimmed" fw={600}>IDADE</Text><Text fw={800} size="xl">{age} anos</Text></Grid.Col>
-                  <Grid.Col span={6}><Text size="xs" c="dimmed" fw={600}>SANGUE</Text><Text fw={800} size="xl">O+</Text></Grid.Col>
-                </Grid>
-              </Card>
+              {/* COMPONENTE DINÁMICO INYECTADO AQUÍ */}
+              <PatientHeader patient={patient} />
             </Grid.Col>
             
             <Grid.Col span={{ base: 12, md: 4 }}>
@@ -145,14 +127,13 @@ export function PatientWorkspace({ patient, medplum, doctorName, onClose }: any)
           </Grid>
         )}
 
-        {/* PESTAÑA: FICHA DE ADMISIÓN (CARGA DINÁMICA DE ADMIN) */}
+        {/* PESTAÑA: FICHA DE ADMISIÓN */}
         {activeTab === 'ficha' && (
           <Card p="xl" radius="2xl" withBorder shadow="sm" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <Text fw={700} size="lg" mb="sm">Ficha Dinâmica de Admissão</Text>
             <Text c="dimmed" size="sm" mb="xl">Formulário configurado pelo administrador da clínica.</Text>
             
             {questionnaire ? (
-              // MOTOR MEDPLUM RENDEREA EL FORMULARIO CREADO EN EL CONSTRUTOR
               <Box bg="#f8fafc" p="lg" style={{ borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                 <QuestionnaireForm questionnaire={questionnaire} onSubmit={handleFichaSubmit} />
               </Box>
@@ -197,7 +178,6 @@ export function PatientWorkspace({ patient, medplum, doctorName, onClose }: any)
                   />
                 </Group>
                 
-                {/* Aquí en el futuro se montará el @mantine/tiptap real */}
                 <Textarea 
                   minRows={15} 
                   autosize 

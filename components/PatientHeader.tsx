@@ -1,118 +1,141 @@
 "use client";
 
-import { Card, Avatar, Text, Group, Stack, Badge, Divider, Button, TextInput } from '@mantine/core';
-import { useState } from 'react';
+import { useRef } from 'react';
+import { Card, Group, Avatar, Text, ActionIcon, Tooltip, Box, Modal, Grid, Divider } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { IconPrinter, IconEdit, IconListDetails } from '@tabler/icons-react';
+import { useReactToPrint } from 'react-to-print';
+import { Patient } from '@medplum/fhirtypes';
+import { useMedplum } from '@medplum/react-hooks';
+import { PrintableFicha } from './patient/PrintableFicha';
+import { DynamicIntakeForm } from './DynamicIntakeForm';
 
-export function PatientHeader({ patient }: { patient: any }) {
-  const [customMessage, setCustomMessage] = useState('');
-  const [isSending, setIsSending] = useState(false);
+interface PatientHeaderProps {
+  patient: Patient;
+}
 
-  if (!patient) {
-    return (
-      <Card shadow="sm" p="lg" radius="md" withBorder>
-        <Text c="dimmed" ta="center">Seleccione un paciente para ver su perfil EMPI.</Text>
-      </Card>
-    );
+export function PatientHeader({ patient }: PatientHeaderProps) {
+  const medplum = useMedplum();
+  const printRef = useRef<HTMLDivElement>(null);
+  
+  // Controladores de los Modales
+  const [detailsOpened, { open: openDetails, close: closeDetails }] = useDisclosure(false);
+  const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
+  
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Ficha_Admissao_${patient?.id || 'Paciente'}`,
+  });
+
+  // Extracción de datos básicos
+  const patientName = patient?.name?.[0] ? `${patient.name[0].given?.join(' ')} ${patient.name[0].family}` : 'Paciente Não Identificado';
+  const initials = patientName.substring(0, 2).toUpperCase();
+  const birthDate = patient?.birthDate ? new Date(patient.birthDate) : null;
+  let age = '--';
+  if (birthDate) {
+    const ageDiffMs = Date.now() - birthDate.getTime();
+    const ageDate = new Date(ageDiffMs);
+    age = String(Math.abs(ageDate.getUTCFullYear() - 1970));
   }
 
-  // Extraer datos del recurso FHIR Patient
-  const givenName = patient.name?.[0]?.given?.join(' ') || 'Sin Nombre';
-  const familyName = patient.name?.[0]?.family || '';
-  const fullName = `${givenName} ${familyName}`;
-  const gender = patient.gender || 'No especificado';
-  const birthDate = patient.birthDate || 'N/A';
-  
-  // Calcular edad si hay fecha de nacimiento
-  const calculateAge = (dob: string) => {
-    if (!dob) return '';
-    const diff = Date.now() - new Date(dob).getTime();
-    const ageDate = new Date(diff);
-    return Math.abs(ageDate.getUTCFullYear() - 1970);
-  };
-  const age = calculateAge(birthDate);
-
-  // Identificador (CPF o Pasaporte)
-  const identifier = patient.identifier?.[0];
-  const docType = identifier?.system?.includes('passport') ? 'Pasaporte (Extranjero)' : 'CPF (Brasil)';
-  const docValue = identifier?.value || 'No registrado';
-
-  // Extensiones o datos de contacto
-  const phone = patient.telecom?.find((t: any) => t.system === 'phone')?.value || 'N/A';
-  
-  // Lógica de validación y envío de mensaje de aniversario seguro
-  const handleSendBirthdayMessage = () => {
-    if (!birthDate) {
-      alert('El paciente no tiene fecha de nacimiento registrada.');
-      return;
-    }
-    setIsSending(true);
-    
-    // Validar seguridad médica y preparar automatización anual de aniversario (Día/Mes)
-    const [year, month, day] = birthDate.split('-');
-    console.log(`[AUTOMATIZACIÓN ANUAL] Programado mensaje para el ${day}/${month} de cada año.`);
-
-    setTimeout(() => {
-      alert(`✅ Mensaje personalizado enviado con éxito a ${phone}: "${customMessage || '¡Feliz Cumpleaños! Te desea Leoneybis Estética & EHR'}"`);
-      setIsSending(false);
-      setCustomMessage('');
-    }, 1000);
-  };
+  // Extracción de datos avanzados para el Modal de Detalles
+  const cpf = patient.identifier?.find(id => id.system?.includes('cpf') || id.type?.text === 'CPF')?.value || 'Não informado';
+  const cns = patient.identifier?.find(id => id.system?.includes('cns') || id.type?.text?.includes('CNS'))?.value || 'Não informado';
+  const phone = patient.telecom?.find(t => t.system === 'phone')?.value || 'Não informado';
+  const email = patient.telecom?.find(t => t.system === 'email')?.value || 'Não informado';
+  const addressObj = patient.address?.[0];
+  const addressStr = addressObj ? `${addressObj.line?.[0] || ''}, ${addressObj.city || ''} - ${addressObj.state || ''}` : 'Não informado';
+  const gender = patient.gender === 'male' ? 'Masculino' : patient.gender === 'female' ? 'Feminino' : patient.gender === 'other' ? 'Outro' : 'Não informado';
+  const nationality = patient.extension?.find(e => e.url === 'https://delchan.com/fhir/nacionalidade')?.valueString || 'Não informada';
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: '100%' }}>
-      <Group justify="center" mb="md">
-        <Avatar color="teal" radius="xl" size={80}>
-          {givenName.charAt(0)}{familyName.charAt(0)}
-        </Avatar>
-      </Group>
+    <>
+      <Card radius="md" p="xl" withBorder shadow="sm" mb="lg">
+        <Group justify="space-between" align="flex-start">
+          <Group gap="lg">
+            <Avatar color="teal" size={80} radius="md" style={{ fontSize: '30px', fontWeight: 800 }}>
+              {initials}
+            </Avatar>
+            <Box>
+              <Text fw={800} size="xl" tt="uppercase">{patientName}</Text>
+              <Text c="dimmed" size="sm">ID: {patient?.id || 'Não registrado'}</Text>
+              
+              <Group mt="xl" gap="xl">
+                <Box>
+                  <Text size="xs" c="dimmed" fw={700}>IDADE</Text>
+                  <Text fw={800} size="lg">{age} anos</Text>
+                </Box>
+                <Box>
+                  <Text size="xs" c="dimmed" fw={700}>SANGUE</Text>
+                  <Text fw={800} size="lg">O+</Text>
+                </Box>
+              </Group>
+            </Box>
+          </Group>
 
-      <Text ta="center" fw={700} size="xl">{fullName}</Text>
-      <Text ta="center" size="sm" c="dimmed" mb="md">
-        {birthDate} {age ? `(${age} años)` : ''}
-      </Text>
-
-      <Group justify="center" mb="md">
-        <Badge color="pink" variant="light">{gender}</Badge>
-        <Badge color="cyan" variant="light">{docType}</Badge>
-      </Group>
-
-      <Divider my="sm" />
-
-      <Stack gap="xs">
-        <Group justify="space-between">
-          <Text size="sm" fw={600}>Documento:</Text>
-          <Text size="sm">{docValue}</Text>
+          <Group gap="sm">
+            <Tooltip label="Ver mais detalhes">
+              <ActionIcon variant="light" color="blue" size="lg" radius="md" onClick={openDetails}>
+                <IconListDetails size={20} stroke={1.5} />
+              </ActionIcon>
+            </Tooltip>
+            
+            <Tooltip label="Atualizar dados">
+              <ActionIcon variant="light" color="orange" size="lg" radius="md" onClick={openEdit}>
+                <IconEdit size={20} stroke={1.5} />
+              </ActionIcon>
+            </Tooltip>
+            
+            <Tooltip label="Imprimir (Gerar PDF com Código de Barras)">
+              <ActionIcon variant="filled" color="teal.6" size="lg" radius="md" onClick={() => handlePrint()}>
+                <IconPrinter size={20} stroke={1.5} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
         </Group>
+      </Card>
 
-        <Group justify="space-between">
-          <Text size="sm" fw={600}>Teléfono (WhatsApp):</Text>
-          <Text size="sm">{phone}</Text>
-        </Group>
+      {/* MODAL 1: VER MÁS DETALLES */}
+      <Modal opened={detailsOpened} onClose={closeDetails} title={<Text fw={800} size="xl" c="dark.9">Detalhes do Paciente</Text>} size="lg" radius="md">
+        <Grid gutter="md" mt="sm">
+          <Grid.Col span={12}><Text size="xs" c="dimmed" fw={700}>NOME COMPLETO</Text><Text fw={600} size="md">{patientName}</Text></Grid.Col>
+          <Grid.Col span={6}><Text size="xs" c="dimmed" fw={700}>DATA DE NASCIMENTO</Text><Text fw={600} size="md">{birthDate ? new Date(birthDate).toLocaleDateString('pt-BR') : 'Não informada'}</Text></Grid.Col>
+          <Grid.Col span={6}><Text size="xs" c="dimmed" fw={700}>SEXO BIOLÓGICO</Text><Text fw={600} size="md">{gender}</Text></Grid.Col>
+          
+          <Grid.Col span={12}><Divider my="sm" variant="dashed" /></Grid.Col>
+          
+          <Grid.Col span={6}><Text size="xs" c="dimmed" fw={700}>NACIONALIDADE</Text><Text fw={600} size="md">{nationality}</Text></Grid.Col>
+          <Grid.Col span={6}><Text size="xs" c="dimmed" fw={700}>CPF</Text><Text fw={600} size="md">{cpf}</Text></Grid.Col>
+          <Grid.Col span={12}><Text size="xs" c="dimmed" fw={700}>CNS (CARTÃO SUS)</Text><Text fw={600} size="md">{cns}</Text></Grid.Col>
+          
+          <Grid.Col span={12}><Divider my="sm" variant="dashed" /></Grid.Col>
 
-        <Group justify="space-between">
-          <Text size="sm" fw={600}>Idioma Preferido:</Text>
-          <Text size="sm">Português (BR) / ES</Text>
-        </Group>
-      </Stack>
+          <Grid.Col span={6}><Text size="xs" c="dimmed" fw={700}>TELEFONE</Text><Text fw={600} size="md">{phone}</Text></Grid.Col>
+          <Grid.Col span={6}><Text size="xs" c="dimmed" fw={700}>EMAIL</Text><Text fw={600} size="md">{email}</Text></Grid.Col>
+          <Grid.Col span={12}><Text size="xs" c="dimmed" fw={700}>ENDEREÇO</Text><Text fw={600} size="md">{addressStr}</Text></Grid.Col>
+        </Grid>
+      </Modal>
 
-      <Divider my="md" />
-
-      {/* MÓDULO DE MENSAJERÍA SEGURA Y ANIVERSARIOS */}
-      <Stack gap="xs">
-        <Text fw={600} size="sm" c="teal">Automatización Mensaje Aniversario 🎂</Text>
-        <Text size="xs" c="dimmed">
-          El sistema validará automáticamente cada año el día y mes de su nacimiento ({birthDate ? `${birthDate.split('-')[2]}/${birthDate.split('-')[1]}` : 'N/A'}) para disparar felicitaciones personalizadas cumpliendo con las normativas de seguridad médica (PHI).
-        </Text>
-        <TextInput
-          size="xs"
-          placeholder="Mensaje personalizado..."
-          value={customMessage}
-          onChange={(e) => setCustomMessage(e.currentTarget.value)}
+      {/* MODAL 2: ACTUALIZAR DATOS */}
+      <Modal opened={editOpened} onClose={closeEdit} title={<Text fw={800} size="xl" c="dark.9">Atualizar Ficha de Admissão</Text>} size="xl" radius="md">
+        <DynamicIntakeForm 
+          medplum={medplum} 
+          onSuccess={() => {
+            closeEdit();
+            window.location.reload(); // Recarga para mostrar los datos actualizados
+          }} 
         />
-        <Button size="xs" color="teal" onClick={handleSendBirthdayMessage} loading={isSending}>
-          Enviar / Programar Felicitación
-        </Button>
-      </Stack>
-    </Card>
+      </Modal>
+
+      {/* COMPONENTE OCULTO PARA IMPRESIÓN */}
+      <div style={{ display: 'none' }}>
+        <PrintableFicha 
+          ref={printRef} 
+          patient={patient} 
+          printedBy="Usuário Logado" 
+          tenantName="Clínica Delchan Health" 
+        />
+      </div>
+    </>
   );
 }
