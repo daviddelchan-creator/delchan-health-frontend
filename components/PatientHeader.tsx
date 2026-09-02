@@ -96,7 +96,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
       </Card>
 
       {/* MODAL 1: VER MÁS DETALLES */}
-      <Modal opened={detailsOpened} onClose={closeDetails} title={<Text fw={800} size="xl" c="dark.9">Detalhes do Paciente</Text>} size="lg" radius="md">
+      <Modal opened={detailsOpened} onClose={closeDetails} title="Detalhes do Paciente" size="lg" radius="md">
         <Grid gutter="md" mt="sm">
           <Grid.Col span={12}><Text size="xs" c="dimmed" fw={700}>NOME COMPLETO</Text><Text fw={600} size="md">{patientName}</Text></Grid.Col>
           <Grid.Col span={6}><Text size="xs" c="dimmed" fw={700}>DATA DE NASCIMENTO</Text><Text fw={600} size="md">{birthDate ? new Date(birthDate).toLocaleDateString('pt-BR') : 'Não informada'}</Text></Grid.Col>
@@ -117,7 +117,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
       </Modal>
 
       {/* MODAL 2: ACTUALIZAR DATOS */}
-      <Modal opened={editOpened} onClose={closeEdit} title={<Text fw={800} size="xl" c="dark.9">Atualizar Ficha de Admissão</Text>} size="xl" radius="md">
+      <Modal opened={editOpened} onClose={closeEdit} title="Atualizar Ficha de Admissão" size="xl" radius="md">
         <DynamicIntakeForm 
           medplum={medplum} 
           onSuccess={() => {

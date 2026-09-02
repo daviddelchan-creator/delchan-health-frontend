@@ -31,8 +31,8 @@ export function DoctorProfile({ practitioner, onClose }: DoctorProfileProps) {
   const [appointments] = useSearchResources('Appointment', { actor: `Practitioner/${practitioner?.id}`, date: `ge${todayStr}`, _sort: 'date', _count: 5 });
   const [encounters] = useSearchResources('Encounter', { participant: `Practitioner/${practitioner?.id}`, _sort: '-date', _count: 5, _include: 'Encounter:subject' });
   
-  // NUEVO: Buscar Leads (Tasks) del CRM atribuidos a este médico
-  const [crmTasks] = useSearchResources('Task', { owner: `Practitioner/${practitioner?.id}`, _sort: '-authoredOn', _count: 4 });
+  // Buscar Leads (Tasks) do CRM atribuídos a este médico
+  const [crmTasks] = useSearchResources('Task', practitioner?.id ? { owner: `Practitioner/${practitioner.id}`, _sort: '-_lastUpdated', _count: 4 } : { _sort: '-_lastUpdated', _count: 4 });
 
   const recentPatients = (encounters || [])
     .map((enc: Encounter) => enc.subject as Reference<Patient>)

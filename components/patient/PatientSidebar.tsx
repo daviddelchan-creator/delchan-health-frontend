@@ -144,19 +144,19 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
       </Stack>
 
       {/* MODALES FUNCIONALES CONECTADOS A MEDPLUM */}
-      <Modal opened={activeModal === 'insurance'} onClose={() => setActiveModal(null)} title={<Title order={5}>Adicionar Convênio</Title>} centered>
+      <Modal opened={activeModal === 'insurance'} onClose={() => setActiveModal(null)} title="Adicionar Convênio" centered>
         <TextInput label="Provedor de Saúde" placeholder="Ex: Amil, Unimed..." mb="sm" value={insuranceData.provider} onChange={(e) => setInsuranceData({...insuranceData, provider: e.currentTarget.value})} />
         <TextInput label="Número da Carteirinha" mb="xl" value={insuranceData.memberId} onChange={(e) => setInsuranceData({...insuranceData, memberId: e.currentTarget.value})} />
         <Button fullWidth color="teal" loading={isSaving} onClick={saveInsurance}>Salvar Convênio</Button>
       </Modal>
 
-      <Modal opened={activeModal === 'allergy'} onClose={() => setActiveModal(null)} title={<Title order={5}>Registrar Alergia</Title>} centered>
+      <Modal opened={activeModal === 'allergy'} onClose={() => setActiveModal(null)} title="Registrar Alergia" centered>
         <TextInput label="Substância / Medicamento" placeholder="Ex: Penicilina, Amendoim..." mb="sm" value={allergyData.substance} onChange={(e) => setAllergyData({...allergyData, substance: e.currentTarget.value})} />
         <Select label="Criticidade" data={['Baixa', 'Média', 'Alta']} mb="xl" value={allergyData.criticality} onChange={(val) => setAllergyData({...allergyData, criticality: val || ''})} />
         <Button fullWidth color="red" loading={isSaving} onClick={saveAllergy}>Salvar Alergia</Button>
       </Modal>
 
-      <Modal opened={activeModal === 'problem'} onClose={() => setActiveModal(null)} title={<Title order={5}>Novo Problema Crônico</Title>} centered>
+      <Modal opened={activeModal === 'problem'} onClose={() => setActiveModal(null)} title="Novo Problema Crônico" centered>
         <TextInput label="Condição Clínica (CID-10)" placeholder="Ex: Hipertensão (I10)" mb="sm" value={problemData.condition} onChange={(e) => setProblemData({...problemData, condition: e.currentTarget.value})} />
         <TextInput label="Data do Diagnóstico" type="date" mb="xl" value={problemData.date} onChange={(e) => setProblemData({...problemData, date: e.currentTarget.value})} />
         <Button fullWidth color="orange" loading={isSaving} onClick={saveProblem}>Salvar Problema</Button>

@@ -60,8 +60,8 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
     try {
       const [encBundle, taskBundle, medBundle, labBundle] = await Promise.all([
         medplum.searchResources('Encounter', { subject: `Patient/${patient.id}`, _sort: '-date' }),
-        medplum.searchResources('Task', { for: `Patient/${patient.id}`, _sort: '-authoredOn' }),
-        medplum.searchResources('MedicationRequest', { subject: `Patient/${patient.id}`, _sort: '-authoredOn' }),
+        medplum.searchResources('Task', { for: `Patient/${patient.id}`, _sort: '-_lastUpdated' }),
+        medplum.searchResources('MedicationRequest', { subject: `Patient/${patient.id}`, _sort: '-_lastUpdated' }),
         medplum.searchResources('DiagnosticReport', { subject: `Patient/${patient.id}`, _sort: '-date' }),
       ]);
       setEncounters(encBundle);
@@ -339,7 +339,7 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
       </Grid>
 
       {/* MODAIS DE SUB-CRIAÇÃO */}
-      <Modal opened={isNewVisitOpen} onClose={() => setIsNewVisitOpen(false)} title={<Title order={4}>Registrar Atendimento</Title>} centered radius="lg">
+      <Modal opened={isNewVisitOpen} onClose={() => setIsNewVisitOpen(false)} title="Registrar Atendimento" centered radius="lg">
         <Stack gap="md">
           <Select label="Modalidade" data={[{ value: 'routine', label: 'Consulta Presencial' }, { value: 'telemed', label: 'Telemedicina' }, { value: 'procedure', label: 'Procedimento Clínico' }]} value={visitType} onChange={setVisitType} />
           <TextInput label="Motivo da Consulta" placeholder="Ex: Queixa de melasma e avaliação..." value={visitReason} onChange={e => setVisitReason(e.target.value)} required />
@@ -347,7 +347,7 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
         </Stack>
       </Modal>
 
-      <Modal opened={isNewTaskOpen} onClose={() => setIsNewTaskOpen(false)} title={<Title order={4}>Nova Tarefa Clínica</Title>} centered radius="lg">
+      <Modal opened={isNewTaskOpen} onClose={() => setIsNewTaskOpen(false)} title="Nova Tarefa Clínica" centered radius="lg">
         <Stack gap="md">
           <TextInput label="Descrição da Tarefa" placeholder="Ex: Enviar lembrete de hidratação pós-peeling..." value={taskDesc} onChange={e => setTaskDesc(e.target.value)} required />
           <TextInput label="Data Limite (Prazo)" type="date" value={taskDue} onChange={e => setTaskDue(e.target.value)} />
@@ -355,7 +355,7 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
         </Stack>
       </Modal>
 
-      <Modal opened={isNewMedOpen} onClose={() => setIsNewMedOpen(false)} title={<Title order={4}>Prescrever Medicamento</Title>} centered radius="lg">
+      <Modal opened={isNewMedOpen} onClose={() => setIsNewMedOpen(false)} title="Prescrever Medicamento" centered radius="lg">
         <Stack gap="md">
           <TextInput label="Medicamento / Princípio Ativo" placeholder="Ex: Protetor Solar FPS 50 / Ácido Glicólico 10%" value={medName} onChange={e => setMedName(e.target.value)} required />
           <TextInput label="Posologia / Dose" placeholder="Ex: Aplicar 2x ao dia" value={medDosage} onChange={e => setMedDosage(e.target.value)} />
@@ -364,7 +364,7 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
         </Stack>
       </Modal>
 
-      <Modal opened={isNewLabOpen} onClose={() => setIsNewLabOpen(false)} title={<Title order={4}>Anexar Exame / Laudo</Title>} centered radius="lg">
+      <Modal opened={isNewLabOpen} onClose={() => setIsNewLabOpen(false)} title="Anexar Exame / Laudo" centered radius="lg">
         <Stack gap="md">
           <TextInput label="Nome do Exame" placeholder="Ex: Hemograma Completo / Fotodermatoscopia" value={labTitle} onChange={e => setLabTitle(e.target.value)} required />
           <Textarea label="Conclusão / Parecer do Laudo" placeholder="Resumo dos achados clínicos..." value={labConclusion} onChange={e => setLabConclusion(e.target.value)} />

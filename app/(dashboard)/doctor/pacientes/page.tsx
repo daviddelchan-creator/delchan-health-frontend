@@ -368,7 +368,7 @@ export default function PacientesPage() {
       <Modal 
         opened={isCreatingNew} 
         onClose={() => setIsCreatingNew(false)} 
-        title={<Title order={4}>Cadastro de Novo {dict.patient}</Title>} 
+        title={`Cadastro de Novo ${dict.patient}`} 
         centered 
         size="xl" 
         radius="lg"
@@ -387,7 +387,7 @@ export default function PacientesPage() {
       <Modal 
         opened={!!editingPatient} 
         onClose={() => setEditingPatient(null)} 
-        title={<Title order={4}>Atualizar Dados do {dict.patient}</Title>} 
+        title={`Atualizar Dados do ${dict.patient}`} 
         centered 
         size="xl" 
         radius="lg"
@@ -406,7 +406,7 @@ export default function PacientesPage() {
       <Modal 
         opened={!!evolutionPatient} 
         onClose={() => setEvolutionPatient(null)} 
-        title={<Title order={4}>Registro Clínico - {evolutionPatient?.name?.[0]?.given?.join(' ')} {evolutionPatient?.name?.[0]?.family}</Title>} 
+        title={`Registro Clínico - ${evolutionPatient?.name?.[0]?.given?.join(' ') || ''} ${evolutionPatient?.name?.[0]?.family || ''}`} 
         centered 
         size="xl"
         radius="lg"

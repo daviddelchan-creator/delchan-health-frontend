@@ -401,7 +401,7 @@ export default function DoctorAgendaPage() {
       <Modal 
         opened={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        title={<Title order={4}>Agendar Nova Consulta</Title>} 
+        title="Agendar Nova Consulta" 
         size="lg" 
         centered 
         radius="lg"

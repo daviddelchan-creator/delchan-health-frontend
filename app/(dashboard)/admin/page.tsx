@@ -661,7 +661,7 @@ function AdminPortalContent() {
             </Grid>
 
             {/* Modal Novo Modelo */}
-            <Modal opened={templateModal} onClose={() => setTemplateModal(false)} title={<Title order={4}>Criar Novo Modelo de Evolução</Title>} size="lg" radius="lg" centered>
+            <Modal opened={templateModal} onClose={() => setTemplateModal(false)} title="Criar Novo Modelo de Evolução" size="lg" radius="lg" centered>
               <Stack gap="md">
                 <TextInput label="Título do Modelo" placeholder="Ex: Avaliação Cardíaca" value={newTemplate.title} onChange={(e) => setNewTemplate({...newTemplate, title: e.currentTarget.value})} required />
                 <TextInput label="Breve Descrição" placeholder="Descrição visível para o médico..." value={newTemplate.desc} onChange={(e) => setNewTemplate({...newTemplate, desc: e.currentTarget.value})} />
@@ -673,7 +673,7 @@ function AdminPortalContent() {
         )}
 
         {/* MODAL NOVA CLÍNICA / TENANT */}
-        <Modal opened={isNewTenantModalOpen} onClose={() => setIsNewTenantModalOpen(false)} title={<Title order={4}>Cadastrar Nova Clínica (Tenant)</Title>} centered radius="lg" size="lg">
+        <Modal opened={isNewTenantModalOpen} onClose={() => setIsNewTenantModalOpen(false)} title="Cadastrar Nova Clínica (Tenant)" centered radius="lg" size="lg">
           <Stack gap="md">
             <TextInput label="Nome da Clínica / Unidade" placeholder="Ex: Delchan Health - Unidade Alphaville" value={newTenantName} onChange={e => setNewTenantName(e.target.value)} required radius="md" />
             <Grid>

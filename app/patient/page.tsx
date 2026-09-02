@@ -4,13 +4,10 @@ import { useState } from 'react';
 import { 
   MantineProvider, AppShell, Group, Title, Text, Avatar, Card, ActionIcon, Stack, Button, Badge, ThemeIcon, Progress, Divider, Grid, Modal, Notification
 } from '@mantine/core';
+import { MasterSignature } from '@/components/shared/MasterSignature';
 
-// IMPORTAMOS EL COMPONENTE MAESTRO DE FIRMA
-import { MasterSignature } from '../../components/shared/MasterSignature';
-
-// SIMULACIÓN DE BRANDING DINÁMICO (Viene del Admin)
 const tenantConfig = {
-  brandColor: 'violet', 
+  brandColor: 'teal', 
   clinicName: 'Delchan Health',
   patientName: 'João da Silva',
   features: {
@@ -69,14 +66,14 @@ export default function PatientMobileApp() {
                   </Title>
                 </div>
 
-                {/* NOTIFICACIÓN DE ÉXITO AL FIRMAR */}
+                {/* NOTIFICAÇÃO DE SUCESSO AO ASSINAR */}
                 {showSuccess && (
                   <Notification title="Assinatura Salva!" color="teal" onClose={() => setShowSuccess(false)} radius="md">
-                    Seu consentimento foi registrado com segurança no servidor.
+                    Seu consentimento foi registrado com segurança e validade jurídica.
                   </Notification>
                 )}
 
-                {/* ALERTA DE ACCIÓN: EL "PUSH" ENVIADO POR EL ADMIN O RECEPCIÓN */}
+                {/* ALERTA DE TCLE */}
                 {pendingTCLE ? (
                   <Card p="lg" radius="xl" bg="red.0" withBorder style={{ borderColor: 'transparent' }}>
                     <Group wrap="nowrap" align="flex-start">
@@ -107,28 +104,28 @@ export default function PatientMobileApp() {
                 <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder style={{ borderColor: '#f1f5f9' }}>
                   <Group justify="space-between" mb="sm">
                     <Badge color="blue" variant="light" size="sm" fw={700}>Consulta Confirmada</Badge>
-                    <Text size="xs" c="dimmed" fw={600}>Amanhã, 09:00 AM</Text>
+                    <Text size="xs" c="dimmed" fw={600}>Hoje, 14:30</Text>
                   </Group>
-                  <Title order={4} c="dark.9" fw={800}>Cardiologia Preventiva</Title>
-                  <Text size="sm" c="dimmed" mb="lg">👨‍⚕️ Dr. Alberto Silva • Unidade Central</Text>
+                  <Title order={4} c="dark.9" fw={800}>Avaliação Clínica Geral</Title>
+                  <Text size="sm" c="dimmed" mb="lg">👨‍⚕️ Dr. Alberto Silva • Unidade Jardins</Text>
                   
                   <Group grow>
-                    <Button variant="outline" color="dark.8" radius="xl">Reagendar</Button>
+                    <Button variant="outline" color="dark.8" radius="xl" onClick={() => alert('Solicitação de reagendamento enviada à clínica.')}>Reagendar</Button>
                     {tenantConfig.features.telemedicine && (
-                      <Button color="blue" radius="xl" leftSection="🎥">Sala Virtual</Button>
+                      <Button color="teal" radius="xl" leftSection="🎥" onClick={() => alert('Iniciando sala virtual segura de Telemedicina...')}>Sala Virtual</Button>
                     )}
                   </Group>
                 </Card>
 
                 <Grid gutter="md">
                   {[
-                    { icon: '📅', label: 'Agendar' },
-                    { icon: '🧪', label: 'Exames' },
-                    { icon: '💊', label: 'Receitas' },
-                    { icon: '💳', label: 'Pagamentos' },
+                    { icon: '📅', label: 'Agendar', action: () => alert('Abrindo catálogo de agendamentos...') },
+                    { icon: '🧪', label: 'Exames', action: () => alert('Acessando laudos e exames laboratoriais...') },
+                    { icon: '💊', label: 'Receitas', action: () => alert('Acessando receitas digitais com QR Code...') },
+                    { icon: '💳', label: 'Pagamentos', action: () => alert('Histórico financeiro e Pix...') },
                   ].map((item, i) => (
                     <Grid.Col span={3} key={i}>
-                      <Stack gap="xs" align="center">
+                      <Stack gap="xs" align="center" style={{ cursor: 'pointer' }} onClick={item.action}>
                         <ActionIcon size="xl" radius="xl" variant="light" color={tenantConfig.brandColor} style={{ width: '60px', height: '60px' }}>
                           <Text size="xl">{item.icon}</Text>
                         </ActionIcon>
@@ -152,7 +149,7 @@ export default function PatientMobileApp() {
                   <Text size="xs" fw={700} c={activeTab === 'calendar' ? tenantConfig.brandColor : 'gray.5'}>Agenda</Text>
                 </Stack>
                 <Stack gap={4} align="center" onClick={() => setActiveTab('ai')} style={{ cursor: 'pointer', width: '60px', position: 'relative', top: '-15px' }}>
-                  <ActionIcon size={60} radius="xl" color={tenantConfig.brandColor} variant="filled" style={{ boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.4)' }}>
+                  <ActionIcon size={60} radius="xl" color={tenantConfig.brandColor} variant="filled" style={{ boxShadow: '0 10px 15px -3px rgba(13, 148, 136, 0.4)' }}>
                     <Text size="xl">✨</Text>
                   </ActionIcon>
                   <Text size="xs" fw={700} c={tenantConfig.brandColor}>IA Assist</Text>
@@ -172,7 +169,7 @@ export default function PatientMobileApp() {
         </div>
       </div>
 
-      {/* MODAL CON EL COMPONENTE MAESTRO DE FIRMA INYECTADO */}
+      {/* MODAL DE ASSINATURA TCLE */}
       <Modal opened={showSignaturePad} onClose={() => setShowSignaturePad(false)} withCloseButton={false} centered size="md" radius="md" padding={0}>
         <MasterSignature 
           documentName="Termo de Consentimento Livre e Esclarecido (TCLE) - LGPD" 

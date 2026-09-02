@@ -115,7 +115,7 @@ export function StaffManager() {
       </Table>
 
       {/* MODAL DE CREACIÓN DE EMPLEADOS */}
-      <Modal opened={opened} onClose={() => setOpened(false)} title={<Group gap="xs"><ThemeIcon color={primaryColor} variant="light" radius="xl"><IconShieldLock size={16}/></ThemeIcon><Text fw={700}>Configurar Acesso</Text></Group>} centered radius="xl" size="lg">
+      <Modal opened={opened} onClose={() => setOpened(false)} title="Configurar Acesso de Colaborador" centered radius="xl" size="lg">
         <Stack gap="md">
           <Group grow>
             <TextInput label="Nome" placeholder="Ex: Rafael" required radius="md" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />

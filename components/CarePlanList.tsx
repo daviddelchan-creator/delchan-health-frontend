@@ -229,7 +229,7 @@ export function CarePlanList({ patient }: CarePlanListProps) {
       <Modal 
         opened={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        title={<Title order={4}>Criar Plano de Tratamento</Title>} 
+        title="Criar Plano de Tratamento" 
         centered 
         radius="lg" 
         size="lg"

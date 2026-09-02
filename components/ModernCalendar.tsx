@@ -128,7 +128,7 @@ export function ModernCalendar({ medplum, patients }: { medplum: any; patients: 
       </Card>
 
       {/* MODAL DE AGENDAMENTO */}
-      <Modal opened={isModalOpen} onClose={() => setIsModalOpen(false)} title={<Title order={4}>Agendar Consulta</Title>} centered radius="lg">
+      <Modal opened={isModalOpen} onClose={() => setIsModalOpen(false)} title="Agendar Consulta" centered radius="lg">
         <Stack gap="md">
           <Select
             label="Selecionar Paciente"

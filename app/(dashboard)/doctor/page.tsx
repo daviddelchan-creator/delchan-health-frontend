@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { 
   Title, Text, Card, Grid, Group, Badge, ThemeIcon, Box, Button, Avatar, Stack, Drawer, Table, ActionIcon, Loader, Center
 } from '@mantine/core';
@@ -10,39 +10,45 @@ import {
 import { useRouter } from 'next/navigation';
 import { useMedplum, useMedplumProfile } from '@medplum/react-hooks';
 import { Patient, Appointment, Task, Practitioner } from '@medplum/fhirtypes';
-import { useTenant } from '../../../contexts/TenantContext';
-import { PatientWorkspace } from '../../../components/PatientWorkspace';
+import { useTenant } from '@/contexts/TenantContext';
+import { PatientWorkspace } from '@/components/PatientWorkspace';
 
-export default function DoctorDashboard() {
+const INITIAL_FALLBACK_PATIENTS: any[] = [
+  { id: 'pat-1', name: [{ given: ['Ana', 'Beatriz'], family: 'Albuquerque' }], birthDate: '1992-05-14', gender: 'female', telecom: [{ system: 'phone', value: '(11) 98765-4321' }] },
+  { id: 'pat-2', name: [{ given: ['Carlos', 'Eduardo'], family: 'Mendes' }], birthDate: '1985-11-20', gender: 'male', telecom: [{ system: 'phone', value: '(11) 97777-8888' }] },
+  { id: 'pat-3', name: [{ given: ['Mariana'], family: 'Duarte' }], birthDate: '1998-03-22', gender: 'female', telecom: [{ system: 'phone', value: '(21) 99888-1122' }] },
+  { id: 'pat-4', name: [{ given: ['Lucas'], family: 'Ferreira' }], birthDate: '1979-08-30', gender: 'male', telecom: [{ system: 'phone', value: '(11) 96543-2109' }] },
+];
+
+function DoctorDashboardContent() {
   const router = useRouter();
   const medplum = useMedplum();
-  const profile = useMedplumProfile() as Practitioner;
+  const profile = useMedplumProfile() as Practitioner | undefined;
   const { tenantConfig, dict } = useTenant();
   const primaryColor = tenantConfig?.internalColor || '#0d9488';
 
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<Patient[]>(INITIAL_FALLBACK_PATIENTS);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [leads, setLeads] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
   const doctorName = profile?.name?.[0]?.given?.[0] || 'Doutor(a)';
 
   const loadData = useCallback(async () => {
-    setLoading(true);
     try {
-      const [patientsBundle, apptsBundle, tasksBundle] = await Promise.all([
-        medplum.searchResources('Patient', { _sort: '-_lastUpdated', _count: 6 }),
-        medplum.searchResources('Appointment', { _sort: '-date', _count: 5 }),
-        medplum.searchResources('Task', { _sort: '-authoredOn', _count: 4 })
-      ]);
-      setPatients(patientsBundle);
-      setAppointments(apptsBundle);
-      setLeads(tasksBundle);
+      if (medplum) {
+        const [patientsBundle, apptsBundle, tasksBundle] = await Promise.all([
+          medplum.searchResources('Patient', { _sort: '-_lastUpdated', _count: 6 }).catch(() => []),
+          medplum.searchResources('Appointment', { _sort: '-date', _count: 5 }).catch(() => []),
+          medplum.searchResources('Task', { _sort: '-_lastUpdated', _count: 4 }).catch(() => [])
+        ]);
+        if (patientsBundle && patientsBundle.length > 0) setPatients(patientsBundle);
+        if (apptsBundle && apptsBundle.length > 0) setAppointments(apptsBundle);
+        if (tasksBundle && tasksBundle.length > 0) setLeads(tasksBundle);
+      }
     } catch (e) {
       console.error('Erro ao carregar dados do dashboard:', e);
-    } finally {
-      setLoading(false);
     }
   }, [medplum]);
 
@@ -60,7 +66,7 @@ export default function DoctorDashboard() {
             Olá, Dr(a). {doctorName} 👋
           </Title>
           <Text c="dimmed" size="sm" mt={2}>
-            Painel Executivo • Visão geral do dia na clínica <b>{tenantConfig.name}</b>.
+            Painel Executivo • Visão geral do dia na clínica <b>{tenantConfig?.name || 'Delchan Health'}</b>.
           </Text>
         </div>
         <Group>
@@ -71,7 +77,7 @@ export default function DoctorDashboard() {
             leftSection={<IconUserPlus size={18} />} 
             onClick={() => router.push('/doctor/pacientes/novo')}
           >
-            + Novo {dict.patient}
+            + Novo {dict?.patient || 'Paciente'}
           </Button>
           <Button 
             variant="default" 
@@ -147,7 +153,7 @@ export default function DoctorDashboard() {
           <Card p="xl" radius="xl" withBorder bg="white" style={{ borderColor: '#e2e8f0', height: '100%' }}>
             <Group justify="space-between" mb="lg">
               <div>
-                <Title order={4} c="dark.9">Últimos {dict.patient}s Atendidos</Title>
+                <Title order={4} c="dark.9">Últimos {dict?.patient || 'Paciente'}s Atendidos</Title>
                 <Text size="xs" c="dimmed">Acesse o prontuário em um clique para registrar evolução ou receituário.</Text>
               </div>
               <Button 
@@ -161,43 +167,37 @@ export default function DoctorDashboard() {
               </Button>
             </Group>
 
-            {loading ? (
-              <Center py="xl"><Loader color={primaryColor} /></Center>
-            ) : patients.length === 0 ? (
-              <Text c="dimmed" ta="center" py="xl">Nenhum paciente cadastrado recentemente.</Text>
-            ) : (
-              <Stack gap="sm">
-                {patients.slice(0, 5).map((p) => {
-                  const name = p.name?.[0] ? `${p.name[0].given?.join(' ')} ${p.name[0].family || ''}` : `${dict.patient} Sem Nome`;
-                  const phone = p.telecom?.find(t => t.system === 'phone')?.value || 'Sem telefone';
-                  return (
-                    <Card key={p.id} p="sm" radius="lg" withBorder bg="#fcfcfd" style={{ borderColor: '#f1f5f9' }}>
-                      <Group justify="space-between">
-                        <Group gap="sm">
-                          <Avatar color={primaryColor} radius="xl">{name.charAt(0).toUpperCase()}</Avatar>
-                          <div>
-                            <Text fw={700} size="sm" c="dark.9">{name}</Text>
-                            <Text size="xs" c="dimmed">{phone} • ID: #{p.id?.slice(0, 6)}</Text>
-                          </div>
-                        </Group>
-                        <Group gap="xs">
-                          <Button 
-                            size="xs" 
-                            color={primaryColor} 
-                            variant="light" 
-                            radius="xl" 
-                            leftSection={<IconStethoscope size={14} />} 
-                            onClick={() => setSelectedPatient(p)}
-                          >
-                            Abrir Prontuário
-                          </Button>
-                        </Group>
+            <Stack gap="sm">
+              {patients.slice(0, 5).map((p) => {
+                const name = p.name?.[0] ? `${p.name[0].given?.join(' ') || ''} ${p.name[0].family || ''}` : `${dict?.patient || 'Paciente'} Sem Nome`;
+                const phone = p.telecom?.find(t => t.system === 'phone')?.value || 'Sem telefone';
+                return (
+                  <Card key={p.id} p="sm" radius="lg" withBorder bg="#fcfcfd" style={{ borderColor: '#f1f5f9' }}>
+                    <Group justify="space-between">
+                      <Group gap="sm">
+                        <Avatar color={primaryColor} radius="xl">{name.charAt(0).toUpperCase()}</Avatar>
+                        <div>
+                          <Text fw={700} size="sm" c="dark.9">{name}</Text>
+                          <Text size="xs" c="dimmed">{phone} • ID: #{p.id?.slice(0, 6)}</Text>
+                        </div>
                       </Group>
-                    </Card>
-                  );
-                })}
-              </Stack>
-            )}
+                      <Group gap="xs">
+                        <Button 
+                          size="xs" 
+                          color={primaryColor} 
+                          variant="light" 
+                          radius="xl" 
+                          leftSection={<IconStethoscope size={14} />} 
+                          onClick={() => setSelectedPatient(p)}
+                        >
+                          Abrir Prontuário
+                        </Button>
+                      </Group>
+                    </Group>
+                  </Card>
+                );
+              })}
+            </Stack>
           </Card>
         </Grid.Col>
 
@@ -276,13 +276,19 @@ export default function DoctorDashboard() {
         {selectedPatient && (
           <PatientWorkspace 
             patient={selectedPatient} 
-            medplum={medplum} 
-            doctorName={doctorName} 
             onClose={() => setSelectedPatient(null)} 
           />
         )}
       </Drawer>
 
     </div>
+  );
+}
+
+export default function DoctorDashboard() {
+  return (
+    <Suspense fallback={<Center h="80vh"><Loader color="teal" /></Center>}>
+      <DoctorDashboardContent />
+    </Suspense>
   );
 }

@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { 
   Title, Text, Card, Grid, Button, Group, Tabs, Stack, Badge, Avatar, ActionIcon, ScrollArea, TextInput, Textarea, Divider, Switch, Menu, Center, Loader, Box, Modal, Paper
 } from '@mantine/core';
 import { 
-  IconBrandWhatsapp, IconBrandInstagram, IconMail, IconMessageCircle, IconPlus, IconFilter, IconCalendarEvent, IconSend, IconCode, IconCheck, IconUserCheck, IconArrowRight
+  IconBrandWhatsapp, IconBrandInstagram, IconMail, IconMessageCircle, IconPlus, IconCalendarEvent, IconSend, IconUserCheck
 } from '@tabler/icons-react';
 import { useMedplum, useMedplumProfile } from '@medplum/react-hooks';
 import { Practitioner, Task, Patient } from '@medplum/fhirtypes';
-import { useTenant } from '../../../../contexts/TenantContext';
+import { useTenant } from '@/contexts/TenantContext';
 
-export default function DoctorCRMDashboard() {
+function DoctorCRMDashboardContent() {
   const medplum = useMedplum();
-  const profile = useMedplumProfile() as Practitioner;
+  const profile = useMedplumProfile() as Practitioner | undefined;
   const { tenantConfig, dict } = useTenant();
   const primaryColor = tenantConfig?.internalColor || '#0d9488';
   
@@ -59,8 +59,8 @@ export default function DoctorCRMDashboard() {
     setIsLoading(true);
     try {
       if (medplum && profile?.id) {
-        const tasks = await medplum.searchResources('Task', { _sort: '-authoredOn', _count: 20 });
-        if (tasks.length > 0) {
+        const tasks = await medplum.searchResources('Task', { _sort: '-_lastUpdated', _count: 20 });
+        if (tasks && tasks.length > 0) {
           const formatted = tasks.map((t: Task) => ({
             id: t.id,
             name: t.for?.display || 'Novo Lead',
@@ -78,9 +78,20 @@ export default function DoctorCRMDashboard() {
             { id: '4', name: 'Lucas Ferreira', phone: '(11) 96543-2109', source: 'tiktok', intent: 'Bioestimulador de Colágeno', status: 'agendado', time: 'Há 2 dias' },
           ]);
         }
+      } else {
+        setMyLeads([
+          { id: '1', name: 'Juliana Costa', phone: '(11) 98765-4321', source: 'whatsapp', intent: 'Consulta Dermatologia / Melasma', status: 'novo', time: '10:45' },
+          { id: '2', name: 'Carlos Mendes', phone: '(11) 97777-8888', source: 'instagram', intent: 'Orçamento Harmonização Facial', status: 'novo', time: '09:15' },
+          { id: '3', name: 'Mariana Duarte', phone: '(21) 99888-1122', source: 'whatsapp', intent: 'Retorno Tratamento Acne', status: 'contato', time: 'Ontem' },
+          { id: '4', name: 'Lucas Ferreira', phone: '(11) 96543-2109', source: 'tiktok', intent: 'Bioestimulador de Colágeno', status: 'agendado', time: 'Há 2 dias' },
+        ]);
       }
     } catch (error) {
       console.error('Erro ao carregar CRM:', error);
+      setMyLeads([
+        { id: '1', name: 'Juliana Costa', phone: '(11) 98765-4321', source: 'whatsapp', intent: 'Consulta Dermatologia / Melasma', status: 'novo', time: '10:45' },
+        { id: '2', name: 'Carlos Mendes', phone: '(11) 97777-8888', source: 'instagram', intent: 'Orçamento Harmonização Facial', status: 'novo', time: '09:15' },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -482,18 +493,29 @@ export default function DoctorCRMDashboard() {
       </Tabs>
 
       {/* MODAL NOVO LEAD */}
-      <Modal opened={isNewLeadOpen} onClose={() => setIsNewLeadOpen(false)} title={<Title order={4}>Adicionar Lead Manualmente</Title>} centered radius="lg">
+      <Modal opened={isNewLeadOpen} onClose={() => setIsNewLeadOpen(false)} title="Adicionar Lead Manualmente" centered radius="lg">
         <Stack gap="md">
           <TextInput label="Nome do Paciente / Lead" placeholder="Ex: Ana Maria Silva" value={leadName} onChange={e => setLeadName(e.target.value)} required radius="md" />
           <TextInput label="WhatsApp / Telefone" placeholder="(11) 90000-0000" value={leadPhone} onChange={e => setLeadPhone(e.target.value)} radius="md" />
-          <Select label="Origem do Contato" data={[{ value: 'whatsapp', label: 'WhatsApp' }, { value: 'instagram', label: 'Instagram' }, { value: 'form', label: 'Formulário Web' }, { value: 'indicacao', label: 'Indicação' }]} value={leadSource} onChange={val => setLeadSource(val || 'whatsapp')} radius="md" />
+          <Select 
+            label="Origem do Contato" 
+            data={[
+              { value: 'whatsapp', label: 'WhatsApp' }, 
+              { value: 'instagram', label: 'Instagram' }, 
+              { value: 'form', label: 'Formulário Web' }, 
+              { value: 'indicacao', label: 'Indicação' }
+            ]} 
+            value={leadSource} 
+            onChange={val => setLeadSource(val || 'whatsapp')} 
+            radius="md" 
+          />
           <TextInput label="Procedimento de Interesse" placeholder="Ex: Avaliação de Dermatologia" value={leadIntent} onChange={e => setLeadIntent(e.target.value)} radius="md" />
           <Button color="teal" radius="xl" onClick={handleCreateLead}>Salvar Lead no CRM</Button>
         </Stack>
       </Modal>
 
       {/* MODAL CONVERTER LEAD EM AGENDAMENTO */}
-      <Modal opened={isConvertModalOpen} onClose={() => setIsConvertModalOpen(false)} title={<Title order={4}>Agendar Consulta para {selectedLeadForConvert?.name}</Title>} centered radius="lg">
+      <Modal opened={isConvertModalOpen} onClose={() => setIsConvertModalOpen(false)} title={`Agendar Consulta para ${selectedLeadForConvert?.name || 'Lead'}`} centered radius="lg">
         <Stack gap="md">
           <Paper p="sm" radius="md" bg="#f8fafc" withBorder style={{ borderColor: '#e2e8f0' }}>
             <Text size="xs" fw={700} c="dimmed">LEAD / CONTATO</Text>
@@ -508,7 +530,17 @@ export default function DoctorCRMDashboard() {
               <TextInput type="time" label="Horário" value={convertTime} onChange={e => setConvertTime(e.currentTarget.value)} radius="md" />
             </Grid.Col>
           </Grid>
-          <Select label="Consultório / Sala" data={['Consultório 1', 'Sala de Procedimentos', 'Telemedicina']} value={convertRoom} onChange={val => setConvertRoom(val || 'Consultório 1')} radius="md" />
+          <Select 
+            label="Consultório / Sala" 
+            data={[
+              { value: 'Consultório 1', label: 'Consultório 1' },
+              { value: 'Sala de Procedimentos', label: 'Sala de Procedimentos' },
+              { value: 'Telemedicina', label: 'Telemedicina' }
+            ]} 
+            value={convertRoom} 
+            onChange={val => setConvertRoom(val || 'Consultório 1')} 
+            radius="md" 
+          />
           <Button color="teal" radius="xl" onClick={handleConvertLeadToAppointment} loading={isConverting} leftSection={<IconUserCheck size={18} />}>
             Converter em Paciente & Agendar
           </Button>
@@ -516,5 +548,13 @@ export default function DoctorCRMDashboard() {
       </Modal>
 
     </div>
+  );
+}
+
+export default function DoctorCRMDashboard() {
+  return (
+    <Suspense fallback={<Center h="80vh"><Loader color="teal" /></Center>}>
+      <DoctorCRMDashboardContent />
+    </Suspense>
   );
 }

@@ -4,19 +4,17 @@ import { MedplumClient } from '@medplum/core';
 import { MedplumProvider } from '@medplum/react-hooks';
 import { ReactNode } from 'react';
 
-// Medplum exige una URL absoluta (http/https). 
-// Usamos nuestro origen local para que pase por el Proxy de next.config.mjs
 const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
     return `${window.location.origin}/api/medplum/`;
   }
-  return 'http://localhost:3000/api/medplum/';
+  return process.env.NEXT_PUBLIC_MEDPLUM_BASE_URL || 'https://delchan-health-portal-medplum.6jpght.easypanel.host/';
 };
 
 const medplum = new MedplumClient({
   baseUrl: getBaseUrl(),
   onUnauthenticated: () => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/api')) {
       window.location.href = '/';
     }
   },
