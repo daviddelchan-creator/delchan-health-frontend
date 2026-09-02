@@ -22,7 +22,6 @@ function DashboardContent({ children }: { children: ReactNode }) {
   const isAdmin = pathname?.startsWith('/admin');
   const isDoctor = pathname?.startsWith('/doctor');
   
-  // Parámetro de la URL para saber qué módulo del God Mode está activo
   const activeAdminTab = searchParams.get('tab') || 'overview';
 
   if (!mounted) return null;
@@ -30,6 +29,7 @@ function DashboardContent({ children }: { children: ReactNode }) {
   return (
     <AppShell header={isDoctor ? { height: 70 } : undefined} navbar={isAdmin ? { width: 260, breakpoint: 'sm' } : undefined} padding={0} bg="#f8f9fa">
       
+      {/* HEADER DEL MÉDICO CON EL NUEVO BOTÓN "CRM" */}
       {isDoctor && (
         <AppShell.Header style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
           <Group h="100%" px="xl" justify="space-between">
@@ -42,12 +42,16 @@ function DashboardContent({ children }: { children: ReactNode }) {
                 <UnstyledButton onClick={() => router.push('/doctor')} px="md" py="xs" bg={pathname === '/doctor' ? 'dark.9' : 'transparent'} c={pathname === '/doctor' ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Início</UnstyledButton>
                 <UnstyledButton onClick={() => router.push('/doctor/pacientes')} px="md" py="xs" bg={pathname?.includes('/pacientes') ? 'dark.9' : 'transparent'} c={pathname?.includes('/pacientes') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Pacientes</UnstyledButton>
                 <UnstyledButton onClick={() => router.push('/doctor/agenda')} px="md" py="xs" bg={pathname?.includes('/agenda') ? 'dark.9' : 'transparent'} c={pathname?.includes('/agenda') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Agenda</UnstyledButton>
+                {/* NUEVO BOTÓN CRM */}
+                <UnstyledButton onClick={() => router.push('/doctor/crm')} px="md" py="xs" bg={pathname?.includes('/crm') ? 'dark.9' : 'transparent'} c={pathname?.includes('/crm') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>CRM</UnstyledButton>
               </Group>
             </Group>
             <Group>
               <Button color="teal.9" radius="xl" onClick={() => router.push('/doctor/pacientes/novo')}>+ Novo Registro</Button>
               <UnstyledButton onClick={() => setProfileOpen(true)}>
-                <Avatar color="dark" radius="xl" style={{ cursor: 'pointer' }}>DR</Avatar>
+                <Avatar color="dark" radius="xl" style={{ cursor: 'pointer' }}>
+                  {profile?.name?.[0]?.given?.[0] || 'DR'}
+                </Avatar>
               </UnstyledButton>
             </Group>
           </Group>
@@ -67,7 +71,6 @@ function DashboardContent({ children }: { children: ReactNode }) {
 
           <Text size="xs" fw={700} c="dimmed" mb="sm" px="xs" lts={1}>SUPER ADMIN</Text>
           <Stack gap="xs">
-            {/* BOTONES DINÁMICOS: Conectados a los parámetros de la URL */}
             <UnstyledButton onClick={() => router.push('/admin?tab=overview')} p="sm" bg={activeAdminTab === 'overview' ? 'teal.0' : 'transparent'} c={activeAdminTab === 'overview' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 600 }}>Dashboard</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=tenants')} p="sm" bg={activeAdminTab === 'tenants' ? 'teal.0' : 'transparent'} c={activeAdminTab === 'tenants' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Clínicas / Tenants</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=modules')} p="sm" bg={activeAdminTab === 'modules' ? 'teal.0' : 'transparent'} c={activeAdminTab === 'modules' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Módulos SaaS</UnstyledButton>
@@ -82,20 +85,13 @@ function DashboardContent({ children }: { children: ReactNode }) {
             <UnstyledButton onClick={() => router.push('/admin?tab=builder')} p="sm" bg={activeAdminTab === 'builder' ? 'teal.0' : 'transparent'} c={activeAdminTab === 'builder' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Construtor de Módulos</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=templates')} p="sm" bg={activeAdminTab === 'templates' ? 'teal.0' : 'transparent'} c={activeAdminTab === 'templates' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Plantillas</UnstyledButton>
           </Stack>
-
-          <Box mt="auto">
-            <Card p="md" radius="md" bg="teal.0">
-              <Text fw={700} size="sm" c="teal.9">Modo Deus ativo</Text>
-              <Text size="xs" c="teal.7" mt={4}>Você está editando a Instância global.</Text>
-            </Card>
-          </Box>
         </AppShell.Navbar>
       )}
 
       <AppShell.Main>{children}</AppShell.Main>
 
-      <Drawer opened={profileOpen} onClose={() => setProfileOpen(false)} position="right" size="100%" title={<Text fw={900} size="lg">Perfil</Text>} padding="xl">
-        <DoctorProfile practitioner={profile} />
+      <Drawer opened={profileOpen} onClose={() => setProfileOpen(false)} position="right" size="100%" title={<Text fw={900} size="lg">Perfil e Funções CRM</Text>} padding="xl" bg="#f8fafc">
+        <DoctorProfile practitioner={profile} onClose={() => setProfileOpen(false)} />
       </Drawer>
     </AppShell>
   );
