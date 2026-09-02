@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Title, Text, Textarea, Button, Stack, Timeline, Badge, Divider } from '@mantine/core';
+import { 
+  Card, Title, Text, Textarea, Button, Stack, Timeline, Badge, Divider, Group, ThemeIcon, Loader, Center
+} from '@mantine/core';
+import { IconStethoscope, IconFileCheck, IconNotes } from '@tabler/icons-react';
 
 export function SoapNoteForm({ patient, medplum }: { patient: any; medplum: any }) {
   const [subjectiveNotes, setSubjectiveNotes] = useState('');
@@ -10,123 +13,139 @@ export function SoapNoteForm({ patient, medplum }: { patient: any; medplum: any 
   const [plan, setPlan] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [soapHistory, setSoapHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Función para cargar el histórico de notas SOAP de este paciente
   const loadSoapHistory = useCallback(async () => {
-    if (!patient) return;
+    if (!patient?.id) return;
+    setLoadingHistory(true);
     try {
       const bundle = await medplum.searchResources(
-        `DiagnosticReport?subject=Patient/${patient.id}&_sort=-_lastUpdated`
+        'DiagnosticReport',
+        { subject: `Patient/${patient.id}`, _sort: '-_lastUpdated' }
       );
       setSoapHistory(bundle);
     } catch (error) {
-      console.error("Error al cargar historial SOAP:", error);
+      console.error("Erro ao carregar histórico SOAP:", error);
+    } finally {
+      setLoadingHistory(false);
     }
-  }, [medplum, patient]);
+  }, [medplum, patient?.id]);
 
   useEffect(() => {
     loadSoapHistory();
   }, [loadSoapHistory]);
 
   const handleSave = async () => {
-    if (!patient) {
-      alert('Seleccione un paciente primero.');
-      return;
+    if (!patient?.id) return alert('Selecione um paciente primeiro.');
+    if (!subjectiveNotes && !objectiveNotes && !assessment && !plan) {
+      return alert('Preencha ao menos uma das seções da nota SOAP.');
     }
+
     setIsSaving(true);
     try {
-      const soapText = `SUBJETIVO: ${subjectiveNotes}\nOBJETIVO: ${objectiveNotes}\nANÁLISIS: ${assessment}\nPLAN: ${plan}`;
-      
-      // Obtenemos el perfil activo del médico/usuario para la auditoría
+      const soapText = `S (Subjetivo): ${subjectiveNotes}\nO (Objetivo): ${objectiveNotes}\nA (Avaliação/CID): ${assessment}\nP (Plano/Conduta): ${plan}`;
       const profile = medplum.getProfile();
 
       await medplum.createResource({
         resourceType: 'DiagnosticReport',
         status: 'final',
-        code: { text: 'Nota SOAP - Consulta Clínica / Estética' },
+        code: { text: 'Evolução SOAP - Registro Clínico' },
         subject: { reference: `Patient/${patient.id}` },
         effectiveDateTime: new Date().toISOString(),
-        performer: profile ? [{ reference: `${profile.resourceType}/${profile.id}`, display: profile.name?.[0]?.text || 'Especialista' }] : [],
+        performer: profile ? [{ reference: `${profile.resourceType}/${profile.id}`, display: profile.name?.[0]?.text || 'Profissional de Saúde' }] : [],
         conclusion: soapText
       });
 
-      alert('✅ ¡Nota SOAP guardada con éxito y registrada para auditoría!');
+      alert('Evolução SOAP registrada e arquivada com sucesso!');
       setSubjectiveNotes('');
       setObjectiveNotes('');
       setAssessment('');
       setPlan('');
-      loadSoapHistory(); // Recargar el histórico automáticamente
+      loadSoapHistory();
     } catch (error: any) {
-      alert('❌ Error al guardar nota SOAP: ' + error.message);
+      alert('Erro ao salvar nota SOAP: ' + error.message);
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <Stack>
-      <Card shadow="sm" padding="lg" radius="md" withBorder>
-        <Title order={3} mb="md" c="teal">Nueva Nota SOAP - Evolución Clínica</Title>
-        <Text size="sm" c="dimmed" mb="lg">
-          Paciente: {patient?.name?.[0]?.given?.join(' ')} {patient?.name?.[0]?.family || ''}
-        </Text>
+    <Stack gap="lg">
+      <Card shadow="sm" p="xl" radius="xl" withBorder bg="white">
+        <Group justify="space-between" mb="sm">
+          <div>
+            <Title order={4} c="dark.9">Nova Evolução Clínica (Padrão SOAP)</Title>
+            <Text size="xs" c="dimmed">
+              Paciente: <b>{patient?.name?.[0]?.given?.join(' ')} {patient?.name?.[0]?.family || ''}</b>
+            </Text>
+          </div>
+          <Badge color="teal" variant="light">Método SOAP</Badge>
+        </Group>
 
-        <Stack>
+        <Stack gap="sm" mt="md">
           <Textarea
-            label="Evaluación Subjetiva (Síntomas / Reporte)"
-            placeholder="Ej. Sofocos, cambios de humor..."
+            label="S — Subjetivo (Queixa principal, sintomas relatados pelo paciente)"
+            placeholder="Ex: Paciente relata cefaleia há 3 dias e queimação na pele pós-exposição solar..."
             minRows={2}
             value={subjectiveNotes}
             onChange={(e) => setSubjectiveNotes(e.currentTarget.value)}
+            radius="md"
           />
 
           <Textarea
-            label="Evaluación Objetiva (Signos vitales / Observación)"
-            placeholder="Ej. Presión arterial, estado de la piel..."
+            label="O — Objetivo (Exame físico, inspeção, sinais vitais, palpação)"
+            placeholder="Ex: PA: 120/80 mmHg, pele eritematosa na região malar, sem lesões ativas..."
             minRows={2}
             value={objectiveNotes}
             onChange={(e) => setObjectiveNotes(e.currentTarget.value)}
+            radius="md"
           />
 
           <Textarea
-            label="Análisis / Diagnóstico (Assessment)"
-            placeholder="Ej. Diagnóstico preliminar..."
+            label="A — Avaliação (Hipótese diagnóstica, diagnóstico diferencial, CID-10)"
+            placeholder="Ex: Dermatite de contato irritativa / Fotodermatose leve..."
             minRows={2}
             value={assessment}
             onChange={(e) => setAssessment(e.currentTarget.value)}
+            radius="md"
           />
 
           <Textarea
-            label="Plan de Tratamiento (Plan)"
-            placeholder="Ej. Procedimiento estético, prescripción..."
+            label="P — Plano (Conduta terapêutica, prescrição, exames solicitados, retorno)"
+            placeholder="Ex: Prescrito creme calmante 2x/dia. Protetor solar a cada 3h. Retorno em 14 dias..."
             minRows={2}
             value={plan}
             onChange={(e) => setPlan(e.currentTarget.value)}
+            radius="md"
           />
 
-          <Button color="teal" onClick={handleSave} loading={isSaving} mt="md">
-            Guardar Nota SOAP con Auditoría FHIR
-          </Button>
+          <Group justify="flex-end" mt="md">
+            <Button color="teal" radius="xl" size="md" onClick={handleSave} loading={isSaving} leftSection={<IconFileCheck size={18} />}>
+              Assinar e Salvar Nota SOAP
+            </Button>
+          </Group>
         </Stack>
       </Card>
 
-      {/* HISTÓRICO DE NOTAS SOAP PARA AUDITORÍA */}
-      <Card shadow="sm" padding="lg" radius="md" withBorder>
-        <Title order={4} mb="md" c="blue">Histórico de Auditoría y Notas SOAP</Title>
-        {soapHistory.length === 0 ? (
-          <Text size="sm" c="dimmed">No hay notas registradas previamente para este paciente.</Text>
+      {/* HISTÓRICO SOAP */}
+      <Card shadow="sm" p="xl" radius="xl" withBorder bg="white">
+        <Title order={5} mb="md" c="dark.9">Histórico de Evoluções SOAP do Paciente</Title>
+        {loadingHistory ? (
+          <Center py="xl"><Loader color="teal" size="sm" /></Center>
+        ) : soapHistory.length === 0 ? (
+          <Text size="sm" c="dimmed" ta="center" py="md">Nenhuma evolução anterior registrada para este paciente.</Text>
         ) : (
-          <Timeline active={soapHistory.length} bulletSize={24} lineWidth={2}>
+          <Timeline active={soapHistory.length} bulletSize={26} lineWidth={2}>
             {soapHistory.map((report: any) => {
-              const dateStr = report.effectiveDateTime ? new Date(report.effectiveDateTime).toLocaleString() : 'Fecha no registrada';
-              const authorName = report.performer?.[0]?.display || 'Auditoría del Sistema';
+              const dateStr = report.effectiveDateTime ? new Date(report.effectiveDateTime).toLocaleString('pt-BR') : 'Data recente';
+              const authorName = report.performer?.[0]?.display || 'Evolução Clínica';
               return (
-                <Timeline.Item key={report.id} title={`Dr(a). / Autor: ${authorName}`}>
+                <Timeline.Item key={report.id} title={authorName} bullet={<IconNotes size={14} />}>
                   <Text size="xs" c="dimmed">{dateStr}</Text>
-                  <Text size="sm" mt={4} style={{ whiteSpace: 'pre-line', background: '#f8f9fa', padding: '8px', borderRadius: '4px' }}>
+                  <Text size="xs" mt={6} style={{ whiteSpace: 'pre-line', background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#1e293b' }}>
                     {report.conclusion}
                   </Text>
-                  <Badge size="xs" color="blue" mt={4}>ID FHIR: {report.id}</Badge>
+                  <Badge size="xs" color="gray" variant="light" mt={6}>ID FHIR: {report.id?.slice(0, 8)}</Badge>
                 </Timeline.Item>
               );
             })}

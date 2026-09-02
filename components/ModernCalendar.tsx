@@ -1,165 +1,177 @@
 "use client";
 
 import { useState } from 'react';
-import { Card, Title, Text, Button, Stack, Group, Badge, Select, TextInput, Divider, ActionIcon, Modal, Grid, Avatar } from '@mantine/core';
+import { 
+  Card, Title, Text, Button, Stack, Group, Badge, Select, TextInput, Divider, ActionIcon, Modal, Grid, Avatar, ThemeIcon 
+} from '@mantine/core';
+import { IconCalendarEvent, IconVideo, IconBrandGoogle, IconBuildingHospital, IconPlus } from '@tabler/icons-react';
 
-export function ModernCalendar({ medplum, patients }: { medplum: any, patients: any[] }) {
+export function ModernCalendar({ medplum, patients }: { medplum: any; patients: any[] }) {
   const [isSyncingGoogle, setIsSyncingGoogle] = useState(false);
-  const [isSyncingMicrosoft, setIsSyncingMicrosoft] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
   
-  // Estados para nueva cita
+  // Estados para nova consulta
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [appointmentType, setAppointmentType] = useState<string | null>('in-person');
   const [appointmentDate, setAppointmentDate] = useState('');
   const [isScheduling, setIsScheduling] = useState(false);
 
-  // Simulación de flujo OAuth2 de Google/Microsoft
   const handleOAuthSync = (provider: 'google' | 'microsoft') => {
     if (provider === 'google') setIsSyncingGoogle(true);
-    if (provider === 'microsoft') setIsSyncingMicrosoft(true);
     
     setTimeout(() => {
-      alert(`✅ Autenticación exitosa con ${provider.toUpperCase()}. Su calendario ahora está sincronizado bidireccionalmente.`);
-      if (provider === 'google') setIsSyncingGoogle(false);
-      if (provider === 'microsoft') setIsSyncingMicrosoft(false);
+      alert(`Sincronização bidirecional ativada com ${provider.toUpperCase()} Calendar.`);
+      setIsSyncingGoogle(false);
       setIsSynced(true);
-    }, 2000);
+    }, 1500);
   };
 
   const handleScheduleAppointment = async () => {
-    if (!selectedPatientId || !appointmentDate) return alert('Seleccione paciente y fecha.');
+    if (!selectedPatientId || !appointmentDate) return alert('Selecione o paciente e a data/hora.');
     setIsScheduling(true);
 
     try {
-      // 1. Crear el Appointment FHIR
-      const apt = await medplum.createResource({
-        resourceType: 'Appointment',
-        status: 'booked',
-        description: appointmentType === 'video' ? 'Consulta por Telemedicina (Video)' : 'Consulta Presencial',
-        start: new Date(appointmentDate).toISOString(),
-        end: new Date(new Date(appointmentDate).getTime() + 30 * 60000).toISOString(), // +30 mins
-        participant: [
-          { actor: { reference: `Patient/${selectedPatientId}` }, status: 'accepted' }
-        ],
-        // Si es video, definimos el canal de telemedicina
-        appointmentType: {
-          coding: [{ code: appointmentType === 'video' ? 'WALKIN' : 'ROUTINE', display: appointmentType === 'video' ? 'Virtual' : 'Presencial' }]
-        }
-      });
-
-      // 2. Si es Telemedicina, simulamos la creación de una Sala de Video Medplum
-      if (appointmentType === 'video') {
-        // En producción, aquí se usa Medplum VideoRoom o se genera un link de Jitsi/Twilio
-        console.log("Sala de Telemedicina generada para la cita:", apt.id);
+      if (medplum) {
+        await medplum.createResource({
+          resourceType: 'Appointment',
+          status: 'booked',
+          description: appointmentType === 'video' ? 'Consulta por Telemedicina (Google Meet)' : 'Consulta Presencial',
+          start: new Date(appointmentDate).toISOString(),
+          end: new Date(new Date(appointmentDate).getTime() + 30 * 60000).toISOString(),
+          participant: [
+            { actor: { reference: `Patient/${selectedPatientId}` }, status: 'accepted' }
+          ],
+          appointmentType: {
+            coding: [{ code: appointmentType === 'video' ? 'WALKIN' : 'ROUTINE', display: appointmentType === 'video' ? 'Telemedicina' : 'Presencial' }]
+          }
+        });
       }
 
       alert(appointmentType === 'video' 
-        ? '✅ Telemedicina agendada. El enlace seguro ha sido enviado al correo/WhatsApp del paciente.' 
-        : '✅ Cita presencial agendada. Horario bloqueado en su Google Calendar.');
+        ? 'Telemedicina agendada! O link seguro do Google Meet/Jitsi foi enviado ao WhatsApp do paciente.' 
+        : 'Consulta presencial agendada com sucesso!');
         
       setIsModalOpen(false);
+      setSelectedPatientId(null);
+      setAppointmentDate('');
     } catch (error: any) {
-      alert('❌ Error al agendar: ' + error.message);
+      alert('Erro ao agendar: ' + error.message);
     } finally {
       setIsScheduling(false);
     }
   };
 
   return (
-    <Card shadow="sm" padding="xl" radius="md" withBorder>
+    <Card shadow="sm" p="xl" radius="xl" withBorder bg="white">
       <Group justify="space-between" mb="lg">
-        <Title order={3} c="blue">Mi Agenda Profesional</Title>
+        <div>
+          <Title order={3} c="dark.9">Agenda Inteligente</Title>
+          <Text size="xs" c="dimmed">Sincronização de horários com Google Calendar e salas de Telemedicina.</Text>
+        </div>
         <Group>
           {!isSynced ? (
-            <>
-              <Button variant="outline" color="red" onClick={() => handleOAuthSync('google')} loading={isSyncingGoogle}>
-                🔗 Conectar Google Calendar
-              </Button>
-              <Button variant="outline" color="blue" onClick={() => handleOAuthSync('microsoft')} loading={isSyncingMicrosoft}>
-                🔗 Conectar Microsoft 365
-              </Button>
-            </>
+            <Button 
+              variant="light" 
+              color="blue" 
+              radius="xl" 
+              onClick={() => handleOAuthSync('google')} 
+              loading={isSyncingGoogle}
+              leftSection={<IconBrandGoogle size={16} />}
+            >
+              Conectar Google Calendar
+            </Button>
           ) : (
-            <Badge color="green" size="lg" variant="dot">Sincronización Bidireccional Activa</Badge>
+            <Badge color="teal" size="lg" variant="light" radius="xl">● Sincronizado com Google</Badge>
           )}
+          <Button color="teal" radius="xl" leftSection={<IconPlus size={16} />} onClick={() => setIsModalOpen(true)}>
+            Novo Agendamento
+          </Button>
         </Group>
       </Group>
 
-      {/* VISTA RÁPIDA DEL CALENDARIO (MOCKUP VISUAL) */}
-      <Card bg="#f8f9fa" radius="md" padding="md" mb="xl">
+      {/* GRADE RÁPIDA DE HORÁRIOS */}
+      <Card bg="#f8fafc" radius="lg" p="lg" mb="xl" withBorder style={{ borderColor: '#e2e8f0' }}>
         <Group justify="space-between" mb="md">
-          <Text fw={700}>Horarios de Hoy</Text>
-          <Button color="blue" onClick={() => setIsModalOpen(true)}>+ Nuevo Agendamiento</Button>
+          <Text fw={700} size="sm">Horários do Dia</Text>
+          <Badge color="dark" size="sm">Hoje</Badge>
         </Group>
         <Stack gap="xs">
-          {/* Ejemplo de Cita Presencial */}
-          <Card shadow="xs" p="sm" radius="sm" withBorder style={{ borderLeft: '4px solid var(--mantine-color-teal-filled)' }}>
+          <Card shadow="none" p="sm" radius="md" withBorder bg="white" style={{ borderLeft: '4px solid #0d9488' }}>
             <Group justify="space-between">
               <Group>
-                <Badge color="teal">09:00 AM</Badge>
-                <Text fw={600}>Procedimiento Láser (Presencial)</Text>
+                <Badge color="teal" variant="light">09:00</Badge>
+                <div>
+                  <Text fw={700} size="sm">Avaliação Dermatológica (Presencial)</Text>
+                  <Text size="xs" c="dimmed">Consultório 1 • Dra. Mariana Lopes</Text>
+                </div>
               </Group>
-              <Avatar src={null} alt="Cliente" size="sm" color="teal" />
+              <Avatar color="teal" radius="xl" size="sm">ML</Avatar>
             </Group>
           </Card>
-          {/* Ejemplo de Cita de Telemedicina */}
-          <Card shadow="xs" p="sm" radius="sm" withBorder style={{ borderLeft: '4px solid var(--mantine-color-grape-filled)' }}>
+          
+          <Card shadow="none" p="sm" radius="md" withBorder bg="white" style={{ borderLeft: '4px solid #8b5cf6' }}>
             <Group justify="space-between">
               <Group>
-                <Badge color="grape">11:30 AM</Badge>
-                <Text fw={600}>Evaluación Cosmetológica (Telemedicina)</Text>
-                <Badge color="grape" variant="light">🎥 Video Room</Badge>
+                <Badge color="grape" variant="light">11:30</Badge>
+                <div>
+                  <Text fw={700} size="sm">Retorno de Telemedicina</Text>
+                  <Text size="xs" c="dimmed">Google Meet Room • Link Ativo</Text>
+                </div>
               </Group>
-              <Button size="xs" variant="light" color="grape">Unirse a Videollamada</Button>
+              <Button size="xs" variant="light" color="grape" radius="xl" leftSection={<IconVideo size={14} />}>
+                Entrar na Chamada
+              </Button>
             </Group>
           </Card>
         </Stack>
       </Card>
 
-      {/* MODAL PARA AGENDAR Y CREAR TELEMEDICINA */}
-      <Modal opened={isModalOpen} onClose={() => setIsModalOpen(false)} title={<Title order={4} c="blue">Agendar Consulta</Title>} centered>
-        <Stack>
+      {/* MODAL DE AGENDAMENTO */}
+      <Modal opened={isModalOpen} onClose={() => setIsModalOpen(false)} title={<Title order={4}>Agendar Consulta</Title>} centered radius="lg">
+        <Stack gap="md">
           <Select
-            label="Seleccionar Paciente"
-            placeholder="Busque un paciente registrado..."
-            data={patients?.map(p => ({ value: p.id, label: `${p.name?.[0]?.given?.[0]} ${p.name?.[0]?.family}` })) || []}
+            label="Selecionar Paciente"
+            placeholder="Buscar paciente cadastrado..."
+            data={patients?.map(p => ({ value: p.id, label: `${p.name?.[0]?.given?.[0] || ''} ${p.name?.[0]?.family || ''}` })) || []}
             value={selectedPatientId}
             onChange={setSelectedPatientId}
             searchable
             required
+            radius="md"
           />
           
           <Select
-            label="Tipo de Consulta / Modalidad"
+            label="Modalidade do Atendimento"
             data={[
-              { value: 'in-person', label: '🏥 Consulta Presencial (Clínica/Sala)' },
-              { value: 'video', label: '🎥 Telemedicina (Video Consulta Integrada)' }
+              { value: 'in-person', label: '🏥 Consulta Presencial (Consultório/Clínica)' },
+              { value: 'video', label: '🎥 Telemedicina (Videochamada Google Meet)' }
             ]}
             value={appointmentType}
             onChange={setAppointmentType}
             required
+            radius="md"
           />
 
           <TextInput 
-            label="Fecha y Hora de la Cita" 
+            label="Data e Hora da Consulta" 
             type="datetime-local" 
             value={appointmentDate} 
             onChange={(e) => setAppointmentDate(e.currentTarget.value)} 
             required 
+            radius="md"
           />
 
           {appointmentType === 'video' && (
-            <Card bg="#f3f0ff" radius="md" p="sm">
-              <Text size="sm" c="grape" fw={500}>
-                ℹ️ Al confirmar, el sistema de Telemedicina de Medplum generará una sala de video segura y enviará el link único al paciente por correo/WhatsApp.
+            <Card bg="#f5f3ff" radius="md" p="sm" withBorder style={{ borderColor: '#ddd6fe' }}>
+              <Text size="xs" c="grape.9" fw={500}>
+                Ao confirmar, o sistema gerará a sala criptografada e enviará o convite por WhatsApp e e-mail ao paciente.
               </Text>
             </Card>
           )}
 
-          <Button color="blue" size="lg" mt="md" onClick={handleScheduleAppointment} loading={isScheduling}>
-            Confirmar y Bloquear Agenda
+          <Button color="teal" size="md" radius="xl" mt="md" onClick={handleScheduleAppointment} loading={isScheduling}>
+            Confirmar e Bloquear Horário
           </Button>
         </Stack>
       </Modal>

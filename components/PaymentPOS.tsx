@@ -1,61 +1,98 @@
 "use client";
 
 import { useState } from 'react';
-import { Card, Title, Text, Button, Stack, Group, Badge, Select, TextInput, Divider, Center, Loader, ActionIcon } from '@mantine/core';
+import { 
+  Card, Title, Text, Button, Stack, Group, Badge, Select, TextInput, Divider, Center, Loader, ActionIcon, Paper, CopyButton
+} from '@mantine/core';
+import { IconQrcode, IconCreditCard, IconReceipt, IconCheck, IconCopy, IconCash } from '@tabler/icons-react';
+import { QRCodeSVG } from 'qrcode.react';
 
-export function PaymentPOS({ patient, medplum }: { patient: any, medplum: any }) {
-  const [amount, setAmount] = useState('150.00');
+export function PaymentPOS({ patient, medplum }: { patient: any; medplum: any }) {
+  const [amount, setAmount] = useState('180.00');
   const [paymentMethod, setPaymentMethod] = useState<string | null>('pix');
   const [gateway, setGateway] = useState<string | null>('asaas');
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [transactionId, setTransactionId] = useState('');
+  const [pixPayload, setPixPayload] = useState('');
+
+  const patientName = patient?.name?.[0] ? `${patient.name[0].given?.join(' ')} ${patient.name[0].family || ''}` : 'Paciente';
 
   const handleProcessPayment = async () => {
-    if (!amount || Number(amount) <= 0) return alert('Ingrese un monto válido.');
+    if (!amount || Number(amount) <= 0) return alert('Insira um valor válido para a cobrança.');
     setIsProcessing(true);
 
-    // Simulación de conexión a API de Pasarela (Asaas, Cielo, PicPay Empresas)
+    const mockTxId = `DH-PIX-${Math.random().toString(36).substring(2, 10).toUpperCase()}-2026`;
+    const fakePixCopiaCola = `00020126580014br.gov.bcb.pix0136${mockTxId}520400005303986540${Number(amount).toFixed(2)}5802BR5925DELCHAN HEALTH LTDA6009SAO PAULO62070503***6304`;
+
     setTimeout(async () => {
-      const mockTxId = `TX-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-      
       try {
-        // Registrar el pago en el estándar FHIR (PaymentNotice)
-        await medplum.createResource({
-          resourceType: 'PaymentNotice',
-          status: 'active',
-          request: { reference: `Patient/${patient.id}` },
-          created: new Date().toISOString(),
-          payment: { reference: `#${mockTxId}` },
-          amount: {
-            value: Number(amount),
-            currency: 'BRL'
-          }
-        });
+        if (medplum && patient?.id) {
+          await medplum.createResource({
+            resourceType: 'PaymentNotice',
+            status: 'active',
+            request: { reference: `Patient/${patient.id}` },
+            created: new Date().toISOString(),
+            payment: { reference: `#${mockTxId}` },
+            amount: {
+              value: Number(amount),
+              currency: 'BRL'
+            }
+          });
+        }
 
         setTransactionId(mockTxId);
+        setPixPayload(fakePixCopiaCola);
         setPaymentSuccess(true);
       } catch (error) {
         console.error(error);
-        alert('Error al registrar el pago en el servidor FHIR.');
+        alert('Erro ao registrar pagamento no prontuário.');
       } finally {
         setIsProcessing(false);
       }
-    }, 2500); // Simulamos 2.5 segundos de latencia de red con la terminal
+    }, 1500);
   };
 
   if (paymentSuccess) {
     return (
-      <Card shadow="sm" padding="lg" radius="md" withBorder bg="#ebfbee">
+      <Card shadow="sm" p="xl" radius="xl" withBorder bg="#f0fdf4" style={{ borderColor: '#bbf7d0' }}>
         <Center>
-          <Stack align="center">
-            <Title order={3} c="teal">¡Pago Aprobado!</Title>
-            <Text>El cobro se ha registrado exitosamente en el expediente contable del paciente.</Text>
-            <Badge color="teal" size="lg">Transacción: {transactionId}</Badge>
-            <Button variant="light" color="teal" onClick={() => setPaymentSuccess(false)} mt="md">
-              Procesar Nuevo Cobro
-            </Button>
+          <Stack align="center" gap="sm" style={{ maxWidth: '460px', textAlign: 'center' }}>
+            <ThemeIcon color="teal" size={54} radius="xl" variant="filled">
+              <IconCheck size={32} />
+            </ThemeIcon>
+            <Title order={3} c="teal.9">Pagamento Processado com Sucesso!</Title>
+            <Text size="sm" c="dark.7">
+              A transação foi liquidada e vinculada ao prontuário financeiro de <b>{patientName}</b>.
+            </Text>
+            
+            <Badge color="teal" size="lg" radius="sm">Comprovante: {transactionId}</Badge>
+
+            {paymentMethod === 'pix' && (
+              <Paper p="md" radius="lg" withBorder bg="white" mt="md" style={{ width: '100%' }}>
+                <Text size="xs" fw={700} c="dimmed" mb="xs">QR CODE PIX DINÂMICO</Text>
+                <Center mb="sm">
+                  <QRCodeSVG value={pixPayload || transactionId} size={150} />
+                </Center>
+                <CopyButton value={pixPayload} timeout={2000}>
+                  {({ copied, copy }) => (
+                    <Button color={copied ? 'teal' : 'dark'} fullWidth radius="xl" size="xs" onClick={copy} leftSection={<IconCopy size={14} />}>
+                      {copied ? 'Chave Copiada!' : 'Copiar Chave Pix Copia e Cola'}
+                    </Button>
+                  )}
+                </CopyButton>
+              </Paper>
+            )}
+
+            <Group mt="md">
+              <Button variant="default" radius="xl" onClick={() => window.print()} leftSection={<IconReceipt size={16} />}>
+                Imprimir Comprovante Térmico
+              </Button>
+              <Button variant="light" color="teal" radius="xl" onClick={() => setPaymentSuccess(false)}>
+                Novo Lançamento
+              </Button>
+            </Group>
           </Stack>
         </Center>
       </Card>
@@ -63,61 +100,69 @@ export function PaymentPOS({ patient, medplum }: { patient: any, medplum: any })
   }
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
+    <Card shadow="sm" p="xl" radius="xl" withBorder bg="white">
       <Group justify="space-between" mb="md">
-        <Title order={4} c="green">Terminal POS (Caja)</Title>
-        <Badge color="green" variant="dot">Online</Badge>
+        <div>
+          <Title order={4} c="dark.9">Terminal de Caixa & PDV (Faturamento)</Title>
+          <Text size="xs" c="dimmed">Emissão de cobranças Pix, Cartão de Crédito/Débito e Split de Repasse.</Text>
+        </div>
+        <Badge color="teal" variant="dot" size="md">Terminal Integrado</Badge>
       </Group>
 
-      <Stack>
-        <Text size="sm" c="dimmed">
-          Paciente: {patient?.name?.[0]?.given?.join(' ')} {patient?.name?.[0]?.family || ''}
-        </Text>
+      <Stack gap="md">
+        <Paper p="sm" radius="md" bg="#f8fafc" withBorder style={{ borderColor: '#f1f5f9' }}>
+          <Text size="xs" fw={700} c="dimmed">PACIENTE TITULAR</Text>
+          <Text fw={700} size="sm" c="dark.9">{patientName}</Text>
+        </Paper>
 
         <Group grow align="flex-end">
           <TextInput 
-            label="Monto a Cobrar (R$)" 
+            label="Valor a Cobrar (R$)" 
             placeholder="0.00" 
             value={amount} 
             onChange={(e) => setAmount(e.currentTarget.value)} 
             type="number"
-            size="lg"
+            size="md"
+            radius="md"
+            leftSection={<Text fw={700} size="sm" c="dimmed">R$</Text>}
           />
           <Select
-            label="Método de Pago"
+            label="Forma de Pagamento"
             data={[
-              { value: 'pix', label: 'Pix (Código QR Dinámico)' },
-              { value: 'credit', label: 'Tarjeta de Crédito (Terminal)' },
-              { value: 'debit', label: 'Tarjeta de Débito (Terminal)' },
-              { value: 'facial', label: 'Biometría Facial (Touchless)' }
+              { value: 'pix', label: '⚡ Pix Instantâneo (QR Code Dinâmico)' },
+              { value: 'credit', label: '💳 Cartão de Crédito (Maquininha/Link)' },
+              { value: 'debit', label: '💳 Cartão de Débito' },
+              { value: 'cash', label: '💵 Dinheiro em Espécie' }
             ]}
             value={paymentMethod}
             onChange={setPaymentMethod}
-            size="lg"
+            size="md"
+            radius="md"
           />
         </Group>
 
-        <Divider my="sm" />
-
-        <Title order={6}>Enrutamiento de Pasarela SaaS</Title>
         <Select
+          label="Gateway de Pagamento / Adquirente"
           data={[
-            { value: 'asaas', label: 'Asaas (Split de Pagos)' },
-            { value: 'cielo', label: 'Cielo (API e-Commerce)' },
-            { value: 'picpay', label: 'PicPay Empresas' }
+            { value: 'asaas', label: 'Asaas Pagamentos (Split Automático de Repasse)' },
+            { value: 'cielo', label: 'Cielo LIO / API e-Commerce' },
+            { value: 'stone', label: 'Stone TEF Integrado' }
           ]}
           value={gateway}
           onChange={setGateway}
+          radius="md"
         />
 
         <Button 
-          color="green" 
+          color="teal" 
           size="lg" 
+          radius="xl" 
           mt="md" 
           onClick={handleProcessPayment} 
           loading={isProcessing}
+          leftSection={<IconCash size={20} />}
         >
-          {isProcessing ? 'Conectando con Terminal / Banco...' : `Cobrar R$ ${amount}`}
+          {isProcessing ? 'Comunicando com Adquirente...' : `Receber R$ ${Number(amount || 0).toFixed(2)}`}
         </Button>
       </Stack>
     </Card>

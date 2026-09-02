@@ -2,25 +2,49 @@
 
 import { useState } from 'react';
 import { 
-  Title, Text, Card, Grid, Button, Group, Tabs, Stack, Badge, Avatar, ActionIcon, ScrollArea, TextInput, Textarea, Divider, Switch, Menu, Box 
+  Title, Text, Card, Grid, Button, Group, Tabs, Stack, Badge, Avatar, ActionIcon, ScrollArea, TextInput, Textarea, Divider, Switch, Menu, Box, Modal, Paper
 } from '@mantine/core';
 import { 
-  IconBrandWhatsapp, IconBrandInstagram, IconMail, IconMessageCircle, IconPlus, IconFilter, IconCalendarEvent, IconSend, IconCode 
+  IconBrandWhatsapp, IconBrandInstagram, IconMail, IconMessageCircle, IconPlus, IconFilter, IconCalendarEvent, IconSend, IconCode, IconUserCheck
 } from '@tabler/icons-react';
 import { useTenant } from '../../../../contexts/TenantContext';
 
-// Dados simulados para o Kanban
 const initialLeads = [
-  { id: '1', name: 'Juliana Costa', source: 'whatsapp', intent: 'Consulta Dermatologia', status: 'novo', time: '10 min atrás' },
-  { id: '2', name: 'Carlos Mendes', source: 'instagram', intent: 'Orçamento Estética', status: 'novo', time: '1 hora atrás' },
-  { id: '3', name: 'Ana Souza', source: 'form', intent: 'Retorno Pediatria', status: 'contato', time: 'Ontem' },
-  { id: '4', name: 'Roberto Lima', source: 'tiktok', intent: 'Implante Dentário', status: 'agendado', time: '2 dias atrás' },
+  { id: '1', name: 'Juliana Costa', source: 'whatsapp', intent: 'Consulta Dermatologia / Melasma', status: 'novo', time: '10 min atrás' },
+  { id: '2', name: 'Carlos Mendes', source: 'instagram', intent: 'Orçamento Harmonização Facial', status: 'novo', time: '1 hora atrás' },
+  { id: '3', name: 'Ana Souza', source: 'form', intent: 'Retorno Clínico Geral', status: 'contato', time: 'Ontem' },
+  { id: '4', name: 'Roberto Lima', source: 'tiktok', intent: 'Implante & Estética', status: 'agendado', time: 'Há 2 dias' },
 ];
 
 export default function CRMDashboard() {
   const { tenantConfig } = useTenant();
   const primaryColor = tenantConfig?.internalColor || '#0d9488';
   const [activeTab, setActiveTab] = useState<string | null>('pipeline');
+  const [leads, setLeads] = useState(initialLeads);
+
+  const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
+  const [leadName, setLeadName] = useState('');
+  const [leadSource, setLeadSource] = useState('whatsapp');
+  const [leadIntent, setLeadIntent] = useState('');
+
+  const handleAddLead = () => {
+    if (!leadName) return;
+    const newL = {
+      id: Date.now().toString(),
+      name: leadName,
+      source: leadSource,
+      intent: leadIntent || 'Interesse Geral',
+      status: 'novo',
+      time: 'Agora'
+    };
+    setLeads([newL, ...leads]);
+    setIsNewLeadModalOpen(false);
+    setLeadName(''); setLeadIntent('');
+  };
+
+  const handleMoveStatus = (id: string, status: string) => {
+    setLeads(leads.map(l => l.id === id ? { ...l, status } : l));
+  };
 
   const getSourceIcon = (source: string) => {
     switch(source) {
@@ -36,79 +60,92 @@ export default function CRMDashboard() {
       <Group justify="space-between" mb="xl">
         <div>
           <Title order={2} fw={800} c="dark.9">CRM & Marketing Omnichannel</Title>
-          <Text c="dimmed" size="sm">Gestão de Leads, Caixa de Entrada Centralizada e Campanhas.</Text>
+          <Text c="dimmed" size="sm">Gestão global de Leads da clínica, caixa de entrada centralizada e campanhas.</Text>
         </div>
         <Group>
-          <Button variant="default" radius="xl" leftSection={<IconFilter size={16} />}>Filtros</Button>
-          <Button color={primaryColor} radius="xl" leftSection={<IconPlus size={16} />}>Novo Lead Manual</Button>
+          <Button 
+            color={primaryColor} 
+            radius="xl" 
+            leftSection={<IconPlus size={16} />}
+            onClick={() => setIsNewLeadModalOpen(true)}
+          >
+            + Novo Lead Manual
+          </Button>
         </Group>
       </Group>
 
       <Tabs value={activeTab} onChange={setActiveTab} color={primaryColor} radius="xl" mb="xl">
         <Tabs.List>
-          <Tabs.Tab value="pipeline" fw={600} fz="sm">📋 Pipeline (Kanban)</Tabs.Tab>
-          <Tabs.Tab value="inbox" fw={600} fz="sm">💬 Inbox Central</Tabs.Tab>
-          <Tabs.Tab value="campanhas" fw={600} fz="sm">🚀 Campanhas & Ads</Tabs.Tab>
-          <Tabs.Tab value="agenda" fw={600} fz="sm">📅 Visão Agenda (Clínica)</Tabs.Tab>
+          <Tabs.Tab value="pipeline" fw={700} fz="sm">📋 Pipeline Geral ({leads.length})</Tabs.Tab>
+          <Tabs.Tab value="inbox" fw={700} fz="sm">💬 Inbox Central</Tabs.Tab>
+          <Tabs.Tab value="campanhas" fw={700} fz="sm">🚀 Campanhas & Disparos</Tabs.Tab>
         </Tabs.List>
 
         {/* 1. PIPELINE KANBAN */}
         <Tabs.Panel value="pipeline" pt="xl">
           <Grid gutter="lg">
-            {['novo', 'contato', 'agendado', 'concluido'].map((colStatus) => (
-              <Grid.Col span={{ base: 12, md: 3 }} key={colStatus}>
-                <Card bg="#f1f5f9" p="md" radius="xl" style={{ minHeight: '70vh' }}>
-                  <Group justify="space-between" mb="md">
-                    <Text fw={800} tt="uppercase" size="xs" c="dimmed">
-                      {colStatus === 'novo' ? 'Novos Leads' : colStatus === 'contato' ? 'Em Negociação' : colStatus === 'agendado' ? 'Consulta Agendada' : 'Finalizado'}
-                    </Text>
-                    <Badge color="gray" variant="filled" size="sm">
-                      {initialLeads.filter(l => l.status === colStatus).length}
-                    </Badge>
-                  </Group>
+            {[
+              { key: 'novo', label: 'Novos Leads', color: 'blue' },
+              { key: 'contato', label: 'Em Negociação', color: 'orange' },
+              { key: 'agendado', label: 'Consulta Agendada', color: 'teal' },
+              { key: 'concluido', label: 'Atendimento Finalizado', color: 'gray' }
+            ].map((col) => {
+              const columnLeads = leads.filter(l => l.status === col.key);
 
-                  <Stack gap="sm">
-                    {initialLeads.filter(l => l.status === colStatus).map(lead => (
-                      <Card key={lead.id} p="md" radius="lg" shadow="sm" withBorder style={{ cursor: 'pointer', transition: 'transform 0.2s' }}>
-                        <Group justify="space-between" mb="xs">
-                          <Group gap="xs">
-                            {getSourceIcon(lead.source)}
-                            <Text size="xs" fw={700} c="dimmed">{lead.time}</Text>
+              return (
+                <Grid.Col span={{ base: 12, sm: 6, lg: 3 }} key={col.key}>
+                  <Card bg="#f1f5f9" p="md" radius="xl" style={{ minHeight: '70vh' }}>
+                    <Group justify="space-between" mb="md">
+                      <Text fw={800} tt="uppercase" size="xs" c="dimmed">{col.label}</Text>
+                      <Badge color={col.color} variant="filled" size="sm">{columnLeads.length}</Badge>
+                    </Group>
+
+                    <Stack gap="sm">
+                      {columnLeads.map(lead => (
+                        <Card key={lead.id} p="md" radius="lg" shadow="xs" withBorder bg="white" style={{ borderColor: '#e2e8f0' }}>
+                          <Group justify="space-between" mb="xs">
+                            <Group gap="xs">
+                              {getSourceIcon(lead.source)}
+                              <Text size="xs" fw={700} c="dimmed">{lead.time}</Text>
+                            </Group>
+                            <Menu shadow="md" width={200}>
+                              <Menu.Target><ActionIcon variant="subtle" color="gray" size="sm">⋮</ActionIcon></Menu.Target>
+                              <Menu.Dropdown>
+                                <Menu.Item onClick={() => handleMoveStatus(lead.id, 'contato')}>Mover para Negociação</Menu.Item>
+                                <Menu.Item onClick={() => handleMoveStatus(lead.id, 'agendado')}>Mover para Agendado</Menu.Item>
+                                <Menu.Item onClick={() => handleMoveStatus(lead.id, 'concluido')}>Mover para Concluído</Menu.Item>
+                              </Menu.Dropdown>
+                            </Menu>
                           </Group>
-                          <Menu shadow="md" width={200}>
-                            <Menu.Target><ActionIcon variant="subtle" color="gray" size="sm">⋮</ActionIcon></Menu.Target>
-                            <Menu.Dropdown>
-                              <Menu.Item>Atribuir a Médico</Menu.Item>
-                              <Menu.Item>Mover para Agendado</Menu.Item>
-                            </Menu.Dropdown>
-                          </Menu>
-                        </Group>
-                        <Text fw={800} size="sm" c="dark.9">{lead.name}</Text>
-                        <Text size="xs" c="teal.7" fw={600} mb="sm">{lead.intent}</Text>
-                        <Button variant="light" color={primaryColor} size="xs" fullWidth radius="md">Responder</Button>
-                      </Card>
-                    ))}
-                  </Stack>
-                </Card>
-              </Grid.Col>
-            ))}
+                          <Text fw={800} size="sm" c="dark.9">{lead.name}</Text>
+                          <Text size="xs" c="teal.8" fw={600} mb="sm">{lead.intent}</Text>
+                          <Button variant="light" color={primaryColor} size="xs" fullWidth radius="md">
+                            Ver Detalhes do Lead
+                          </Button>
+                        </Card>
+                      ))}
+                    </Stack>
+                  </Card>
+                </Grid.Col>
+              );
+            })}
           </Grid>
         </Tabs.Panel>
 
-        {/* 2. CAIXA DE ENTRADA OMNICHANNEL */}
+        {/* 2. INBOX CENTRAL */}
         <Tabs.Panel value="inbox" pt="xl">
-          <Card radius="20px" withBorder p={0} style={{ display: 'flex', height: '70vh', borderColor: '#e2e8f0' }}>
+          <Card radius="20px" withBorder p={0} bg="white" style={{ display: 'flex', height: '70vh', borderColor: '#e2e8f0' }}>
             <Box w={350} style={{ borderRight: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }} p="md">
-              <TextInput placeholder="Buscar conversa..." mb="md" radius="xl" />
-              <ScrollArea h="60vh">
-                <Stack gap={0}>
-                  {initialLeads.map((l) => (
-                    <Card key={l.id} p="sm" radius="md" style={{ cursor: 'pointer', backgroundColor: l.id === '1' ? '#fff' : 'transparent', border: l.id === '1' ? '1px solid #e2e8f0' : 'none' }} mb="xs">
+              <TextInput placeholder="Buscar lead..." mb="md" radius="xl" />
+              <ScrollArea h="58vh">
+                <Stack gap="xs">
+                  {leads.map((l) => (
+                    <Card key={l.id} p="sm" radius="md" bg="white" withBorder style={{ borderColor: '#e2e8f0' }}>
                       <Group wrap="nowrap">
                         <Avatar color={primaryColor} radius="xl">{l.name.charAt(0)}</Avatar>
                         <Box style={{ flex: 1 }}>
                           <Group justify="space-between"><Text size="sm" fw={700}>{l.name}</Text>{getSourceIcon(l.source)}</Group>
-                          <Text size="xs" c="dimmed" lineClamp={1}>Gostaria de saber o valor da consulta...</Text>
+                          <Text size="xs" c="dimmed" lineClamp={1}>{l.intent}</Text>
                         </Box>
                       </Group>
                     </Card>
@@ -119,76 +156,62 @@ export default function CRMDashboard() {
             <Box style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <Box p="md" style={{ borderBottom: '1px solid #e2e8f0' }}>
                 <Group justify="space-between">
-                  <Group><Avatar color="teal" radius="xl">JC</Avatar><div><Text fw={700}>Juliana Costa</Text><Text size="xs" c="dimmed">WhatsApp • Atendimento via IA ativado</Text></div></Group>
-                  <Button variant="light" color="blue" radius="xl" leftSection={<IconCalendarEvent size={16}/>}>Agendar</Button>
+                  <Group><Avatar color="teal" radius="xl">JC</Avatar><div><Text fw={700}>Juliana Costa</Text><Text size="xs" c="dimmed">WhatsApp • Atendimento Automatizado</Text></div></Group>
+                  <Button variant="light" color="teal" radius="xl" size="xs">Agendar Consulta</Button>
                 </Group>
               </Box>
               <ScrollArea style={{ flex: 1, backgroundColor: '#fcfcfd' }} p="xl">
-                {/* Simulador de Chat */}
-                <Group justify="flex-start" mb="md"><Card p="sm" radius="xl" bg="gray.1" style={{ maxWidth: '60%' }}><Text size="sm">Olá! Gostaria de saber o valor da consulta de Dermatologia para amanhã.</Text><Text size="10px" c="dimmed" ta="right" mt={4}>10:45</Text></Card></Group>
-                <Group justify="flex-end" mb="md"><Card p="sm" radius="xl" bg="teal.1" style={{ maxWidth: '60%' }}><Text size="sm">Olá Juliana! Tudo bem? A consulta está R$ 450,00. Temos um horário às 14h com a Dra. Marta. Deseja confirmar?</Text><Text size="10px" c="dimmed" ta="right" mt={4}>10:46 • Assistente Virtual</Text></Card></Group>
+                <Group justify="flex-start" mb="md"><Card p="sm" radius="xl" bg="gray.1" style={{ maxWidth: '60%' }}><Text size="sm">Olá! Gostaria de saber os horários de Dermatologia.</Text></Card></Group>
+                <Group justify="flex-end" mb="md"><Card p="sm" radius="xl" bg="teal.1" style={{ maxWidth: '60%' }}><Text size="sm">Olá Juliana! Temos horário amanhã às 14h com a Dra. Mariana. Deseja confirmar?</Text></Card></Group>
               </ScrollArea>
-              <Box p="md" style={{ borderTop: '1px solid #e2e8f0', backgroundColor: '#fff' }}>
+              <Box p="md" style={{ borderTop: '1px solid #e2e8f0' }}>
                 <Group wrap="nowrap">
-                  <ActionIcon size="xl" radius="xl" variant="default"><IconPlus size={20} /></ActionIcon>
-                  <TextInput placeholder="Digite sua mensagem (WhatsApp)..." style={{ flex: 1 }} radius="xl" size="md" />
-                  <ActionIcon size="xl" radius="xl" color="teal" variant="filled"><IconSend size={20} /></ActionIcon>
+                  <TextInput placeholder="Digite sua mensagem corporativa..." style={{ flex: 1 }} radius="xl" size="md" />
+                  <ActionIcon size="xl" radius="xl" color="teal" variant="filled"><IconSend size={18} /></ActionIcon>
                 </Group>
               </Box>
             </Box>
           </Card>
         </Tabs.Panel>
 
-        {/* 3. CAMPANHAS E IMPORTAÇÃO HTML */}
+        {/* 3. CAMPANHAS */}
         <Tabs.Panel value="campanhas" pt="xl">
           <Grid gutter="xl">
             <Grid.Col span={{ base: 12, md: 4 }}>
-              <Card p="xl" radius="20px" withBorder style={{ borderColor: '#e2e8f0' }}>
-                <Title order={4} mb="md">Nova Campanha</Title>
-                <Stack>
-                  <TextInput label="Nome da Campanha" placeholder="Ex: Promoção Botox Outono" radius="md" />
+              <Card p="xl" radius="xl" withBorder bg="white" style={{ borderColor: '#e2e8f0' }}>
+                <Title order={4} mb="md">Nova Campanha SaaS</Title>
+                <Stack gap="md">
+                  <TextInput label="Nome da Campanha" placeholder="Ex: Campanha de Retorno Anual" radius="md" />
                   <TextInput label="Público Alvo (Filtro FHIR)" placeholder="Ex: Pacientes sem retorno há 6 meses" radius="md" />
-                  <Divider my="sm" />
+                  <Divider my="xs" />
                   <Text fw={700} size="sm">Canais de Disparo</Text>
-                  <Switch label="WhatsApp (Flow/API)" color="teal" defaultChecked />
-                  <Switch label="SMS (Tecnologia RCS)" color="blue" defaultChecked />
+                  <Switch label="WhatsApp (API Oficial)" color="teal" defaultChecked />
                   <Switch label="E-mail Marketing" color="grape" defaultChecked />
                 </Stack>
               </Card>
             </Grid.Col>
-            
             <Grid.Col span={{ base: 12, md: 8 }}>
-              <Card p="xl" radius="20px" withBorder style={{ borderColor: '#e2e8f0' }}>
-                <Group justify="space-between" mb="md">
-                  <Title order={4}>Conteúdo do E-mail (Construtor Visual)</Title>
-                  <Button variant="light" color="grape" radius="xl" leftSection={<IconCode size={16}/>}>Importar HTML (Canva)</Button>
-                </Group>
-                <Text size="sm" c="dimmed" mb="lg">Cole abaixo o código HTML exportado do Canva ou de seu software de design.</Text>
-                <Textarea minRows={12} radius="md" placeholder="<html><body><h1>Sua campanha aqui</h1></body></html>" styles={{ input: { fontFamily: 'monospace', fontSize: '13px', backgroundColor: '#1e293b', color: '#38bdf8' } }} />
+              <Card p="xl" radius="xl" withBorder bg="white" style={{ borderColor: '#e2e8f0' }}>
+                <Title order={4} mb="md">Conteúdo da Mensagem</Title>
+                <Textarea minRows={10} radius="md" defaultValue="Olá {nome_paciente}, estamos com condições especiais para seu check-up de saúde neste mês!" />
                 <Group justify="flex-end" mt="xl">
-                  <Button variant="default" radius="xl">Enviar Teste</Button>
-                  <Button color={primaryColor} radius="xl" leftSection={<IconSend size={16}/>}>Disparar Campanha</Button>
+                  <Button color={primaryColor} radius="xl" onClick={() => alert('Campanha enviada com sucesso!')}>
+                    Disparar Campanha para Toda a Base
+                  </Button>
                 </Group>
               </Card>
             </Grid.Col>
           </Grid>
         </Tabs.Panel>
-
-        {/* 4. VISÃO DE AGENDA GLOBAL (ESTILO DOCTORALIA) */}
-        <Tabs.Panel value="agenda" pt="xl">
-          <Card p="xl" radius="20px" withBorder style={{ height: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}>
-            <Stack align="center">
-              <IconCalendarEvent size={60} color="#cbd5e1" />
-              <Title order={3} c="dark.7">Agenda Multi-Especialista</Title>
-              <Text c="dimmed" ta="center" style={{ maxWidth: 500 }}>
-                A grade de horários estilo Doctoralia requer a instalação do módulo <b>@fullcalendar/react</b> com o plugin <b>resourceTimeGrid</b> para renderizar os calendários dos médicos lado a lado perfeitamente.
-              </Text>
-              <Button mt="md" color={primaryColor} radius="xl">Instalar Módulo de Calendário</Button>
-            </Stack>
-          </Card>
-        </Tabs.Panel>
-
       </Tabs>
+
+      <Modal opened={isNewLeadModalOpen} onClose={() => setIsNewLeadModalOpen(false)} title={<Title order={4}>Novo Lead Manual</Title>} centered radius="lg">
+        <Stack gap="md">
+          <TextInput label="Nome do Lead" value={leadName} onChange={e => setLeadName(e.target.value)} required radius="md" />
+          <TextInput label="Procedimento / Interesse" value={leadIntent} onChange={e => setLeadIntent(e.target.value)} radius="md" />
+          <Button color="teal" radius="xl" onClick={handleAddLead}>Salvar Lead</Button>
+        </Stack>
+      </Modal>
     </div>
   );
 }

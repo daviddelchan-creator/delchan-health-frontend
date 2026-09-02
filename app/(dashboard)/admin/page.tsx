@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  Group, Title, Button, Text, Loader, Center, Card, Modal, Drawer, Grid, Stack, Avatar, Accordion, Badge, Table, TextInput, Switch, ActionIcon, ColorInput, FileButton, Indicator, Box, Checkbox, Textarea, Tooltip
+  Group, Title, Button, Text, Loader, Center, Card, Modal, Drawer, Grid, Stack, Avatar, Accordion, Badge, Table, TextInput, Switch, ActionIcon, ColorInput, FileButton, Indicator, Box, Checkbox, Textarea, Tooltip, Paper, ThemeIcon
 } from '@mantine/core';
 
 import { useMedplum, useMedplumProfile } from '@medplum/react-hooks'; 
@@ -11,7 +11,9 @@ import { DynamicIntakeForm } from '../../../components/DynamicIntakeForm';
 import { PatientWorkspace } from '../../../components/PatientWorkspace';
 import { StaffManager } from '../../../components/admin/StaffManager';
 import { useTenant } from '../../../contexts/TenantContext';
-import { IconCameraPlus, IconBuildingHospital, IconTrash, IconPower, IconPlus, IconFileText } from '@tabler/icons-react';
+import { 
+  IconCameraPlus, IconBuildingHospital, IconTrash, IconPower, IconPlus, IconFileText, IconCheck, IconShieldLock, IconBuilding, IconLayoutGrid, IconSparkles
+} from '@tabler/icons-react';
 import { Organization } from '@medplum/fhirtypes';
 
 function AdminPortalContent() {
@@ -19,7 +21,7 @@ function AdminPortalContent() {
   const medplum = useMedplum();
   const searchParams = useSearchParams();
   
-  const { dict, tenantConfig, setTenantConfig, toggleMFA } = useTenant();
+  const { dict, tenantConfig, setTenantConfig, toggleMFA, tenants, switchTenant, addNewTenant, toggleModule } = useTenant();
   const primaryColor = tenantConfig?.internalColor || '#0d9488';
   
   const activeSidebarTab = searchParams.get('tab') || 'overview';
@@ -28,36 +30,27 @@ function AdminPortalContent() {
   const [clinicType, setClinicType] = useState<string | null>('medical');
 
   // ==========================================
-  // OLD COMMAND CENTER (EMPI, Finance, Apps)
+  // PACIENTES E OPERACIONAL
   // ==========================================
   const [patients, setPatients] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [editingPatient, setEditingPatient] = useState<any | null>(null);
-  const [tcleModalData, setTcleModalData] = useState<{ patient: any, status: string } | null>(null);
 
+  // ==========================================
+  // FINANCEIRO
+  // ==========================================
   const [transactionModal, setTransactionModal] = useState<'receita' | 'despesa' | null>(null);
   const [txDesc, setTxDesc] = useState('');
   const [txValor, setTxValor] = useState('');
   const [financials, setFinancials] = useState({ bruto: 142500, repasses: 45000, despesas: 13200 });
   const [transacoes, setTransacoes] = useState([
-    { id: 1, data: 'Hoje, 10:30', desc: 'Consulta - Dra. Souza', tipo: 'Receita', valor: 450, status: 'Liquidado' },
-    { id: 2, data: 'Hoje, 09:15', desc: 'Repasse Comissão (40%)', tipo: 'Repasse', valor: -180, status: 'A Pagar' },
+    { id: 1, data: 'Hoje, 10:30', desc: 'Consulta Dermatologia - Dra. Mariana', tipo: 'Receita', valor: 450, status: 'Liquidado' },
+    { id: 2, data: 'Hoje, 09:15', desc: 'Repasse Comissão de Procedimento (40%)', tipo: 'Repasse', valor: -180, status: 'A Pagar' },
   ]);
-  const [integrationApp, setIntegrationApp] = useState<'odoo' | 'govbr' | 'asaas' | null>(null);
-  const lucroLiquido = financials.bruto - financials.repasses - financials.despesas;
 
   // ==========================================
-  // NEW GOD MODE (Módulos, Layout, Clínica)
+  // CLÍNICA / ORGANIZAÇÃO FHIR
   // ==========================================
-  const [modules, setModules] = useState({ agenda: true, prontuario: true, faturamento: false, crm: true });
-  const toggleModule = (key: keyof typeof modules) => setModules(prev => ({ ...prev, [key]: !prev[key] }));
-
-  const defaultSidebar = { insurance: true, allergies: true, problems: true, vitals: false };
-  const currentSidebar = tenantConfig.sidebarModules || defaultSidebar;
-  const toggleSidebarSection = (key: keyof typeof defaultSidebar) => {
-    setTenantConfig({ ...tenantConfig, sidebarModules: { ...currentSidebar, [key]: !currentSidebar[key] } });
-  };
-
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [clinicCnpj, setClinicCnpj] = useState('');
   const [clinicPhone, setClinicPhone] = useState('');
@@ -66,30 +59,36 @@ function AdminPortalContent() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isSavingClinic, setIsSavingClinic] = useState(false);
 
+  // Modal Novo Tenant
+  const [isNewTenantModalOpen, setIsNewTenantModalOpen] = useState(false);
+  const [newTenantName, setNewTenantName] = useState('');
+  const [newTenantCnpj, setNewTenantCnpj] = useState('');
+  const [newTenantCity, setNewTenantCity] = useState('');
+  const [newTenantPlan, setNewTenantPlan] = useState('Profissional');
+  const [newTenantColor, setNewTenantColor] = useState('#0d9488');
+
   // ==========================================
-  // CONSTRUTOR DE MÓDULOS & PLANTILLAS (FULL)
+  // CONSTRUTOR DE MÓDULOS E QUESTIONÁRIOS
   // ==========================================
-  const [formName, setFormName] = useState('Novo Módulo Clínico');
+  const [formName, setFormName] = useState('Ficha de Anamnese Facial');
   const [formFields, setFormFields] = useState<any[]>([]);
   const [activeForms, setActiveForms] = useState<any[]>([]);
-  const [isLoadingForms, setIsLoadingForms] = useState(false);
 
-  // Estado das Plantillas (Geração Dinâmica)
+  // ==========================================
+  // MODELOS DE EVOLUÇÃO (TEMPLATES)
+  // ==========================================
   const [templates, setTemplates] = useState([
-    { id: '1', title: 'Modelo SOAP', desc: 'Disponível para seleção imediata no editor clínico.', content: 'S:\nO:\nA:\nP:' },
-    { id: '2', title: 'Anamnese Geral', desc: 'Disponível para seleção imediata no editor clínico.', content: 'HDA:\nHPP:\nMedicamentos:\nAlergias:' },
-    { id: '3', title: 'Avaliação Estética', desc: 'Disponível para seleção imediata no editor clínico.', content: 'Queixa principal:\nFototipo:' },
-    { id: '4', title: 'Pediatria - Consulta', desc: 'Disponível para seleção imediata no editor clínico.', content: 'Peso:\nAltura:\nVacinas:' }
+    { id: '1', title: 'Modelo SOAP', desc: 'Estrutura completa de Subjetivo, Objetivo, Avaliação e Plano.', content: 'S (Subjetivo):\n\nO (Objetivo):\n\nA (Avaliação/CID):\n\nP (Plano/Conduta):' },
+    { id: '2', title: 'Anamnese Geral', desc: 'História clínica pregressa, alergias e medicações em uso.', content: 'HDA (História da Doença Atual):\n\nHPP (História Patológica Pregressa):\n\nMedicamentos em uso:\n\nAlergias conhecidas:' },
+    { id: '3', title: 'Avaliação Estética & Dermatológica', desc: 'Queixa facial, biotipo cutâneo e histórico estético.', content: 'Queixa Principal:\nFototipo Cutâneo (Fitzpatrick):\nBiotipo:\nProcedimentos Anteriores:' },
+    { id: '4', title: 'Pediatria - Consulta de Puericultura', desc: 'Acompanhamento do desenvolvimento e vacinas.', content: 'Peso:\nAltura:\nPerímetro Cefálico:\nAlimentação / Aleitamento:\nVacinação em dia: [ ] Sim [ ] Não' }
   ]);
   const [templateModal, setTemplateModal] = useState(false);
   const [newTemplate, setNewTemplate] = useState({ title: '', desc: '', content: '' });
 
-  // ==========================================
-  // CARGAS INICIALES
-  // ==========================================
   const loadInitialData = useCallback(async () => {
     try {
-      const pBundle = await medplum.search('Patient', '_sort=-_lastUpdated');
+      const pBundle = await medplum.search('Patient', '_sort=-_lastUpdated&_count=20');
       setPatients(pBundle.entry?.map((e: any) => e.resource) || []);
 
       const orgs = await medplum.searchResources('Organization', { _count: 1 });
@@ -104,22 +103,36 @@ function AdminPortalContent() {
 
       const fBundle = await medplum.search('Questionnaire', '_sort=-date');
       setActiveForms(fBundle.entry?.map((e: any) => e.resource) || []);
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+      console.error(error); 
+    }
   }, [medplum]);
 
-  useEffect(() => { setMounted(true); loadInitialData(); }, [loadInitialData]);
+  useEffect(() => { 
+    setMounted(true); 
+    loadInitialData(); 
+  }, [loadInitialData]);
 
-  if (!mounted || !profile) return <Center h="80vh"><Loader color="teal" /></Center>;
+  if (!mounted) return <Center h="80vh"><Loader color={primaryColor} /></Center>;
 
-  // ==========================================
-  // FUNCIONES DE GUARDADO Y ELIMINACIÓN
-  // ==========================================
+  // Handlers Financeiros
   const handleSaveTransaction = () => {
     const valorNum = parseFloat(txValor);
     if (!txDesc || isNaN(valorNum)) return alert("Preencha os campos corretamente.");
-    const newTx = { id: Date.now(), data: 'Agora', desc: txDesc, tipo: transactionModal === 'receita' ? 'Receita' : 'Despesa', valor: transactionModal === 'receita' ? valorNum : -valorNum, status: 'Liquidado' };
+    const newTx = { 
+      id: Date.now(), 
+      data: 'Hoje, ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), 
+      desc: txDesc, 
+      tipo: transactionModal === 'receita' ? 'Receita' : 'Despesa', 
+      valor: transactionModal === 'receita' ? valorNum : -valorNum, 
+      status: 'Liquidado' 
+    };
     setTransacoes([newTx, ...transacoes]);
-    setFinancials(prev => ({ ...prev, bruto: transactionModal === 'receita' ? prev.bruto + valorNum : prev.bruto, despesas: transactionModal === 'despesa' ? prev.despesas + valorNum : prev.despesas }));
+    setFinancials(prev => ({ 
+      ...prev, 
+      bruto: transactionModal === 'receita' ? prev.bruto + valorNum : prev.bruto, 
+      despesas: transactionModal === 'despesa' ? prev.despesas + valorNum : prev.despesas 
+    }));
     setTransactionModal(null); setTxDesc(''); setTxValor('');
   };
 
@@ -132,55 +145,79 @@ function AdminPortalContent() {
         finalLogoUrl = binary.url;
       }
       const orgData: Organization = {
-        resourceType: 'Organization', id: organization?.id, name: tenantConfig.name, 
+        resourceType: 'Organization', 
+        id: organization?.id, 
+        name: tenantConfig.name, 
         identifier: clinicCnpj ? [{ system: 'http://receita.fazenda.gov.br/sistemas/cnpj', value: clinicCnpj }] : undefined,
         telecom: [{ system: 'phone', value: clinicPhone, use: 'work' }, { system: 'email', value: clinicEmail, use: 'work' }],
         extension: finalLogoUrl ? [{ url: 'https://delchan.com/fhir/logo', valueUrl: finalLogoUrl }] : undefined
       };
       if (organization?.id) await medplum.updateResource(orgData);
       else setOrganization(await medplum.createResource(orgData));
-      alert('Configurações da clínica salvas!');
-    } catch (error) { alert('Erro ao salvar.'); }
+      alert('Configurações oficiais da clínica salvas com sucesso no FHIR!');
+    } catch (error) { 
+      alert('Erro ao salvar dados da clínica.'); 
+    }
     setIsSavingClinic(false);
   };
 
-  // Construtor: Funciones de Campos
+  const handleCreateTenant = () => {
+    if (!newTenantName || !newTenantCnpj) return alert('Informe o nome e o CNPJ da clínica.');
+    addNewTenant({
+      name: newTenantName,
+      cnpj: newTenantCnpj,
+      city: newTenantCity || 'São Paulo - SP',
+      color: newTenantColor,
+      plan: newTenantPlan,
+      status: 'active',
+      doctorsCount: 1
+    });
+    alert('Nova clínica criada com sucesso no ecossistema SaaS!');
+    setIsNewTenantModalOpen(false);
+    setNewTenantName(''); setNewTenantCnpj(''); setNewTenantCity('');
+  };
+
+  // Construtor de Módulos
   const addField = (type: string, labelDefault: string) => setFormFields([...formFields, { id: Date.now().toString(), type, label: labelDefault, required: false, options: '' }]);
   const removeField = (id: string) => setFormFields(formFields.filter(f => f.id !== id));
   const updateField = (id: string, key: string, value: any) => setFormFields(formFields.map(f => f.id === id ? { ...f, [key]: value } : f));
 
-  // Construtor: Guardar FHIR
   const saveFHIRQuestionnaire = async () => {
-    if (formFields.length === 0) return alert("Adicione pelo menos um campo.");
+    if (formFields.length === 0) return alert("Adicione pelo menos um campo ao formulário.");
     try {
       await medplum.createResource({
-        resourceType: "Questionnaire" as const, status: "active" as const, title: formName, name: formName.replace(/\s+/g, '_').toLowerCase(), date: new Date().toISOString(),
-        item: formFields.map(f => ({ linkId: f.id, text: f.label, type: f.type, required: f.required, ...(f.type === 'choice' ? { answerOption: f.options.split(',').map((opt: string) => ({ valueString: opt.trim() })) } : {}) }))
+        resourceType: "Questionnaire" as const, 
+        status: "active" as const, 
+        title: formName, 
+        name: formName.replace(/\s+/g, '_').toLowerCase(), 
+        date: new Date().toISOString(),
+        item: formFields.map(f => ({ 
+          linkId: f.id, 
+          text: f.label, 
+          type: f.type, 
+          required: f.required, 
+          ...(f.type === 'choice' ? { answerOption: f.options.split(',').map((opt: string) => ({ valueString: opt.trim() })) } : {}) 
+        }))
       });
-      alert("Módulo salvo e publicado!"); setFormFields([]); setFormName('Novo Módulo Clínico'); loadInitialData();
-    } catch (error) { alert("Erro ao salvar."); }
+      alert("Módulo clínico publicado para todos os médicos da clínica!"); 
+      setFormFields([]); 
+      setFormName('Novo Módulo Clínico'); 
+      loadInitialData();
+    } catch (error) { 
+      alert("Erro ao publicar módulo."); 
+    }
   };
 
-  // Construtor: Eliminar y Cambiar Status
   const deleteQuestionnaire = async (id: string) => {
     if(confirm('Tem certeza que deseja excluir este módulo definitivamente?')) {
       try {
         await medplum.deleteResource('Questionnaire', id);
-        alert('Módulo excluído!');
         loadInitialData();
       } catch (e) { alert('Erro ao excluir módulo.'); }
     }
   };
 
-  const toggleQuestionnaireStatus = async (form: any) => {
-    try {
-      const newStatus = form.status === 'active' ? 'retired' : 'active';
-      await medplum.updateResource({ ...form, status: newStatus });
-      loadInitialData();
-    } catch (e) { alert('Erro ao atualizar status.'); }
-  };
-
-  // Plantillas: Guardar y Eliminar
+  // Modelos de Evolução
   const saveNewTemplate = () => {
     if(!newTemplate.title) return;
     setTemplates([...templates, { id: Date.now().toString(), ...newTemplate }]);
@@ -188,63 +225,113 @@ function AdminPortalContent() {
     setNewTemplate({ title: '', desc: '', content: '' });
   };
   const deleteTemplate = (id: string) => {
-    if(confirm('Excluir esta plantilla?')) setTemplates(templates.filter(t => t.id !== id));
+    if(confirm('Excluir este modelo?')) setTemplates(templates.filter(t => t.id !== id));
   };
 
+  const activeModules = tenantConfig.activeModules || { agenda: true, prontuario: true, faturamento: true, crm: true };
+  const currentSidebar = tenantConfig.sidebarModules || { insurance: true, allergies: true, problems: true, vitals: true };
+
   return (
-    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', padding: '24px' }}>
-      <div style={{ maxWidth: '1360px', margin: '0 auto' }}>
+    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', padding: '28px' }}>
+      <div style={{ maxWidth: '1440px', margin: '0 auto' }}>
         
+        {/* CABEÇALHO DO SUPER ADMIN */}
         <Group justify="space-between" mb="xl">
           <div>
-            <Title order={1} c="dark.9" fw={900} style={{ letterSpacing: '-0.5px' }}>Command Center / God Mode</Title>
-            <Text c="dimmed" size="sm" mt={4}>Gestão Operacional, Saúde e Integrações da Instância.</Text>
+            <Group gap="xs">
+              <Title order={1} c="dark.9" fw={900} style={{ letterSpacing: '-0.5px' }}>
+                Central de Comando Super Admin (God Mode)
+              </Title>
+              <Badge color="teal" variant="light" size="md">Multi-Tenant Ativo</Badge>
+            </Group>
+            <Text c="dimmed" size="sm" mt={4}>
+              Instância Atual: <b>{tenantConfig.name}</b> • Controle global de módulos, clínicas e segurança.
+            </Text>
           </div>
-          <Button color={primaryColor} size="md" radius="md" onClick={() => alert("Sincronizado na Cloud!")}>
+          <Button 
+            color={primaryColor} 
+            size="md" 
+            radius="xl" 
+            leftSection={<IconCheck size={18} />}
+            onClick={() => alert("Instância sincronizada com sucesso na nuvem FHIR Medplum!")}
+          >
             Sincronizar Cloud
           </Button>
         </Group>
 
+        {/* 1. ABA OVERVIEW */}
         {activeSidebarTab === 'overview' && (
           <Box>
             <Grid gutter="md" mb="xl">
-              <Grid.Col span={{ base: 12, sm: 6, xl: 3 }}><Card p="lg" radius="xl" withBorder><Text size="xs" c="dimmed" fw={600}>TOTAL DE CLÍNICAS</Text><Title order={2} fw={800} mt={4}>128</Title><Badge color="teal" variant="light" size="xs" mt={8}>+6 este mês</Badge></Card></Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6, xl: 3 }}><Card p="lg" radius="xl" withBorder><Text size="xs" c="dimmed" fw={600}>USUÁRIOS ATIVOS</Text><Title order={2} fw={800} mt={4}>3.420</Title><Badge color="blue" variant="light" size="xs" mt={8}>Médicos + Staff</Badge></Card></Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6, xl: 3 }}><Card p="lg" radius="xl" withBorder><Text size="xs" c="dimmed" fw={600}>FATURAMENTO SAAS</Text><Title order={2} fw={800} mt={4}>R$ 89,2k</Title><Badge color="teal" variant="light" size="xs" mt={8}>MRR +R$ 4,1k</Badge></Card></Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6, xl: 3 }}><Card p="lg" radius="xl" withBorder><Text size="xs" c="dimmed" fw={600}>COMPLIANCE FHIR</Text><Title order={2} fw={800} mt={4}>99,9%</Title><Badge color="green" variant="light" size="xs" mt={8}>Uptime 30d</Badge></Card></Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, xl: 3 }}>
+                <Card p="lg" radius="xl" withBorder bg="white">
+                  <Text size="xs" c="dimmed" fw={700} tt="uppercase">Total de Clínicas (Tenants)</Text>
+                  <Title order={2} fw={800} mt={4}>{tenants.length}</Title>
+                  <Badge color="teal" variant="light" size="xs" mt={8}>+2 este mês</Badge>
+                </Card>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, xl: 3 }}>
+                <Card p="lg" radius="xl" withBorder bg="white">
+                  <Text size="xs" c="dimmed" fw={700} tt="uppercase">Médicos e Especialistas</Text>
+                  <Title order={2} fw={800} mt={4}>
+                    {tenants.reduce((acc, t) => acc + t.doctorsCount, 0)}
+                  </Title>
+                  <Badge color="blue" variant="light" size="xs" mt={8}>Ativos no SaaS</Badge>
+                </Card>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, xl: 3 }}>
+                <Card p="lg" radius="xl" withBorder bg="white">
+                  <Text size="xs" c="dimmed" fw={700} tt="uppercase">Faturamento Mensal (MRR)</Text>
+                  <Title order={2} fw={800} mt={4}>R$ 94.800</Title>
+                  <Badge color="teal" variant="light" size="xs" mt={8}>MRR +R$ 5,2k</Badge>
+                </Card>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, xl: 3 }}>
+                <Card p="lg" radius="xl" withBorder bg="white">
+                  <Text size="xs" c="dimmed" fw={700} tt="uppercase">Conformidade FHIR & LGPD</Text>
+                  <Title order={2} fw={800} mt={4}>100%</Title>
+                  <Badge color="green" variant="light" size="xs" mt={8}>Criptografia Ativa</Badge>
+                </Card>
+              </Grid.Col>
             </Grid>
 
-            {/* COMMAND CENTER VIEJO INCRUSTADO */}
-            <Card radius="20px" p="xl" withBorder shadow="sm">
+            {/* BASE DE PACIENTES OPERACIONAL */}
+            <Card radius="xl" p="xl" withBorder bg="white">
               <Group justify="space-between" mb="lg">
-                <Text fw={700} size="sm">Base de {dict.patient}s (EMPI) e Operacional</Text>
-                <Button color={primaryColor} size="sm" radius="xl" onClick={() => setEditingPatient({})}>+ Registrar {dict.patient}</Button>
+                <div>
+                  <Title order={4} c="dark.9">Base de Pacientes (EMPI) e Registros Clínicos</Title>
+                  <Text size="xs" c="dimmed">Visão geral dos pacientes cadastrados nesta unidade.</Text>
+                </div>
+                <Button color={primaryColor} size="sm" radius="xl" onClick={() => setEditingPatient({})}>
+                  + Cadastrar {dict.patient}
+                </Button>
               </Group>
-              <Accordion variant="separated" radius="lg" styles={{ item: { border: '1px solid #e2e8f0', backgroundColor: '#ffffff', marginBottom: '8px' } }}>
+
+              <Accordion variant="separated" radius="lg">
                 {patients.map((p: any, index: number) => {
-                  const fullName = p.name ? `${p.name[0].given?.join(' ')} ${p.name[0].family}` : `${dict.patient} Não Identificado`;
-                  const tcleStatus = index % 2 === 0 ? 'signed_physical' : 'pending';
+                  const fullName = p.name ? `${p.name[0].given?.join(' ') || ''} ${p.name[0].family || ''}` : `${dict.patient} Não Identificado`;
                   return (
-                    <Accordion.Item key={p.id} value={p.id || index.toString()}>
+                    <Accordion.Item key={p.id || index} value={p.id || index.toString()}>
                       <Accordion.Control>
                         <Group wrap="nowrap">
                           <Avatar color={primaryColor} radius="xl" size="md">{fullName.charAt(0)}</Avatar>
-                          <div><Text fw={700} c="dark.9">{fullName}</Text><Text size="xs" c="dimmed">ID: #{p.id?.slice(0, 8)}</Text></div>
+                          <div>
+                            <Text fw={700} c="dark.9">{fullName}</Text>
+                            <Text size="xs" c="dimmed">ID FHIR: #{p.id?.slice(0, 8)}</Text>
+                          </div>
                         </Group>
                       </Accordion.Control>
-                      <Accordion.Panel bg="#f8fafc" style={{ borderRadius: '0 0 16px 16px' }}>
-                        <Grid>
-                          <Grid.Col span={{ base: 12, md: 8 }}>
-                            <Text fw={700} size="xs" c="dimmed" mb="sm">AÇÕES RÁPIDAS</Text>
-                            <Group gap="sm">
-                              {tcleStatus === 'pending' ? <Button size="xs" color="red" variant="light" radius="xl" onClick={() => setTcleModalData({ patient: p, status: 'pending' })}>⚠️ Assinar TCLE</Button> : <Button size="xs" color="teal" variant="light" radius="xl" onClick={() => setTcleModalData({ patient: p, status: 'signed_physical' })}>✅ TCLE Assinado</Button>}
-                              <Button size="xs" color="blue" variant="light" radius="xl" onClick={() => setEditingPatient(p)}>✏️ Atualizar Dados</Button>
-                            </Group>
-                          </Grid.Col>
-                          <Grid.Col span={{ base: 12, md: 4 }}>
-                            <Button color={primaryColor} radius="xl" fullWidth onClick={() => setSelectedPatient(p)}>Abrir {dict.chart}</Button>
-                          </Grid.Col>
-                        </Grid>
+                      <Accordion.Panel bg="#f8fafc">
+                        <Group justify="space-between">
+                          <Group gap="xs">
+                            <Button size="xs" color="blue" variant="light" radius="xl" onClick={() => setEditingPatient(p)}>
+                              Editar Dados
+                            </Button>
+                          </Group>
+                          <Button color={primaryColor} radius="xl" size="xs" onClick={() => setSelectedPatient(p)}>
+                            Abrir {dict.chart} Completo
+                          </Button>
+                        </Group>
                       </Accordion.Panel>
                     </Accordion.Item>
                   );
@@ -254,17 +341,109 @@ function AdminPortalContent() {
           </Box>
         )}
 
+        {/* 2. ABA CLÍNICAS / TENANTS (NOVA E COMPLETA) */}
+        {activeSidebarTab === 'tenants' && (
+          <Card p="xl" radius="xl" withBorder bg="white">
+            <Group justify="space-between" mb="xl">
+              <div>
+                <Title order={3} c="dark.9">Gestão Multi-Clínicas (Tenants SaaS)</Title>
+                <Text size="sm" c="dimmed">Alterne entre as instâncias da rede ou cadastre novas filiais e clientes.</Text>
+              </div>
+              <Button 
+                color={primaryColor} 
+                radius="xl" 
+                leftSection={<IconPlus size={16} />}
+                onClick={() => setIsNewTenantModalOpen(true)}
+              >
+                + Nova Clínica / Tenant
+              </Button>
+            </Group>
+
+            <Grid gutter="lg">
+              {tenants.map((t) => {
+                const isCurrentActive = tenantConfig.activeTenantId === t.id || tenantConfig.name === t.name;
+
+                return (
+                  <Grid.Col span={{ base: 12, md: 6 }} key={t.id}>
+                    <Card p="xl" radius="xl" withBorder bg={isCurrentActive ? '#f0fdfa' : '#ffffff'} style={{ borderColor: isCurrentActive ? primaryColor : '#e2e8f0' }}>
+                      <Group justify="space-between" align="flex-start" mb="md">
+                        <Group gap="sm">
+                          <ThemeIcon color={t.color} size="xl" radius="xl" variant="filled">
+                            <IconBuilding size={20} />
+                          </ThemeIcon>
+                          <div>
+                            <Text fw={800} size="md" c="dark.9">{t.name}</Text>
+                            <Text size="xs" c="dimmed">CNPJ: {t.cnpj} • {t.city}</Text>
+                          </div>
+                        </Group>
+                        <Badge color={t.status === 'active' ? 'teal' : 'orange'} variant="light">
+                          {t.status === 'active' ? 'Ativo' : 'Em Teste'}
+                        </Badge>
+                      </Group>
+
+                      <Divider my="sm" color="#f1f5f9" />
+
+                      <Group justify="space-between" mb="md">
+                        <div>
+                          <Text size="xs" c="dimmed">PLANO CONTRATADO</Text>
+                          <Text size="xs" fw={700}>{t.plan}</Text>
+                        </div>
+                        <div>
+                          <Text size="xs" c="dimmed">MÉDICOS HABILITADOS</Text>
+                          <Text size="xs" fw={700} ta="right">{t.doctorsCount} profissionais</Text>
+                        </div>
+                      </Group>
+
+                      <Group justify="flex-end">
+                        {isCurrentActive ? (
+                          <Badge color="teal" size="lg" radius="xl">Clínica Ativa no Momento</Badge>
+                        ) : (
+                          <Button 
+                            variant="light" 
+                            color="dark" 
+                            radius="xl" 
+                            size="xs"
+                            onClick={() => {
+                              switchTenant(t.id);
+                              alert(`Instância alternada para: ${t.name}`);
+                            }}
+                          >
+                            Ativar esta Clínica
+                          </Button>
+                        )}
+                      </Group>
+                    </Card>
+                  </Grid.Col>
+                );
+              })}
+            </Grid>
+          </Card>
+        )}
+
+        {/* 3. ABA MÓDULOS SAAS */}
         {activeSidebarTab === 'modules' && (
-          <Card p="xl" radius="20px" withBorder>
-            <Title order={3} mb="xs">Módulos Contratados (SaaS)</Title>
-            <Grid gutter="md">
-              {[{ key: 'agenda', t: 'Agenda Inteligente' }, { key: 'prontuario', t: 'Prontuário Completo' }, { key: 'faturamento', t: 'Faturamento / PDV' }, { key: 'crm', t: 'CRM & Marketing' }].map((mod) => (
+          <Card p="xl" radius="xl" withBorder bg="white">
+            <Title order={3} mb="xs">Módulos Habilitados para a Clínica Atual</Title>
+            <Text size="sm" c="dimmed" mb="xl">Ative ou desative as ferramentas disponíveis para os profissionais.</Text>
+            
+            <Grid gutter="lg">
+              {[
+                { key: 'agenda', title: 'Agenda Inteligente & Telemedicina', desc: 'Sincronização com Google Calendar e gestão de salas.' },
+                { key: 'prontuario', title: 'Prontuário Eletrônico (EHR) & SOAP', desc: 'Evolução clínica estruturada, histórico e receituário.' },
+                { key: 'faturamento', title: 'Faturamento / Terminal POS Pix', desc: 'Emissão de cobranças, recibos e relatórios contábeis.' },
+                { key: 'crm', title: 'CRM & Marketing Omnichannel', desc: 'Captação de leads via WhatsApp, Instagram e campanhas.' }
+              ].map((mod) => (
                 <Grid.Col span={{ base: 12, md: 6 }} key={mod.key}>
-                  <Card p="md" radius="lg" withBorder bg={modules[mod.key as keyof typeof modules] ? '#f0fdfa' : '#fff'}>
-                    <Group justify="space-between">
-                      <Text fw={700}>{mod.t}</Text>
-                      <Switch color="teal" checked={modules[mod.key as keyof typeof modules]} onChange={() => toggleModule(mod.key as keyof typeof modules)} />
+                  <Card p="lg" radius="xl" withBorder bg={activeModules[mod.key as keyof typeof activeModules] ? '#f0fdfa' : '#fff'} style={{ borderColor: activeModules[mod.key as keyof typeof activeModules] ? primaryColor : '#e2e8f0' }}>
+                    <Group justify="space-between" mb="xs">
+                      <Text fw={700}>{mod.title}</Text>
+                      <Switch 
+                        color="teal" 
+                        checked={activeModules[mod.key as keyof typeof activeModules]} 
+                        onChange={() => toggleModule(mod.key as any)} 
+                      />
                     </Group>
+                    <Text size="xs" c="dimmed">{mod.desc}</Text>
                   </Card>
                 </Grid.Col>
               ))}
@@ -272,18 +451,40 @@ function AdminPortalContent() {
           </Card>
         )}
 
+        {/* 4. ABA WHITE-LABEL */}
         {activeSidebarTab === 'whitelabel' && (
-          <Card p="xl" radius="20px" withBorder>
-            <Title order={3} mb="xs">White-Label & Cores</Title>
-            <TextInput label="Nome do Sistema" value={tenantConfig.name} onChange={(e) => setTenantConfig({ ...tenantConfig, name: e.currentTarget.value })} mb="md" fw={600} />
-            <ColorInput label="Cor Primária" value={tenantConfig.internalColor} onChange={(c) => setTenantConfig({ ...tenantConfig, internalColor: c })} format="hex" />
+          <Card p="xl" radius="xl" withBorder bg="white">
+            <Title order={3} mb="xs">Personalização de Marca (White-Label)</Title>
+            <Text size="sm" c="dimmed" mb="xl">Altere o nome e a identidade visual de todo o sistema em tempo real.</Text>
+            
+            <Stack gap="md" style={{ maxWidth: '600px' }}>
+              <TextInput 
+                label="Nome da Instância / Clínica" 
+                value={tenantConfig.name} 
+                onChange={(e) => setTenantConfig({ ...tenantConfig, name: e.currentTarget.value })} 
+                fw={600} 
+                radius="md"
+              />
+              <ColorInput 
+                label="Cor Primária da Identidade Visual" 
+                value={tenantConfig.internalColor} 
+                onChange={(c) => setTenantConfig({ ...tenantConfig, internalColor: c })} 
+                format="hex" 
+                radius="md"
+                swatches={['#0d9488', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899']}
+              />
+              <Button color={primaryColor} radius="xl" size="md" mt="md" onClick={() => alert('Identidade visual salva e propagada!')}>
+                Salvar White-Label
+              </Button>
+            </Stack>
           </Card>
         )}
 
+        {/* 5. ABA DADOS DA CLÍNICA */}
         {activeSidebarTab === 'clinic' && (
-          <Card p="xl" radius="20px" withBorder>
-            <Title order={3} mb="xl">Dados Oficiais da Clínica Local</Title>
-            <Box bg="#f8f9fa" p="md" mb="xl" style={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+          <Card p="xl" radius="xl" withBorder bg="white">
+            <Title order={3} mb="xl">Dados Oficiais da Unidade Local</Title>
+            <Box bg="#f8f9fa" p="md" mb="xl" style={{ border: '1px solid #e2e8f0', borderRadius: '16px' }}>
               <Group wrap="nowrap">
                 <FileButton onChange={(f) => { setLogoFile(f); if(f) { const r = new FileReader(); r.onload = (e) => setLogoPreview(e.target?.result as string); r.readAsDataURL(f); } }} accept="image/png,image/jpeg,image/svg+xml">
                   {(props) => (
@@ -294,24 +495,35 @@ function AdminPortalContent() {
                     </Box>
                   )}
                 </FileButton>
-                <div><Text fw={700}>Logo Oficial (PDFs e Receitas)</Text><Text size="xs" c="dimmed">Formatos: PNG, JPG, SVG.</Text></div>
+                <div>
+                  <Text fw={700}>Logotipo Oficial para Laudos e Receitas</Text>
+                  <Text size="xs" c="dimmed">Formatos recomendados: PNG de alta resolução com fundo transparente ou SVG.</Text>
+                </div>
               </Group>
             </Box>
             <Grid gutter="md">
-              <Grid.Col span={6}><TextInput label="CNPJ" value={clinicCnpj} onChange={(e) => setClinicCnpj(e.currentTarget.value)} radius="md" /></Grid.Col>
-              <Grid.Col span={6}><TextInput label="Telefone" value={clinicPhone} onChange={(e) => setClinicPhone(e.currentTarget.value)} radius="md" /></Grid.Col>
-              <Grid.Col span={12}><TextInput label="Email Administrativo" value={clinicEmail} onChange={(e) => setClinicEmail(e.currentTarget.value)} radius="md" /></Grid.Col>
+              <Grid.Col span={6}><TextInput label="CNPJ da Unidade" value={clinicCnpj} onChange={(e) => setClinicCnpj(e.currentTarget.value)} radius="md" /></Grid.Col>
+              <Grid.Col span={6}><TextInput label="Telefone / WhatsApp Comercial" value={clinicPhone} onChange={(e) => setClinicPhone(e.currentTarget.value)} radius="md" /></Grid.Col>
+              <Grid.Col span={12}><TextInput label="E-mail Administrativo" value={clinicEmail} onChange={(e) => setClinicEmail(e.currentTarget.value)} radius="md" /></Grid.Col>
             </Grid>
-            <Group justify="flex-end" mt="xl"><Button color={primaryColor} radius="xl" onClick={saveClinicConfig} loading={isSavingClinic}>Salvar Dados Oficiais</Button></Group>
+            <Group justify="flex-end" mt="xl">
+              <Button color={primaryColor} radius="xl" onClick={saveClinicConfig} loading={isSavingClinic}>
+                Salvar Dados Oficiais
+              </Button>
+            </Group>
           </Card>
         )}
 
+        {/* 6. ABA SEGURANÇA E ACESSO */}
         {activeSidebarTab === 'security' && (
           <Stack gap="xl">
-            <Card p="xl" radius="20px" withBorder>
-              <Title order={3} mb="xs">Segurança de Acesso (LGPD)</Title>
-              <Group justify="space-between">
-                <Text fw={700}>Autenticação em Duas Etapas (2FA) Obrigatória</Text>
+            <Card p="xl" radius="xl" withBorder bg="white">
+              <Title order={3} mb="xs">Segurança de Acesso & Conformidade LGPD</Title>
+              <Group justify="space-between" mt="md">
+                <div>
+                  <Text fw={700}>Autenticação em Dois Fatores (2FA) Obrigatória</Text>
+                  <Text size="xs" c="dimmed">Exige verificação no celular de todos os médicos e atendentes.</Text>
+                </div>
                 <Switch color="teal" size="lg" checked={tenantConfig.require2FA} onChange={(e) => toggleMFA(e.currentTarget.checked)} />
               </Group>
             </Card>
@@ -319,57 +531,84 @@ function AdminPortalContent() {
           </Stack>
         )}
 
+        {/* 7. ABA LAYOUT DO PRONTUÁRIO */}
         {activeSidebarTab === 'layout' && (
-          <Card p="xl" radius="20px" withBorder>
-            <Title order={3} mb="xl">Layout do Prontuário (Sidebar)</Title>
+          <Card p="xl" radius="xl" withBorder bg="white">
+            <Title order={3} mb="xl">Layout e Seções Laterais do Prontuário</Title>
             <Stack gap="md">
-              <Switch label="Convênio / Seguro Saúde (Coverage)" color="teal" size="md" checked={currentSidebar.insurance} onChange={() => toggleSidebarSection('insurance')} />
-              <Switch label="Alergias (AllergyIntolerance)" color="teal" size="md" checked={currentSidebar.allergies} onChange={() => toggleSidebarSection('allergies')} />
-              <Switch label="Problemas Crônicos (Condition)" color="teal" size="md" checked={currentSidebar.problems} onChange={() => toggleSidebarSection('problems')} />
-              <Switch label="Sinais Vitais (Vitals)" color="teal" size="md" checked={currentSidebar.vitals} onChange={() => toggleSidebarSection('vitals')} />
+              <Switch 
+                label="Convênio / Plano de Saúde (FHIR Coverage)" 
+                color="teal" 
+                size="md" 
+                checked={currentSidebar.insurance} 
+                onChange={() => setTenantConfig({ ...tenantConfig, sidebarModules: { ...currentSidebar, insurance: !currentSidebar.insurance } })} 
+              />
+              <Switch 
+                label="Alergias e Reações Adversas (FHIR AllergyIntolerance)" 
+                color="teal" 
+                size="md" 
+                checked={currentSidebar.allergies} 
+                onChange={() => setTenantConfig({ ...tenantConfig, sidebarModules: { ...currentSidebar, allergies: !currentSidebar.allergies } })} 
+              />
+              <Switch 
+                label="Condições e Problemas Crônicos (FHIR Condition)" 
+                color="teal" 
+                size="md" 
+                checked={currentSidebar.problems} 
+                onChange={() => setTenantConfig({ ...tenantConfig, sidebarModules: { ...currentSidebar, problems: !currentSidebar.problems } })} 
+              />
+              <Switch 
+                label="Sinais Vitais (Pressão, Temperatura, FC)" 
+                color="teal" 
+                size="md" 
+                checked={currentSidebar.vitals} 
+                onChange={() => setTenantConfig({ ...tenantConfig, sidebarModules: { ...currentSidebar, vitals: !currentSidebar.vitals } })} 
+              />
             </Stack>
           </Card>
         )}
 
-        {/* 7. CONSTRUTOR DE MÓDULOS (COMPLETO) */}
+        {/* 8. CONSTRUTOR DE MÓDULOS */}
         {activeSidebarTab === 'builder' && (
           <Grid gutter="xl">
-            <Grid.Col span={4}>
-              <Card p="md" radius="lg" withBorder bg="#f8fafc">
-                <Text fw={700} mb="md">Adicionar Componente</Text>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card p="md" radius="xl" withBorder bg="#f8fafc">
+                <Text fw={700} mb="md">Paleta de Componentes</Text>
                 <Stack gap="sm">
                   <Button variant="default" justify="flex-start" onClick={() => addField('string', 'Texto Curto')}>Texto Curto</Button>
-                  <Button variant="default" justify="flex-start" onClick={() => addField('text', 'Texto Longo')}>Texto Longo</Button>
-                  <Button variant="default" justify="flex-start" onClick={() => addField('integer', 'Número')}>Número</Button>
+                  <Button variant="default" justify="flex-start" onClick={() => addField('text', 'Texto Longo / Parecer')}>Texto Longo</Button>
+                  <Button variant="default" justify="flex-start" onClick={() => addField('integer', 'Número Inteiro')}>Número</Button>
                   <Button variant="default" justify="flex-start" onClick={() => addField('date', 'Data')}>Data</Button>
-                  <Button variant="default" justify="flex-start" onClick={() => addField('boolean', 'Sim / Não')}>Sim / Não</Button>
+                  <Button variant="default" justify="flex-start" onClick={() => addField('boolean', 'Sim / Não (Checkbox)')}>Sim / Não</Button>
                   <Button variant="default" justify="flex-start" onClick={() => addField('choice', 'Múltipla Escolha')}>Múltipla Escolha</Button>
                 </Stack>
               </Card>
             </Grid.Col>
             
-            <Grid.Col span={8}>
-              <Card p="xl" radius="lg" withBorder mb="xl">
+            <Grid.Col span={{ base: 12, md: 8 }}>
+              <Card p="xl" radius="xl" withBorder mb="xl" bg="white">
                 <TextInput variant="unstyled" size="xl" fw={800} value={formName} onChange={(e) => setFormName(e.currentTarget.value)} style={{ borderBottom: '2px dashed #cbd5e1', marginBottom: 20 }} />
                 <Stack gap="md">
-                  {formFields.length === 0 && <Text c="dimmed" ta="center" py="xl">Nenhum campo adicionado. Utilize o painel lateral.</Text>}
+                  {formFields.length === 0 && <Text c="dimmed" ta="center" py="xl">Nenhum campo adicionado. Utilize a paleta lateral.</Text>}
                   {formFields.map((field) => (
-                    <Card key={field.id} withBorder p="md">
+                    <Card key={field.id} withBorder p="md" radius="lg" bg="#fcfcfd">
                       <Group justify="space-between" mb="xs">
                         <Badge>{field.type}</Badge>
                         <ActionIcon color="red" variant="subtle" onClick={() => removeField(field.id)}><IconTrash size={16}/></ActionIcon>
                       </Group>
-                      <TextInput label="Título do Campo" value={field.label} onChange={(e) => updateField(field.id, 'label', e.currentTarget.value)} mb="xs" />
-                      {field.type === 'choice' && <TextInput label="Opções (separadas por vírgula)" value={field.options} onChange={(e) => updateField(field.id, 'options', e.currentTarget.value)} mb="xs" />}
+                      <TextInput label="Título da Pergunta / Campo" value={field.label} onChange={(e) => updateField(field.id, 'label', e.currentTarget.value)} mb="xs" />
+                      {field.type === 'choice' && <TextInput label="Opções (separadas por vírgula)" placeholder="Opção 1, Opção 2" value={field.options} onChange={(e) => updateField(field.id, 'options', e.currentTarget.value)} mb="xs" />}
                       <Checkbox label="Campo Obrigatório" checked={field.required} onChange={(e) => updateField(field.id, 'required', e.currentTarget.checked)} color="teal" />
                     </Card>
                   ))}
                 </Stack>
-                <Button mt="lg" color="teal" onClick={saveFHIRQuestionnaire} fullWidth>Publicar Módulo FHIR</Button>
+                <Button mt="lg" color="teal" radius="xl" onClick={saveFHIRQuestionnaire} fullWidth>
+                  Publicar Módulo FHIR Questionnaire
+                </Button>
               </Card>
 
-              <Card p="xl" radius="lg" withBorder>
-                <Title order={5} mb="md">Módulos Publicados</Title>
+              <Card p="xl" radius="xl" withBorder bg="white">
+                <Title order={5} mb="md">Módulos Publicados na Instância</Title>
                 <Table>
                   <Table.Thead bg="#f8fafc">
                     <Table.Tr><Table.Th>NOME DO MÓDULO</Table.Th><Table.Th>STATUS</Table.Th><Table.Th>AÇÕES</Table.Th></Table.Tr>
@@ -377,23 +616,10 @@ function AdminPortalContent() {
                   <Table.Tbody>
                     {activeForms.map(mod => (
                       <Table.Tr key={mod.id}>
-                        <Table.Td fw={600}>{mod.title || mod.name}</Table.Td>
+                        <Table.Td fw={700}>{mod.title || mod.name}</Table.Td>
+                        <Table.Td><Badge color={mod.status === 'active' ? 'teal' : 'gray'} variant="light">{mod.status === 'active' ? 'Ativo' : 'Inativo'}</Badge></Table.Td>
                         <Table.Td>
-                          <Badge color={mod.status === 'active' ? 'teal' : 'gray'} variant="light">{mod.status === 'active' ? 'Ativo' : 'Inativo'}</Badge>
-                        </Table.Td>
-                        <Table.Td>
-                          <Group gap="xs">
-                            <Tooltip label={mod.status === 'active' ? 'Desativar' : 'Ativar'}>
-                              <ActionIcon color={mod.status === 'active' ? 'orange' : 'teal'} variant="light" onClick={() => toggleQuestionnaireStatus(mod)}>
-                                <IconPower size={16} />
-                              </ActionIcon>
-                            </Tooltip>
-                            <Tooltip label="Excluir Definitivamente">
-                              <ActionIcon color="red" variant="light" onClick={() => deleteQuestionnaire(mod.id)}>
-                                <IconTrash size={16} />
-                              </ActionIcon>
-                            </Tooltip>
-                          </Group>
+                          <ActionIcon color="red" variant="subtle" onClick={() => deleteQuestionnaire(mod.id)}><IconTrash size={16} /></ActionIcon>
                         </Table.Td>
                       </Table.Tr>
                     ))}
@@ -404,55 +630,78 @@ function AdminPortalContent() {
           </Grid>
         )}
 
-        {/* 8. PLANTILLAS & MODELOS (FULL CRUD) */}
+        {/* 9. ABA MODELOS DE EVOLUÇÃO (TEMPLATES) */}
         {activeSidebarTab === 'templates' && (
-          <Card p="xl" radius="20px" withBorder>
+          <Card p="xl" radius="xl" withBorder bg="white">
             <Group justify="space-between" mb="xl">
-              <Title order={3}>Modelos de Evolução & Plantillas</Title>
-              <Button leftSection={<IconPlus size={16} />} color="teal" radius="xl" onClick={() => setTemplateModal(true)}>Nova Plantilla</Button>
+              <div>
+                <Title order={3}>Modelos de Evolução & Templates Clínicos</Title>
+                <Text size="xs" c="dimmed">Modelos pré-definidos disponíveis no editor clínico para agilizar a consulta.</Text>
+              </div>
+              <Button leftSection={<IconPlus size={16} />} color="teal" radius="xl" onClick={() => setTemplateModal(true)}>
+                Novo Modelo
+              </Button>
             </Group>
             
             <Grid gutter="md">
-              {templates.length === 0 && <Text c="dimmed" p="md">Nenhuma plantilla configurada.</Text>}
               {templates.map((template) => (
-                <Grid.Col span={{ base: 12, md: 4 }} key={template.id}>
-                  <Card p="lg" radius="lg" withBorder style={{ borderColor: '#e2e8f0', height: '100%' }}>
+                <Grid.Col span={{ base: 12, md: 6 }} key={template.id}>
+                  <Card p="lg" radius="xl" withBorder style={{ borderColor: '#e2e8f0', height: '100%' }}>
                     <Group justify="space-between" align="flex-start" mb="xs">
                       <Group gap="xs"><IconFileText size={20} color="#0d9488" /><Text fw={700}>{template.title}</Text></Group>
                       <ActionIcon color="red" variant="subtle" size="sm" onClick={() => deleteTemplate(template.id)}><IconTrash size={16} /></ActionIcon>
                     </Group>
-                    <Text size="xs" c="dimmed" mb="md">{template.desc || 'Modelo predefinido para o editor.'}</Text>
-                    <Text size="xs" c="gray.6" lineClamp={3} style={{ whiteSpace: 'pre-wrap' }}>{template.content}</Text>
+                    <Text size="xs" c="dimmed" mb="md">{template.desc}</Text>
+                    <Paper p="xs" bg="#f8fafc" withBorder style={{ borderColor: '#f1f5f9' }}>
+                      <Text size="xs" c="gray.7" lineClamp={4} style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{template.content}</Text>
+                    </Paper>
                   </Card>
                 </Grid.Col>
               ))}
             </Grid>
 
-            {/* Modal para Crear Nueva Plantilla */}
-            <Modal opened={templateModal} onClose={() => setTemplateModal(false)} title={<Title order={4}>Criar Nova Plantilla</Title>} size="lg" radius="md" centered>
+            {/* Modal Novo Modelo */}
+            <Modal opened={templateModal} onClose={() => setTemplateModal(false)} title={<Title order={4}>Criar Novo Modelo de Evolução</Title>} size="lg" radius="lg" centered>
               <Stack gap="md">
-                <TextInput label="Título da Plantilla" placeholder="Ex: Avaliação Cardíaca" value={newTemplate.title} onChange={(e) => setNewTemplate({...newTemplate, title: e.currentTarget.value})} required />
+                <TextInput label="Título do Modelo" placeholder="Ex: Avaliação Cardíaca" value={newTemplate.title} onChange={(e) => setNewTemplate({...newTemplate, title: e.currentTarget.value})} required />
                 <TextInput label="Breve Descrição" placeholder="Descrição visível para o médico..." value={newTemplate.desc} onChange={(e) => setNewTemplate({...newTemplate, desc: e.currentTarget.value})} />
                 <Textarea label="Estrutura de Texto (Template)" placeholder="Escreva o esqueleto do texto aqui..." minRows={8} value={newTemplate.content} onChange={(e) => setNewTemplate({...newTemplate, content: e.currentTarget.value})} />
-                <Button color="teal" fullWidth radius="md" onClick={saveNewTemplate}>Salvar Plantilla</Button>
+                <Button color="teal" fullWidth radius="xl" onClick={saveNewTemplate}>Salvar Modelo</Button>
               </Stack>
             </Modal>
           </Card>
         )}
 
-        {/* MODALES DEL SISTEMA RESTANTES */}
+        {/* MODAL NOVA CLÍNICA / TENANT */}
+        <Modal opened={isNewTenantModalOpen} onClose={() => setIsNewTenantModalOpen(false)} title={<Title order={4}>Cadastrar Nova Clínica (Tenant)</Title>} centered radius="lg" size="lg">
+          <Stack gap="md">
+            <TextInput label="Nome da Clínica / Unidade" placeholder="Ex: Delchan Health - Unidade Alphaville" value={newTenantName} onChange={e => setNewTenantName(e.target.value)} required radius="md" />
+            <Grid>
+              <Grid.Col span={6}>
+                <TextInput label="CNPJ" placeholder="00.000.000/0001-00" value={newTenantCnpj} onChange={e => setNewTenantCnpj(e.target.value)} required radius="md" />
+              </Grid.Col>
+              <Grid.Col span={6}>
+                <TextInput label="Cidade / UF" placeholder="Barueri - SP" value={newTenantCity} onChange={e => setNewTenantCity(e.target.value)} radius="md" />
+              </Grid.Col>
+            </Grid>
+            <Grid>
+              <Grid.Col span={6}>
+                <TextInput label="Plano SaaS" value={newTenantPlan} onChange={e => setNewTenantPlan(e.target.value)} radius="md" />
+              </Grid.Col>
+              <Grid.Col span={6}>
+                <ColorInput label="Cor da Marca" value={newTenantColor} onChange={setNewTenantColor} format="hex" radius="md" />
+              </Grid.Col>
+            </Grid>
+            <Button color="teal" radius="xl" size="md" mt="md" onClick={handleCreateTenant}>Criar Instância da Clínica</Button>
+          </Stack>
+        </Modal>
+
+        {/* MODAL WORKSPACE */}
         <Drawer opened={!!selectedPatient} onClose={() => setSelectedPatient(null)} position="right" size="100%" padding={0} withCloseButton={false}>
           {selectedPatient && <PatientWorkspace patient={selectedPatient} medplum={medplum} doctorName="Admin" onClose={() => setSelectedPatient(null)} />}
         </Drawer>
-        <Modal opened={!!editingPatient} onClose={() => setEditingPatient(null)} title="Atualizar Dados" centered size="xl" radius="xl">
+        <Modal opened={!!editingPatient} onClose={() => setEditingPatient(null)} title="Atualizar Dados do Paciente" centered size="xl" radius="lg">
           <DynamicIntakeForm clinicType={clinicType as any} medplum={medplum} onSuccess={() => { setEditingPatient(null); loadInitialData(); }} />
-        </Modal>
-        <Modal opened={!!transactionModal} onClose={() => setTransactionModal(null)} title="Registrar Lançamento" centered radius="xl">
-          <Stack gap="md">
-            <TextInput label="Descrição" value={txDesc} onChange={(e) => setTxDesc(e.currentTarget.value)} />
-            <TextInput label="Valor (R$)" type="number" value={txValor} onChange={(e) => setTxValor(e.currentTarget.value)} />
-            <Button color={transactionModal === 'receita' ? 'teal' : 'red'} radius="xl" onClick={handleSaveTransaction} fullWidth>Confirmar</Button>
-          </Stack>
         </Modal>
 
       </div>

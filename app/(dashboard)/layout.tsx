@@ -83,7 +83,7 @@ function DashboardContent({ children }: { children: ReactNode }) {
             <Text size="xs" fw={700} c="dimmed" mt="sm" mb="xs" px="xs" lts={1}>ENGENHARIA</Text>
             <UnstyledButton onClick={() => router.push('/admin?tab=layout')} p="sm" bg={activeAdminTab === 'layout' ? 'teal.0' : 'transparent'} c={activeAdminTab === 'layout' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Layout Prontuário</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=builder')} p="sm" bg={activeAdminTab === 'builder' ? 'teal.0' : 'transparent'} c={activeAdminTab === 'builder' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Construtor de Módulos</UnstyledButton>
-            <UnstyledButton onClick={() => router.push('/admin?tab=templates')} p="sm" bg={activeAdminTab === 'templates' ? 'teal.0' : 'transparent'} c={activeAdminTab === 'templates' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Plantillas</UnstyledButton>
+            <UnstyledButton onClick={() => router.push('/admin?tab=templates')} p="sm" bg={activeAdminTab === 'templates' ? 'teal.0' : 'transparent'} c={activeAdminTab === 'templates' ? 'teal.9' : 'gray.7'} style={{ borderRadius: 8, fontWeight: 500 }}>Modelos de Evolução</UnstyledButton>
           </Stack>
         </AppShell.Navbar>
       )}
