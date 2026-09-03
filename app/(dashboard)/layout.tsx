@@ -73,6 +73,24 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <UnstyledButton onClick={() => router.push('/admin?tab=modules')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Módulos SaaS</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=whitelabel')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>White-Label</UnstyledButton>
             
+            <Text size="xs" fw={700} c="dimmed" mt="sm" mb="xs" px="xs" lts={1}>COMERCIAL & MARKETING</Text>
+            <UnstyledButton 
+              onClick={() => router.push('/admin/crm')} 
+              p="sm" 
+              bg={pathname === '/admin/crm' ? 'teal.0' : 'transparent'} 
+              c={pathname === '/admin/crm' ? 'teal.9' : 'gray.8'} 
+              style={{ 
+                borderRadius: 8, 
+                fontWeight: pathname === '/admin/crm' ? 700 : 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <span>💬 CRM & Leads</span>
+              <Badge size="xs" color="teal" variant="light">Ativo</Badge>
+            </UnstyledButton>
+            
             <Text size="xs" fw={700} c="dimmed" mt="sm" mb="xs" px="xs" lts={1}>CONFIG. CLÍNICA</Text>
             <UnstyledButton onClick={() => router.push('/admin?tab=clinic')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Dados da Clínica</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=security')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Segurança & Acesso</UnstyledButton>
