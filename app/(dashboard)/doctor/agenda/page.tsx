@@ -98,7 +98,7 @@ export default function DoctorAgendaPage() {
           },
           ...(profile?.id ? [{
             actor: { reference: `Practitioner/${profile.id}`, display: profile.name?.[0]?.given?.[0] || 'Médico' },
-            status: 'accepted'
+            status: 'accepted' as const
           }] : [])
         ]
       };

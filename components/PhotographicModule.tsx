@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { 
-  Card, Title, Text, Button, Stack, Group, Badge, Divider, FileInput, Grid, Slider, Box, ThemeIcon 
+  Card, Title, Text, Button, Stack, Group, Badge, Divider, FileInput, Grid, Slider, Box, ThemeIcon, Center
 } from '@mantine/core';
 import { IconCamera, IconGridDots, IconCheck } from '@tabler/icons-react';
 

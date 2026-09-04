@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  Card, Title, Text, Button, Group, Badge, Stack, Progress, Modal, TextInput, Textarea, Select, ThemeIcon, ActionIcon, Grid, Divider, Loader, Center
+  Card, Title, Text, Button, Group, Badge, Stack, Progress, Modal, TextInput, Textarea, Select, ThemeIcon, ActionIcon, Grid, Divider, Loader, Center, Box
 } from '@mantine/core';
 import { 
   IconCheck, IconClock, IconPlus, IconTarget, IconTrash, IconCalendarCheck, IconSparkles 

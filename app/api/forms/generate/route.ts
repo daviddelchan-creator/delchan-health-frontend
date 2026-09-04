@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
       const docRef = await medplum.createResource({
         resourceType: 'DocumentReference',
-        status: 'preliminary',
+        status: 'current',
         docStatus: 'preliminary',
         meta: {
           tag: [

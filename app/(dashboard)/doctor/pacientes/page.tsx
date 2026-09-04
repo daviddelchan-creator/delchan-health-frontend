@@ -14,6 +14,7 @@ import { ClinicalEditor } from '@/components/clinical/ClinicalEditor';
 import { MasterSignature } from '@/components/shared/MasterSignature';
 import { PrintableFicha } from '@/components/patient/PrintableFicha';
 import { useTenant } from '@/contexts/TenantContext';
+import { getMothersName } from '@/utils/patientUtils';
 import {
   IconUserPlus, IconSearch, IconFileText, IconEdit, IconShieldCheck, IconPrinter, IconCamera, IconCalendarPlus, IconStethoscope
 } from '@tabler/icons-react';
@@ -98,16 +99,87 @@ export default function PacientesPage() {
     if (!evolutionPatient) return;
     setIsSavingEvolution(true);
     try {
+      const now = new Date().toISOString();
+      const tenantId = tenantConfig?.activeTenantId || 'tenant-1';
+      const cleanTenant = (tenantId || 'DELCHAN').replace(/^tenant-/, '').toUpperCase();
+      const trackingCode = `FORM-${cleanTenant}-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      // 1. Salvar Binary com o snapshot exato do HTML renderizado naquele instante
+      let binaryUrl = '';
+      try {
+        const htmlBuffer = Buffer.from(htmlContent, 'utf-8');
+        const binary = await medplum.createBinary(
+          new Uint8Array(htmlBuffer),
+          `evolucao-${trackingCode}.html`,
+          'text/html'
+        );
+        if (binary?.url) {
+          binaryUrl = binary.url;
+        }
+      } catch (bErr) {
+        console.warn('Aviso ao persistir Binary do snapshot:', bErr);
+      }
+
+      // 2. Criar DocumentReference com LOINC 11506-3 (Progress note) apontando para o Binary do snapshot
+      await medplum.createResource({
+        resourceType: 'DocumentReference',
+        status: 'current',
+        docStatus: 'final',
+        meta: {
+          tag: [{ system: 'https://delchan.com/fhir/tenant', code: tenantId }],
+        },
+        identifier: [
+          {
+            system: 'urn:med-sistema:doc-tracker',
+            value: trackingCode,
+          },
+        ],
+        type: {
+          coding: [
+            {
+              system: 'http://loinc.org',
+              code: '11506-3',
+              display: 'Progress note',
+            },
+          ],
+          text: 'Evolução Clínica SOAP (Snapshot Histórico)',
+        },
+        subject: { reference: `Patient/${evolutionPatient.id}` },
+        author: [
+          {
+            reference: `Practitioner/${profile?.id}`,
+            display: `Dr(a). ${doctorName}`,
+          },
+        ],
+        date: now,
+        description: `Evolução Clínica Digitalizada / Prontuário Eletrônico [${trackingCode}]`,
+        content: [
+          {
+            attachment: {
+              contentType: 'text/html',
+              url: binaryUrl,
+              title: `Snapshot Histórico SOAP - ${now}`,
+              creation: now,
+            },
+          },
+        ],
+      });
+
+      // 3. Criar o ClinicalImpression FHIR
       await medplum.createResource({
         resourceType: 'ClinicalImpression',
         status: 'completed',
         subject: { reference: `Patient/${evolutionPatient.id}` },
         assessor: { reference: `Practitioner/${profile?.id}`, display: `Dr(a). ${doctorName}` },
-        date: new Date().toISOString(),
+        date: now,
         summary: htmlContent,
         note: [{ text: JSON.stringify(jsonContent) }],
+        meta: {
+          tag: [{ system: 'https://delchan.com/fhir/tenant', code: tenantId }],
+        },
       });
-      alert('Evolução clínica assinada digitalmente e gravada no servidor FHIR com sucesso!');
+
+      alert('Evolução clínica assinada digitalmente e gravada no servidor FHIR com snapshot auditável!');
       setEvolutionPatient(null);
       loadPatients();
     } catch (err) {
@@ -128,6 +200,14 @@ export default function PacientesPage() {
         subject: { reference: `Patient/${signingTCLE.id}` },
         date: new Date().toISOString(),
         description: 'Termo de Consentimento LGPD assinado eletronicamente pelo paciente via tablet / tela touch.',
+        content: [
+          {
+            attachment: {
+              contentType: 'text/plain',
+              title: 'Termo de Consentimento LGPD Assinado',
+            },
+          },
+        ],
         securityLabel: [{ text: `Assinatura Validada - Hash: ${Math.random().toString(36).substring(2, 10).toUpperCase()}` }]
       });
       alert('Termo de Consentimento registrado e arquivado no prontuário com sucesso!');

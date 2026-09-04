@@ -5,7 +5,7 @@ import {
   Grid, Tabs, Card, Button, Group, Title, Text, Stack, Badge, Modal, TextInput, Select, Textarea, ActionIcon, ThemeIcon, Divider, Table, Loader, Center
 } from '@mantine/core';
 import { 
-  IconCalendarEvent, IconChecklist, IconPill, IconFlask, IconTarget, IconPlus, IconTrash, IconFileDownload, IconStethoscope
+  IconCalendarEvent, IconChecklist, IconPill, IconFlask, IconTarget, IconPlus, IconTrash, IconFileDownload, IconStethoscope, IconPrinter
 } from '@tabler/icons-react';
 import { Patient, Encounter, Task, MedicationRequest, DiagnosticReport } from '@medplum/fhirtypes';
 import { useMedplum } from '@medplum/react-hooks';
@@ -14,6 +14,7 @@ import { useTenant } from '../../contexts/TenantContext';
 import { PatientSidebar } from './PatientSidebar';
 import { PatientTimeline } from './PatientTimeline';
 import { CarePlanList } from '../CarePlanList';
+import { ExamsTab } from './ExamsTab';
 
 interface PatientWorkspaceProps {
   patient: Patient;
@@ -40,7 +41,6 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
   const [isNewVisitOpen, setIsNewVisitOpen] = useState(false);
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
   const [isNewMedOpen, setIsNewMedOpen] = useState(false);
-  const [isNewLabOpen, setIsNewLabOpen] = useState(false);
 
   // Formulários Temporários
   const [visitReason, setVisitReason] = useState('');
@@ -52,9 +52,6 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
   const [medName, setMedName] = useState('');
   const [medDosage, setMedDosage] = useState('');
   const [medInstructions, setMedInstructions] = useState('');
-
-  const [labTitle, setLabTitle] = useState('');
-  const [labConclusion, setLabConclusion] = useState('');
 
   const loadSubData = useCallback(async () => {
     if (!patient?.id) return;
@@ -139,24 +136,6 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
     } catch (e) { alert('Erro ao prescrever.'); }
   };
 
-  const handleCreateLab = async () => {
-    if (!labTitle) return alert('Informe o título do exame.');
-    try {
-      await medplum.createResource({
-        resourceType: 'DiagnosticReport',
-        status: 'final',
-        code: { text: labTitle },
-        subject: { reference: `Patient/${patient.id}` },
-        effectiveDateTime: new Date().toISOString(),
-        conclusion: labConclusion || 'Laudo sem alterações dignas de nota.'
-      });
-      alert('Resultado de exame anexado!');
-      setIsNewLabOpen(false);
-      setLabTitle(''); setLabConclusion('');
-      loadSubData();
-    } catch (e) { alert('Erro ao anexar exame.'); }
-  };
-
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
       
@@ -173,7 +152,18 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
             <Text size="xs" c="dimmed">Padrão HL7 FHIR R4 • Protegido por criptografia LGPD</Text>
           </div>
         </Group>
-        <Button variant="default" radius="xl" onClick={onClose}>Fechar Prontuário</Button>
+        <Group gap="sm">
+          <Button
+            variant="light"
+            color="teal"
+            radius="xl"
+            leftSection={<IconPrinter size={16} />}
+            onClick={() => window.open(`/patient/${patient.id}/print?autoPrint=true`, '_blank')}
+          >
+            Imprimir Prontuário Completo
+          </Button>
+          <Button variant="default" radius="xl" onClick={onClose}>Fechar Prontuário</Button>
+        </Group>
       </Group>
 
       {/* CORPO DO WORKSPACE (GRID) */}
@@ -306,28 +296,7 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
 
               {/* 5. EXAMES E RESULTADOS LABORATORIAIS */}
               <Tabs.Panel value="labs">
-                <Group justify="space-between" mb="lg">
-                  <div>
-                    <Title order={4}>Laudos & Exames Laboratoriais</Title>
-                    <Text size="xs" c="dimmed">Resultados de sangue, biópsias, ultrassons e laudos dermatoscópicos.</Text>
-                  </div>
-                  <Button color={primaryColor} radius="xl" size="xs" leftSection={<IconPlus size={14} />} onClick={() => setIsNewLabOpen(true)}>
-                    + Anexar Laudo / Exame
-                  </Button>
-                </Group>
-                <Stack gap="sm">
-                  {reports.map(rep => (
-                    <Card key={rep.id} p="md" radius="md" withBorder bg="#fcfcfd">
-                      <Group justify="space-between" mb="xs">
-                        <Text fw={700} size="sm">{rep.code?.text || 'Exame Laboratorial'}</Text>
-                        <Badge color="blue" variant="light">Laudo Final</Badge>
-                      </Group>
-                      <Text size="xs" c="dark.7" mb="xs">Conclusão: {rep.conclusion}</Text>
-                      <Text size="xs" c="dimmed">Emitido em: {rep.effectiveDateTime ? new Date(rep.effectiveDateTime).toLocaleDateString('pt-BR') : 'Data recente'}</Text>
-                    </Card>
-                  ))}
-                  {reports.length === 0 && <Text c="dimmed" ta="center" py="xl">Nenhum laudo de exame registrado.</Text>}
-                </Stack>
+                <ExamsTab patient={patient} />
               </Tabs.Panel>
 
               {/* 6. PLANO DE CUIDADO */}
@@ -363,14 +332,6 @@ export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {
           <TextInput label="Posologia / Dose" placeholder="Ex: Aplicar 2x ao dia" value={medDosage} onChange={e => setMedDosage(e.target.value)} />
           <Textarea label="Instruções Adicionais" placeholder="Instruções de aplicação..." value={medInstructions} onChange={e => setMedInstructions(e.target.value)} />
           <Button color={primaryColor} radius="xl" onClick={handleCreateMedication}>Emitir Prescrição Digital</Button>
-        </Stack>
-      </Modal>
-
-      <Modal opened={isNewLabOpen} onClose={() => setIsNewLabOpen(false)} title="Anexar Exame / Laudo" centered radius="lg">
-        <Stack gap="md">
-          <TextInput label="Nome do Exame" placeholder="Ex: Hemograma Completo / Fotodermatoscopia" value={labTitle} onChange={e => setLabTitle(e.target.value)} required />
-          <Textarea label="Conclusão / Parecer do Laudo" placeholder="Resumo dos achados clínicos..." value={labConclusion} onChange={e => setLabConclusion(e.target.value)} />
-          <Button color={primaryColor} radius="xl" onClick={handleCreateLab}>Salvar Laudo</Button>
         </Stack>
       </Modal>
 

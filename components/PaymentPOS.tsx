@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { 
-  Card, Title, Text, Button, Stack, Group, Badge, Select, TextInput, Divider, Center, Loader, ActionIcon, Paper, CopyButton
+  Card, Title, Text, Button, Stack, Group, Badge, Select, TextInput, Divider, Center, Loader, ActionIcon, Paper, CopyButton, ThemeIcon
 } from '@mantine/core';
 import { IconQrcode, IconCreditCard, IconReceipt, IconCheck, IconCopy, IconCash } from '@tabler/icons-react';
 import { QRCodeSVG } from 'qrcode.react';

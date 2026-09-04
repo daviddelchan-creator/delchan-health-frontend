@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  Group, Title, Button, Text, Loader, Center, Card, Modal, Drawer, Grid, Stack, Avatar, Accordion, Badge, Table, TextInput, Switch, ActionIcon, ColorInput, FileButton, Indicator, Box, Checkbox, Textarea, Tooltip, Paper, ThemeIcon
+  Group, Title, Button, Text, Loader, Center, Card, Modal, Drawer, Grid, Stack, Avatar, Accordion, Badge, Table, TextInput, Switch, ActionIcon, ColorInput, FileButton, Indicator, Box, Checkbox, Textarea, Tooltip, Paper, ThemeIcon, Divider
 } from '@mantine/core';
 
 import { useMedplum, useMedplumProfile } from '@medplum/react-hooks'; 

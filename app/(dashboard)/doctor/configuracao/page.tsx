@@ -64,7 +64,7 @@ export default function DoctorSettings() {
     try {
       setLoading(true);
       const binary = await medplum.createBinary(file, file.name, file.type);
-      setPhotoUrl(binary.url);
+      setPhotoUrl(binary.url || null);
       if (profile && profile.resourceType === 'Practitioner') {
         await medplum.updateResource({
           ...profile,

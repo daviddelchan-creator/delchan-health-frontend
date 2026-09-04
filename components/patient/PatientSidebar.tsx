@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from 'react';
-import { Stack, Divider, Title, Text, Group, ActionIcon, Avatar, Modal, TextInput, Button, Select } from '@mantine/core';
-import { Patient } from '@medplum/fhirtypes';
+import { useState, useEffect, useCallback } from 'react';
+import { Stack, Divider, Title, Text, Group, ActionIcon, Avatar, Modal, TextInput, Button, Select, Badge, Loader } from '@mantine/core';
+import { Patient, Observation, Coverage, AllergyIntolerance, Condition } from '@medplum/fhirtypes';
 import { useMedplum } from '@medplum/react-hooks';
 import { useTenant } from '@/contexts/TenantContext';
 import { getMothersName } from '@/utils/patientUtils';
+import { VitalsModal } from '@/components/Vitals/VitalsModal';
 
 interface PatientSidebarProps {
   patient: Patient;
@@ -16,7 +17,13 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
   const medplum = useMedplum();
   
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [isVitalsOpen, setIsVitalsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [vitals, setVitals] = useState<Observation[]>([]);
+  const [loadingVitals, setLoadingVitals] = useState(false);
+  const [coverages, setCoverages] = useState<Coverage[]>([]);
+  const [allergies, setAllergies] = useState<AllergyIntolerance[]>([]);
+  const [problems, setProblems] = useState<Condition[]>([]);
 
   // Estados temporales para los formularios de los modales
   const [insuranceData, setInsuranceData] = useState({ provider: '', memberId: '' });
@@ -33,6 +40,50 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
   // Configuración de visibilidad desde el God Mode
   const modules = tenantConfig.sidebarModules || { insurance: true, allergies: true, problems: true, vitals: true };
 
+  // Carga reactiva de datos clínicos del paciente
+  const loadSidebarData = useCallback(async () => {
+    if (!patient?.id || !medplum) return;
+    setLoadingVitals(true);
+    try {
+      const [vitalsRes, coverageRes, allergyRes, conditionRes] = await Promise.all([
+        medplum.searchResources('Observation', {
+          subject: `Patient/${patient.id}`,
+          category: 'vital-signs',
+          _sort: '-_lastUpdated',
+          _count: 10,
+        }).catch(() => []),
+        medplum.searchResources('Coverage', {
+          beneficiary: `Patient/${patient.id}`,
+          _sort: '-_lastUpdated',
+          _count: 5,
+        }).catch(() => []),
+        medplum.searchResources('AllergyIntolerance', {
+          patient: `Patient/${patient.id}`,
+          _sort: '-_lastUpdated',
+          _count: 5,
+        }).catch(() => []),
+        medplum.searchResources('Condition', {
+          subject: `Patient/${patient.id}`,
+          _sort: '-_lastUpdated',
+          _count: 5,
+        }).catch(() => []),
+      ]);
+
+      if (vitalsRes) setVitals(vitalsRes);
+      if (coverageRes) setCoverages(coverageRes);
+      if (allergyRes) setAllergies(allergyRes);
+      if (conditionRes) setProblems(conditionRes);
+    } catch (e) {
+      console.error('Erro ao carregar dados do sidebar do paciente:', e);
+    } finally {
+      setLoadingVitals(false);
+    }
+  }, [medplum, patient?.id]);
+
+  useEffect(() => {
+    loadSidebarData();
+  }, [loadSidebarData]);
+
   // Funciones de Guardado en Medplum (FHIR)
   const saveInsurance = async () => {
     setIsSaving(true);
@@ -47,6 +98,7 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
       });
       alert('Convênio salvo com sucesso!');
       setActiveModal(null);
+      loadSidebarData();
     } catch (err) { alert('Erro ao salvar convênio.'); }
     setIsSaving(false);
   };
@@ -63,6 +115,7 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
       });
       alert('Alergia salva com sucesso!');
       setActiveModal(null);
+      loadSidebarData();
     } catch (err) { alert('Erro ao salvar alergia.'); }
     setIsSaving(false);
   };
@@ -79,6 +132,7 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
       });
       alert('Problema crônico salvo com sucesso!');
       setActiveModal(null);
+      loadSidebarData();
     } catch (err) { alert('Erro ao salvar problema.'); }
     setIsSaving(false);
   };
@@ -113,7 +167,18 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
               <Group gap="xs"><Text size="sm">🛡️</Text><Title order={6} c="dark.9">Convênio / Seguro</Title></Group>
               <ActionIcon variant="subtle" color="blue" onClick={() => setActiveModal('insurance')}>+</ActionIcon>
             </Group>
-            <Text size="sm" c="dimmed" fs="italic" pl="lg">Nenhum convênio registrado.</Text>
+            {coverages.length > 0 ? (
+              <Stack gap={4}>
+                {coverages.map((cov) => (
+                  <Group key={cov.id} justify="space-between" wrap="nowrap">
+                    <Text size="xs" fw={600} c="dark.8">{cov.payor?.[0]?.display || 'Convênio'}</Text>
+                    <Badge size="xs" variant="light" color="teal">{cov.identifier?.[0]?.value || 'Ativo'}</Badge>
+                  </Group>
+                ))}
+              </Stack>
+            ) : (
+              <Text size="sm" c="dimmed" fs="italic" pl="lg">Nenhum convênio registrado.</Text>
+            )}
             <Divider color="#e2e8f0" mt="md" />
           </div>
         )}
@@ -124,7 +189,17 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
               <Group gap="xs"><Text size="sm">⚠️</Text><Title order={6} c="dark.9">Alergias</Title></Group>
               <ActionIcon variant="subtle" color="blue" onClick={() => setActiveModal('allergy')}>+</ActionIcon>
             </Group>
-            <Text size="sm" c="dimmed" fs="italic" pl="lg">Nenhuma alergia registrada.</Text>
+            {allergies.length > 0 ? (
+              <Group gap="xs" wrap="wrap">
+                {allergies.map((all) => (
+                  <Badge key={all.id} size="sm" color="red" variant="light">
+                    {all.code?.text || 'Alergia'}
+                  </Badge>
+                ))}
+              </Group>
+            ) : (
+              <Text size="sm" c="dimmed" fs="italic" pl="lg">Nenhuma alergia registrada.</Text>
+            )}
             <Divider color="#e2e8f0" mt="md" />
           </div>
         )}
@@ -135,7 +210,18 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
               <Group gap="xs"><Text size="sm">🩺</Text><Title order={6} c="dark.9">Problemas Crônicos</Title></Group>
               <ActionIcon variant="subtle" color="blue" onClick={() => setActiveModal('problem')}>+</ActionIcon>
             </Group>
-            <Text size="sm" c="dimmed" fs="italic" pl="lg">Nenhum problema registrado.</Text>
+            {problems.length > 0 ? (
+              <Stack gap={4}>
+                {problems.map((prob) => (
+                  <Group key={prob.id} justify="space-between" wrap="nowrap">
+                    <Text size="xs" fw={600} c="dark.8">{prob.code?.text || 'Condição'}</Text>
+                    <Badge size="xs" variant="light" color="orange">Ativo</Badge>
+                  </Group>
+                ))}
+              </Stack>
+            ) : (
+              <Text size="sm" c="dimmed" fs="italic" pl="lg">Nenhum problema registrado.</Text>
+            )}
             <Divider color="#e2e8f0" mt="md" />
           </div>
         )}
@@ -144,12 +230,44 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
           <div>
             <Group justify="space-between" mb="xs">
               <Group gap="xs"><Text size="sm">❤️</Text><Title order={6} c="dark.9">Sinais Vitais</Title></Group>
-              <ActionIcon variant="subtle" color="blue" onClick={() => alert('Modal de Sinais Vitais em breve')}>+</ActionIcon>
+              <ActionIcon variant="subtle" color="blue" onClick={() => setIsVitalsOpen(true)} title="Registrar Sinais Vitais">+</ActionIcon>
             </Group>
-            <Text size="sm" c="dimmed" fs="italic" pl="lg">Sem medições recentes.</Text>
+            {loadingVitals ? (
+              <Loader size="xs" color="teal" />
+            ) : vitals.length > 0 ? (
+              <Stack gap={4}>
+                {vitals.slice(0, 5).map((v) => {
+                  const label = v.code?.text || v.code?.coding?.[0]?.display || 'Medição';
+                  let valStr = '';
+                  if (v.component && v.component.length > 0) {
+                    valStr = v.component.map((c) => c.valueQuantity?.value).join('/') + ' mmHg';
+                  } else if (v.valueQuantity) {
+                    valStr = `${v.valueQuantity.value} ${v.valueQuantity.unit || ''}`;
+                  }
+                  return (
+                    <Group key={v.id} justify="space-between" wrap="nowrap">
+                      <Text size="xs" c="dimmed">{label}:</Text>
+                      <Badge size="xs" variant="outline" color="dark">{valStr}</Badge>
+                    </Group>
+                  );
+                })}
+              </Stack>
+            ) : (
+              <Text size="sm" c="dimmed" fs="italic" pl="lg">Sem medições recentes.</Text>
+            )}
           </div>
         )}
       </Stack>
+
+      {/* MODAL SINAIS VITAIS */}
+      {patient?.id && (
+        <VitalsModal
+          opened={isVitalsOpen}
+          onClose={() => setIsVitalsOpen(false)}
+          patientId={patient.id}
+          onSaved={loadSidebarData}
+        />
+      )}
 
       {/* MODALES FUNCIONALES CONECTADOS A MEDPLUM */}
       <Modal opened={activeModal === 'insurance'} onClose={() => setActiveModal(null)} title="Adicionar Convênio" centered>
