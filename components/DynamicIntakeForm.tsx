@@ -7,10 +7,12 @@ import {
 } from '@mantine/core';
 import { IconCameraPlus, IconUserCircle, IconAlertCircle } from '@tabler/icons-react';
 import { Patient, ContactPoint, Address, Identifier } from '@medplum/fhirtypes';
+import { getMothersName } from '@/utils/patientUtils';
 
 interface DynamicIntakeFormProps {
   medplum: any;
   clinicType?: any;
+  patient?: Patient;
   onSuccess?: (patient: Patient) => void;
 }
 
@@ -19,37 +21,55 @@ const ESTADOS_BR = [
   'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
-export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicIntakeFormProps) {
+export function DynamicIntakeForm({ medplum, clinicType, patient, onSuccess }: DynamicIntakeFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // 1. Foto
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(patient?.photo?.[0]?.url || null);
 
-  // 2. Identidad
-  const [nombre, setNombre] = useState('');
-  const [apellidos, setApellidos] = useState('');
-  const [fechaNacimiento, setFechaNacimiento] = useState('');
-  const [sexo, setSexo] = useState<string | null>('');
-  const [identidad, setIdentidad] = useState<string | null>('');
-  const [pronombres, setPronombres] = useState('');
+  // 2. Identidade & Filiação
+  const [nombre, setNombre] = useState(patient?.name?.[0]?.given?.join(' ') || '');
+  const [apellidos, setApellidos] = useState(patient?.name?.[0]?.family || '');
+  const [nomeMae, setNomeMae] = useState(getMothersName(patient));
+  const [fechaNacimiento, setFechaNacimiento] = useState(patient?.birthDate || '');
+  const [sexo, setSexo] = useState<string | null>(
+    patient?.gender === 'male' ? 'Masculino' : patient?.gender === 'female' ? 'Feminino' : patient?.gender === 'other' ? 'Outro' : ''
+  );
+  const [identidad, setIdentidad] = useState<string | null>(
+    patient?.extension?.find(e => e.url === 'https://delchan.com/fhir/identidad-sexual')?.valueString || ''
+  );
+  const [pronombres, setPronombres] = useState(
+    patient?.extension?.find(e => e.url === 'https://delchan.com/fhir/pronombres')?.valueString || ''
+  );
 
-  // 3. Documentación (Legal & SUS)
-  const [nacionalidade, setNacionalidade] = useState<string | null>('Brasileiro(a)');
+  // 3. Documentação (Legal & SUS)
+  const [nacionalidade, setNacionalidade] = useState<string | null>(
+    patient?.extension?.find(e => e.url === 'https://delchan.com/fhir/nacionalidade')?.valueString || 'Brasileiro(a)'
+  );
   const [tipoDocumento, setTipoDocumento] = useState<string | null>('CPF');
-  const [numeroDocumento, setNumeroDocumento] = useState('');
-  const [cartaoSus, setCartaoSus] = useState(''); // Importante para la salud pública en BR
+  const [numeroDocumento, setNumeroDocumento] = useState(
+    patient?.identifier?.find(i => i.system?.includes('cpf') || i.type?.text === 'CPF')?.value || ''
+  );
+  const [cartaoSus, setCartaoSus] = useState(
+    patient?.identifier?.find(i => i.system?.includes('cns') || i.type?.text?.includes('CNS'))?.value || ''
+  );
 
-  // 4. Contacto y Dirección
-  const [telefone, setTelefone] = useState('');
-  const [email, setEmail] = useState('');
-  const [cep, setCep] = useState('');
-  const [logradouro, setLogradouro] = useState('');
-  const [numeroEnd, setNumeroEnd] = useState('');
-  const [bairro, setBairro] = useState('');
-  const [cidade, setCidade] = useState('');
-  const [estado, setEstado] = useState<string | null>('');
+  // 4. Contato e Endereço
+  const [telefone, setTelefone] = useState(
+    patient?.telecom?.find(t => t.system === 'phone')?.value || ''
+  );
+  const [email, setEmail] = useState(
+    patient?.telecom?.find(t => t.system === 'email')?.value || ''
+  );
+  const addressObj = patient?.address?.[0];
+  const [cep, setCep] = useState(addressObj?.postalCode || '');
+  const [logradouro, setLogradouro] = useState(addressObj?.line?.[0] || '');
+  const [numeroEnd, setNumeroEnd] = useState(addressObj?.line?.[1] || '');
+  const [bairro, setBairro] = useState(addressObj?.district || '');
+  const [cidade, setCidade] = useState(addressObj?.city || '');
+  const [estado, setEstado] = useState<string | null>(addressObj?.state || '');
 
   const handlePhotoChange = (file: File | null) => {
     setPhotoFile(file);
@@ -64,7 +84,7 @@ export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicInt
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombre || !apellidos) {
+    if (!nombre.trim() || !apellidos.trim()) {
       setError("Nome e sobrenome são obrigatórios.");
       return;
     }
@@ -73,7 +93,7 @@ export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicInt
     setError(null);
 
     try {
-      let photoData = undefined;
+      let photoData = patient?.photo || undefined;
       
       if (photoFile && medplum) {
         const binary = await medplum.createBinary(photoFile, photoFile.name, photoFile.type);
@@ -85,7 +105,7 @@ export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicInt
       if (sexo === 'Feminino') fhirGender = 'female';
       if (sexo === 'Outro') fhirGender = 'other';
 
-      // Estructurar Identificadores (Documentos)
+      // Estruturar Identificadores (Documentos)
       const identifiers: Identifier[] = [];
       if (numeroDocumento) {
         let systemUrl = 'https://delchan.com/fhir/documento-identidade';
@@ -106,12 +126,12 @@ export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicInt
         });
       }
 
-      // Estructurar Contacto
+      // Estruturar Contato
       const telecom: ContactPoint[] = [];
       if (telefone) telecom.push({ system: 'phone', value: telefone, use: 'mobile' });
       if (email) telecom.push({ system: 'email', value: email, use: 'home' });
 
-      // Estructurar Dirección
+      // Estruturar Endereço
       const addressData: Address[] = [];
       if (logradouro || cidade || cep) {
         addressData.push({
@@ -124,30 +144,68 @@ export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicInt
         });
       }
 
-      const newPatient: Patient = {
+      // Extensões HL7 FHIR (incluindo patient-mothersMaidenName e Delchan nomeMae)
+      const extensions = [
+        ...(patient?.extension?.filter(e => 
+          !e.url?.includes('mothersMaidenName') && 
+          !e.url?.includes('nomeMae') &&
+          !e.url?.includes('identidad-sexual') &&
+          !e.url?.includes('pronombres') &&
+          !e.url?.includes('nacionalidade')
+        ) || []),
+        ...(nomeMae.trim() ? [
+          { url: 'http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName', valueString: nomeMae.trim() },
+          { url: 'https://delchan.com/fhir/nomeMae', valueString: nomeMae.trim() }
+        ] : []),
+        ...(identidad ? [{ url: 'https://delchan.com/fhir/identidad-sexual', valueString: identidad }] : []),
+        ...(pronombres ? [{ url: 'https://delchan.com/fhir/pronombres', valueString: pronombres }] : []),
+        ...(nacionalidade ? [{ url: 'https://delchan.com/fhir/nacionalidade', valueString: nacionalidade }] : [])
+      ];
+
+      // Contato de Filiação (Mãe)
+      const contactList = [
+        ...(patient?.contact?.filter(c => 
+          !c.relationship?.some(r => r.coding?.some(cd => cd.code === 'MTH') || r.text?.toLowerCase().includes('mãe'))
+        ) || []),
+        ...(nomeMae.trim() ? [{
+          relationship: [
+            { 
+              coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0131', code: 'MTH', display: 'Mother' }], 
+              text: 'Mãe' 
+            }
+          ],
+          name: { text: nomeMae.trim() }
+        }] : [])
+      ];
+
+      const patientPayload: Patient = {
         resourceType: 'Patient',
-        name: [{ given: [nombre], family: apellidos }],
+        name: [{ given: nombre.trim().split(' '), family: apellidos.trim() }],
         birthDate: fechaNacimiento || undefined,
         gender: fhirGender,
         photo: photoData,
         identifier: identifiers.length > 0 ? identifiers : undefined,
         telecom: telecom.length > 0 ? telecom : undefined,
         address: addressData.length > 0 ? addressData : undefined,
-        extension: [
-          { url: 'https://delchan.com/fhir/identidad-sexual', valueString: identidad || undefined },
-          { url: 'https://delchan.com/fhir/pronombres', valueString: pronombres || undefined },
-          { url: 'https://delchan.com/fhir/nacionalidade', valueString: nacionalidade || undefined }
-        ]
+        extension: extensions.length > 0 ? extensions : undefined,
+        contact: contactList.length > 0 ? contactList : undefined
       };
 
-      const created = await medplum.createResource(newPatient);
+      let savedPatient: Patient;
+      if (patient?.id && medplum) {
+        savedPatient = await medplum.updateResource({ ...patient, ...patientPayload, id: patient.id });
+      } else if (medplum) {
+        savedPatient = await medplum.createResource(patientPayload);
+      } else {
+        savedPatient = { ...patientPayload, id: `local-${Date.now()}` };
+      }
       
       if (onSuccess) {
-        onSuccess(created);
+        onSuccess(savedPatient);
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Erro ao criar o paciente.");
+      setError(err.message || "Erro ao salvar o paciente.");
     } finally {
       setLoading(false);
     }
@@ -183,30 +241,91 @@ export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicInt
         </Group>
       </Box>
 
-      {/* 1. IDENTIDADE */}
+      {/* 1. IDENTIDADE E FILIAÇÃO */}
       <Text fw={700} size="sm" c="dimmed" mb="md" tt="uppercase" lts={1}>
-        1. Identidade e Perfil Demográfico
+        1. Identidade e Filiação (Perfil Demográfico)
       </Text>
       <Grid gutter="md" mb="xl">
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <TextInput label="Nome Completo" placeholder="Ex: Rafael" value={nombre} onChange={(e) => setNombre(e.currentTarget.value)} required radius="md" size="md" withAsterisk />
+          <TextInput 
+            label="Nome Completo" 
+            placeholder="Ex: Rafael" 
+            value={nombre} 
+            onChange={(e) => setNombre(e.currentTarget.value)} 
+            required 
+            radius="md" 
+            size="md" 
+            withAsterisk 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <TextInput label="Sobrenome" placeholder="Ex: Monteiro" value={apellidos} onChange={(e) => setApellidos(e.currentTarget.value)} required radius="md" size="md" withAsterisk />
+          <TextInput 
+            label="Sobrenome" 
+            placeholder="Ex: Monteiro" 
+            value={apellidos} 
+            onChange={(e) => setApellidos(e.currentTarget.value)} 
+            required 
+            radius="md" 
+            size="md" 
+            withAsterisk 
+          />
+        </Grid.Col>
+
+        {/* NOME DA MÃE (CAMPO OBRIGATÓRIO PARA IDENTIFICAÇÃO E SUS) */}
+        <Grid.Col span={{ base: 12, md: 12 }}>
+          <TextInput 
+            label="Nome da Mãe" 
+            placeholder="Nome completo da mãe do paciente" 
+            value={nomeMae} 
+            onChange={(e) => setNomeMae(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+            description="Fundamental para desambiguação de homônimos e emissão de receitas/prontuário."
+          />
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <TextInput type="date" label="Data de Nascimento" value={fechaNacimiento} onChange={(e) => setFechaNacimiento(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            type="date" 
+            label="Data de Nascimento" 
+            value={fechaNacimiento} 
+            onChange={(e) => setFechaNacimiento(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Select label="Sexo Biológico" placeholder="Selecione" data={['Masculino', 'Feminino', 'Outro']} value={sexo} onChange={setSexo} radius="md" size="md" />
+          <Select 
+            label="Sexo Biológico" 
+            placeholder="Selecione" 
+            data={['Masculino', 'Feminino', 'Outro']} 
+            value={sexo} 
+            onChange={setSexo} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Select label="Identidade / Orientação Sexual (Opcional)" placeholder="Selecione" data={['Heterossexual', 'Homossexual', 'Bissexual', 'Assexual', 'Prefere não informar']} value={identidad} onChange={setIdentidad} radius="md" size="md" />
+          <Select 
+            label="Identidade / Orientação Sexual (Opcional)" 
+            placeholder="Selecione" 
+            data={['Heterossexual', 'Homossexual', 'Bissexual', 'Assexual', 'Prefere não informar']} 
+            value={identidad} 
+            onChange={setIdentidad} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <TextInput label="Preferência de Pronomes / Trato" placeholder="Ex: Ele/Dele, Ela/Dela" value={pronombres} onChange={(e) => setPronombres(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="Preferência de Pronomes / Trato" 
+            placeholder="Ex: Ele/Dele, Ela/Dela" 
+            value={pronombres} 
+            onChange={(e) => setPronombres(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
       </Grid>
 
@@ -218,16 +337,46 @@ export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicInt
       </Text>
       <Grid gutter="md" mb="xl">
         <Grid.Col span={{ base: 12, md: 4 }}>
-          <Select label="Nacionalidade" placeholder="Selecione" data={['Brasileiro(a)', 'Estrangeiro(a)']} value={nacionalidade} onChange={setNacionalidade} radius="md" size="md" />
+          <Select 
+            label="Nacionalidade" 
+            placeholder="Selecione" 
+            data={['Brasileiro(a)', 'Estrangeiro(a)']} 
+            value={nacionalidade} 
+            onChange={setNacionalidade} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 4 }}>
-          <Select label="Tipo de Documento" placeholder="Selecione" data={['CPF', 'Passaporte', 'RNM', 'Protocolo de Refúgio', 'Protocolo de Residência']} value={tipoDocumento} onChange={setTipoDocumento} radius="md" size="md" />
+          <Select 
+            label="Tipo de Documento" 
+            placeholder="Selecione" 
+            data={['CPF', 'Passaporte', 'RNM', 'Protocolo de Refúgio', 'Protocolo de Residência']} 
+            value={tipoDocumento} 
+            onChange={setTipoDocumento} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 4 }}>
-          <TextInput label="Número do Documento" placeholder="000.000.000-00" value={numeroDocumento} onChange={(e) => setNumeroDocumento(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="Número do Documento" 
+            placeholder="000.000.000-00" 
+            value={numeroDocumento} 
+            onChange={(e) => setNumeroDocumento(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 12 }}>
-          <TextInput label="Cartão Nacional de Saúde (CNS) - SUS" placeholder="Opcional" value={cartaoSus} onChange={(e) => setCartaoSus(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="Cartão Nacional de Saúde (CNS) - SUS" 
+            placeholder="Opcional" 
+            value={cartaoSus} 
+            onChange={(e) => setCartaoSus(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
       </Grid>
 
@@ -239,30 +388,89 @@ export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicInt
       </Text>
       <Grid gutter="md" mb="xl">
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <TextInput label="Telefone / WhatsApp" placeholder="(00) 00000-0000" value={telefone} onChange={(e) => setTelefone(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="Telefone / WhatsApp" 
+            placeholder="(00) 00000-0000" 
+            value={telefone} 
+            onChange={(e) => setTelefone(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <TextInput label="Email" type="email" placeholder="email@exemplo.com" value={email} onChange={(e) => setEmail(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="Email" 
+            type="email" 
+            placeholder="email@exemplo.com" 
+            value={email} 
+            onChange={(e) => setEmail(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, md: 4 }}>
-          <TextInput label="CEP" placeholder="00000-000" value={cep} onChange={(e) => setCep(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="CEP" 
+            placeholder="00000-000" 
+            value={cep} 
+            onChange={(e) => setCep(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <TextInput label="Logradouro (Rua, Av.)" placeholder="Rua das Flores" value={logradouro} onChange={(e) => setLogradouro(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="Logradouro (Rua, Av.)" 
+            placeholder="Rua das Flores" 
+            value={logradouro} 
+            onChange={(e) => setLogradouro(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 2 }}>
-          <TextInput label="Número" placeholder="123" value={numeroEnd} onChange={(e) => setNumeroEnd(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="Número" 
+            placeholder="123" 
+            value={numeroEnd} 
+            onChange={(e) => setNumeroEnd(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, md: 4 }}>
-          <TextInput label="Bairro" placeholder="Centro" value={bairro} onChange={(e) => setBairro(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="Bairro" 
+            placeholder="Centro" 
+            value={bairro} 
+            onChange={(e) => setBairro(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 4 }}>
-          <TextInput label="Cidade" placeholder="São Paulo" value={cidade} onChange={(e) => setCidade(e.currentTarget.value)} radius="md" size="md" />
+          <TextInput 
+            label="Cidade" 
+            placeholder="São Paulo" 
+            value={cidade} 
+            onChange={(e) => setCidade(e.currentTarget.value)} 
+            radius="md" 
+            size="md" 
+          />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 4 }}>
-          <Select label="Estado (UF)" placeholder="UF" data={ESTADOS_BR} value={estado} onChange={setEstado} radius="md" size="md" searchable />
+          <Select 
+            label="Estado (UF)" 
+            placeholder="UF" 
+            data={ESTADOS_BR} 
+            value={estado} 
+            onChange={setEstado} 
+            radius="md" 
+            size="md" 
+            searchable 
+          />
         </Grid.Col>
       </Grid>
 
@@ -275,7 +483,7 @@ export function DynamicIntakeForm({ medplum, clinicType, onSuccess }: DynamicInt
           loading={loading}
           style={{ transition: 'all 0.2s' }}
         >
-          Salvar e Criar Prontuário
+          {patient?.id ? 'Salvar Alterações do Prontuário' : 'Salvar e Criar Prontuário'}
         </Button>
       </Group>
     </form>

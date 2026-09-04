@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Stack, Divider, Title, Text, Group, ActionIcon, Avatar, Modal, TextInput, Button, Select } from '@mantine/core';
 import { Patient } from '@medplum/fhirtypes';
 import { useMedplum } from '@medplum/react-hooks';
-import { useTenant } from '../../contexts/TenantContext';
+import { useTenant } from '@/contexts/TenantContext';
+import { getMothersName } from '@/utils/patientUtils';
 
 interface PatientSidebarProps {
   patient: Patient;
@@ -23,6 +24,7 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
   const [problemData, setProblemData] = useState({ condition: '', date: '' });
 
   const fullName = patient.name?.[0] ? `${patient.name[0].given?.join(' ')} ${patient.name[0].family}` : 'Paciente sem nome';
+  const mothersName = getMothersName(patient);
   const birthDate = patient.birthDate ? new Date(patient.birthDate) : null;
   const age = birthDate ? new Date().getFullYear() - birthDate.getFullYear() : 'N/A';
   const genderMap: Record<string, string> = { male: 'Masculino', female: 'Feminino', other: 'Outro', unknown: 'Não informado' };
@@ -95,6 +97,12 @@ export function PatientSidebar({ patient }: PatientSidebarProps) {
         <Stack gap="xs" mb="sm">
           <Group gap="xs"><Text size="sm">🎂</Text><Text size="sm" fw={500} c="dark.7">{patient.birthDate || 'Data não registrada'} ({age} anos)</Text></Group>
           <Group gap="xs"><Text size="sm">⚥</Text><Text size="sm" fw={500} c="dark.7">{gender}</Text></Group>
+          {mothersName && (
+            <Group gap="xs" wrap="nowrap" align="center">
+              <Text size="sm">👩</Text>
+              <Text size="xs" fw={500} c="dark.7" lineClamp={1}>Mãe: {mothersName}</Text>
+            </Group>
+          )}
         </Stack>
         
         <Divider color="#e2e8f0" />

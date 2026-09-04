@@ -14,10 +14,10 @@ import { useTenant } from '@/contexts/TenantContext';
 import { PatientWorkspace } from '@/components/PatientWorkspace';
 
 const INITIAL_FALLBACK_PATIENTS: any[] = [
-  { id: 'pat-1', name: [{ given: ['Ana', 'Beatriz'], family: 'Albuquerque' }], birthDate: '1992-05-14', gender: 'female', telecom: [{ system: 'phone', value: '(11) 98765-4321' }] },
-  { id: 'pat-2', name: [{ given: ['Carlos', 'Eduardo'], family: 'Mendes' }], birthDate: '1985-11-20', gender: 'male', telecom: [{ system: 'phone', value: '(11) 97777-8888' }] },
-  { id: 'pat-3', name: [{ given: ['Mariana'], family: 'Duarte' }], birthDate: '1998-03-22', gender: 'female', telecom: [{ system: 'phone', value: '(21) 99888-1122' }] },
-  { id: 'pat-4', name: [{ given: ['Lucas'], family: 'Ferreira' }], birthDate: '1979-08-30', gender: 'male', telecom: [{ system: 'phone', value: '(11) 96543-2109' }] },
+  { id: 'pat-1', name: [{ given: ['Ana', 'Beatriz'], family: 'Albuquerque' }], birthDate: '1992-05-14', gender: 'female', telecom: [{ system: 'phone', value: '(11) 98765-4321' }], extension: [{ url: 'http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName', valueString: 'Maria Albuquerque' }] },
+  { id: 'pat-2', name: [{ given: ['Carlos', 'Eduardo'], family: 'Mendes' }], birthDate: '1985-11-20', gender: 'male', telecom: [{ system: 'phone', value: '(11) 97777-8888' }], extension: [{ url: 'http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName', valueString: 'Helena Mendes' }] },
+  { id: 'pat-3', name: [{ given: ['Mariana'], family: 'Duarte' }], birthDate: '1998-03-22', gender: 'female', telecom: [{ system: 'phone', value: '(21) 99888-1122' }], extension: [{ url: 'http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName', valueString: 'Sônia Duarte' }] },
+  { id: 'pat-4', name: [{ given: ['Lucas'], family: 'Ferreira' }], birthDate: '1979-08-30', gender: 'male', telecom: [{ system: 'phone', value: '(11) 96543-2109' }], extension: [{ url: 'http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName', valueString: 'Regina Ferreira' }] },
 ];
 
 function DoctorDashboardContent() {

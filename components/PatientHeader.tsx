@@ -10,6 +10,8 @@ import { useMedplum } from '@medplum/react-hooks';
 import { PrintableFicha } from './patient/PrintableFicha';
 import { DynamicIntakeForm } from './DynamicIntakeForm';
 
+import { getMothersName } from '@/utils/patientUtils';
+
 interface PatientHeaderProps {
   patient: Patient;
 }
@@ -39,6 +41,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
   }
 
   // Extracción de datos avanzados para el Modal de Detalles
+  const mothersName = getMothersName(patient) || 'Não informado';
   const cpf = patient.identifier?.find(id => id.system?.includes('cpf') || id.type?.text === 'CPF')?.value || 'Não informado';
   const cns = patient.identifier?.find(id => id.system?.includes('cns') || id.type?.text?.includes('CNS'))?.value || 'Não informado';
   const phone = patient.telecom?.find(t => t.system === 'phone')?.value || 'Não informado';
@@ -99,6 +102,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
       <Modal opened={detailsOpened} onClose={closeDetails} title="Detalhes do Paciente" size="lg" radius="md">
         <Grid gutter="md" mt="sm">
           <Grid.Col span={12}><Text size="xs" c="dimmed" fw={700}>NOME COMPLETO</Text><Text fw={600} size="md">{patientName}</Text></Grid.Col>
+          <Grid.Col span={12}><Text size="xs" c="dimmed" fw={700}>NOME DA MÃE</Text><Text fw={600} size="md" c={mothersName === 'Não informado' ? 'dimmed' : 'dark.9'}>{mothersName}</Text></Grid.Col>
           <Grid.Col span={6}><Text size="xs" c="dimmed" fw={700}>DATA DE NASCIMENTO</Text><Text fw={600} size="md">{birthDate ? new Date(birthDate).toLocaleDateString('pt-BR') : 'Não informada'}</Text></Grid.Col>
           <Grid.Col span={6}><Text size="xs" c="dimmed" fw={700}>SEXO BIOLÓGICO</Text><Text fw={600} size="md">{gender}</Text></Grid.Col>
           
@@ -120,6 +124,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
       <Modal opened={editOpened} onClose={closeEdit} title="Atualizar Ficha de Admissão" size="xl" radius="md">
         <DynamicIntakeForm 
           medplum={medplum} 
+          patient={patient}
           onSuccess={() => {
             closeEdit();
             window.location.reload(); // Recarga para mostrar los datos actualizados

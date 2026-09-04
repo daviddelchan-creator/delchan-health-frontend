@@ -6,6 +6,8 @@ import { ptBR } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
 import Barcode from 'react-barcode';
 
+import { getMothersName } from '@/utils/patientUtils';
+
 interface PrintableFichaProps {
   patient: Patient;
   printedBy: string; // Nombre del doctor o admin que imprime
@@ -16,6 +18,7 @@ export const PrintableFicha = forwardRef<HTMLDivElement, PrintableFichaProps>(
   ({ patient, printedBy, tenantName }, ref) => {
     const patientId = patient.id || 'SEM-ID';
     const patientName = patient.name?.[0] ? `${patient.name[0].given?.join(' ')} ${patient.name[0].family}` : 'Desconhecido';
+    const mothersName = getMothersName(patient) || 'Não informado';
     const cpf = patient.identifier?.find(id => id.system?.includes('cpf'))?.value || 'Não informado';
     const cns = patient.identifier?.find(id => id.system?.includes('cns'))?.value || 'Não informado';
     const printDate = format(new Date(), "dd 'de' MMMM 'de' yyyy, 'às' HH:mm", { locale: ptBR });
@@ -44,6 +47,10 @@ export const PrintableFicha = forwardRef<HTMLDivElement, PrintableFichaProps>(
           <Grid.Col span={12}>
             <Text fw={700}>Nome Completo:</Text>
             <Text>{patientName}</Text>
+          </Grid.Col>
+          <Grid.Col span={12}>
+            <Text fw={700}>Nome da Mãe:</Text>
+            <Text>{mothersName}</Text>
           </Grid.Col>
           <Grid.Col span={6}>
             <Text fw={700}>CPF:</Text>

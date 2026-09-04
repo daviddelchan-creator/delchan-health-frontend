@@ -13,8 +13,8 @@ import { DynamicIntakeForm } from '../../../../components/DynamicIntakeForm';
 import { ClinicalEditor } from '../../../../components/clinical/ClinicalEditor';
 import { MasterSignature } from '../../../../components/shared/MasterSignature';
 import { PrintableFicha } from '../../../../components/patient/PrintableFicha';
-import { useTenant } from '../../../../contexts/TenantContext';
-import { 
+import { useTenant } from '@/contexts/TenantContext';
+import {
   IconUserPlus, IconSearch, IconFileText, IconEdit, IconShieldCheck, IconPrinter, IconCamera, IconCalendarPlus, IconStethoscope
 } from '@tabler/icons-react';
 
@@ -245,7 +245,7 @@ export default function PacientesPage() {
             const dob = p.birthDate ? new Date(p.birthDate).toLocaleDateString('pt-BR') : 'Data Indefinida';
             const phone = p.telecom?.find(t => t.system === 'phone')?.value || 'Sem telefone';
             const cpf = p.identifier?.find(i => i.system?.includes('cpf'))?.value || '';
-
+            const mothersName = getMothersName(p);
             return (
               <Accordion.Item key={p.id} value={p.id || ''}>
                 <Accordion.Control>
@@ -257,7 +257,7 @@ export default function PacientesPage() {
                       <div>
                         <Text fw={700} c="dark.9">{fullName}</Text>
                         <Text size="xs" c="dimmed">
-                          ID: #{patientId} {cpf ? `• CPF: ${cpf}` : ''} • Nasc: {dob} • {gender}
+                          ID: #{patientId} {cpf ? `• CPF: ${cpf}` : ''} {mothersName ? `• Mãe: ${mothersName}` : ''} • Nasc: {dob} • {gender}
                         </Text>
                       </div>
                     </Group>
@@ -395,8 +395,8 @@ export default function PacientesPage() {
         <DynamicIntakeForm 
           medplum={medplum} 
           clinicType={clinicType} 
+          patient={editingPatient || undefined}
           onSuccess={() => { 
-            setEditingPatient(null); 
             loadPatients(); 
           }} 
         />
@@ -418,6 +418,8 @@ export default function PacientesPage() {
           onSave={handleSaveEvolution} 
           accentColor={primaryColor} 
           loading={isSavingEvolution}
+          patientId={evolutionPatient?.id}
+          patientName={evolutionPatient?.name?.[0]?.given?.join(' ')}
         />
       </Modal>
 
