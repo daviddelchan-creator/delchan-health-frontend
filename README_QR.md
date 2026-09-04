@@ -91,12 +91,12 @@ curl -X POST http://localhost:3000/api/forms/generate \
 ```
 *Abra o arquivo `ficha_teste.pdf` gerado para ver o QR Code no topo direito, o trackingCode e os campos pautados do SOAP.*
 
-#### 2. Simular o Escaneamento Físico (Ingestão):
+#### 2. Simular o Escaneamento Físico (Ingestão com Decodificação Automática de QR):
 ```bash
-# Enviar a folha digitalizada de volta para o sistema:
+# Enviar a folha digitalizada de volta para o sistema (o QR Code será decodificado automaticamente!):
 curl -X POST http://localhost:3000/api/scan/ingest \
   -F "file=@ficha_teste.pdf" \
-  -F "trackingCode=FORM-DELCHAN-..."
+  -F "tenantId=tenant-1"
 ```
 
 **Resposta esperada (JSON):**
@@ -105,6 +105,7 @@ curl -X POST http://localhost:3000/api/scan/ingest \
   "success": true,
   "message": "Documento escaneado ingerido e vinculado com sucesso ao prontuário eletrônico.",
   "trackingCode": "FORM-DELCHAN-...",
+  "tenantId": "tenant-1",
   "documentReferenceId": "docref-12345",
   "status": "current",
   "subject": "Patient/pat-1",
@@ -119,11 +120,11 @@ Se a clínica mantém blocos de fichas pré-impressas na recepção sem saber an
 1. Abra o editor de evolução clínica ou acesse o diálogo de impressão.
 2. Deixe o campo **"¿A qué usuario / paciente pertenece?"** em branco.
 3. Imprima a ficha. Ela será registrada no Medplum como um `DocumentReference` com `status: preliminary` e sem `subject`.
-4. No momento do escaneamento após a consulta, basta enviar o `patientId` na requisição:
+4. No momento do escaneamento após a consulta, basta enviar o `patientId` e `tenantId` na requisição:
 ```bash
 curl -X POST http://localhost:3000/api/scan/ingest \
   -F "file=@ficha_avulsa_preenchida.pdf" \
-  -F "trackingCode=FORM-DELCHAN-..." \
+  -F "tenantId=tenant-1" \
   -F "patientId=pat-3"
 ```
 *O sistema vinculará o documento órfão automaticamente ao paciente `Patient/pat-3`!*

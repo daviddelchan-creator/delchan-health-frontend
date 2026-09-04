@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Patient } from '@medplum/fhirtypes';
 import { Box, Card, Text, Badge, Group, Stack, Center, Loader, Divider } from '@mantine/core';
-import { useMedplum } from '@medplum/react';
+import { useMedplum } from '@medplum/react-hooks';
 import { useTenant } from '../../contexts/TenantContext';
 
 interface PatientTimelineProps {

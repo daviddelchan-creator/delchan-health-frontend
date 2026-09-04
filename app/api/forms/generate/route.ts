@@ -56,6 +56,15 @@ export async function POST(req: NextRequest) {
         resourceType: 'DocumentReference',
         status: 'preliminary',
         docStatus: 'preliminary',
+        meta: {
+          tag: [
+            {
+              system: 'https://delchan.com/fhir/tenant',
+              code: tenantId,
+              display: tenantName,
+            },
+          ],
+        },
         identifier: [
           {
             system: 'urn:med-sistema:doc-tracker',

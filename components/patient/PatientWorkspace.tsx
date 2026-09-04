@@ -18,6 +18,8 @@ import { CarePlanList } from '../CarePlanList';
 interface PatientWorkspaceProps {
   patient: Patient;
   onClose: () => void;
+  medplum?: any;
+  doctorName?: string;
 }
 
 export function PatientWorkspace({ patient, onClose }: PatientWorkspaceProps) {

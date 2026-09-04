@@ -62,6 +62,9 @@ export async function generateFormPdf(params: GenerateFormPdfParams): Promise<Ge
 
   // 2. Criar o Documento PDF em formato A4 (595.28 x 841.89 pt)
   const pdfDoc = await PDFDocument.create();
+  pdfDoc.setTitle(trackingCode);
+  pdfDoc.setSubject(trackingCode);
+  pdfDoc.setKeywords([trackingCode, 'Delchan Health OS', 'QR Document Tracker']);
   const page = pdfDoc.addPage([595.28, 841.89]);
   const { width, height } = page.getSize();
 

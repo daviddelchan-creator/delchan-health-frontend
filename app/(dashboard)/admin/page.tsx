@@ -7,10 +7,10 @@ import {
 } from '@mantine/core';
 
 import { useMedplum, useMedplumProfile } from '@medplum/react-hooks'; 
-import { DynamicIntakeForm } from '../../../components/DynamicIntakeForm';
-import { PatientWorkspace } from '../../../components/PatientWorkspace';
-import { StaffManager } from '../../../components/admin/StaffManager';
-import { useTenant } from '../../../contexts/TenantContext';
+import { DynamicIntakeForm } from '@/components/DynamicIntakeForm';
+import { PatientWorkspace } from '@/components/patient/PatientWorkspace';
+import { StaffManager } from '@/components/admin/StaffManager';
+import { useTenant } from '@/contexts/TenantContext';
 import { 
   IconCameraPlus, IconBuildingHospital, IconTrash, IconPower, IconPlus, IconFileText, IconCheck, IconShieldLock, IconBuilding, IconLayoutGrid, IconSparkles
 } from '@tabler/icons-react';

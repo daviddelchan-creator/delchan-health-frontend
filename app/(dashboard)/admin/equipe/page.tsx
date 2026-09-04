@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Title, Text, Card, Group, Button, Table, Avatar, Badge, ActionIcon, Loader, Center } from '@mantine/core';
-import { useMedplum } from '@medplum/react';
+import { useMedplum } from '@medplum/react-hooks';
 import { useTenant } from '../../../../contexts/TenantContext';
 
 export default function EquipePage() {

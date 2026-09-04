@@ -8,11 +8,11 @@ import { useMedplum, useMedplumProfile } from '@medplum/react-hooks';
 import { useRouter } from 'next/navigation';
 import { useReactToPrint } from 'react-to-print';
 import { Patient } from '@medplum/fhirtypes';
-import { PatientWorkspace } from '../../../../components/PatientWorkspace';
-import { DynamicIntakeForm } from '../../../../components/DynamicIntakeForm';
-import { ClinicalEditor } from '../../../../components/clinical/ClinicalEditor';
-import { MasterSignature } from '../../../../components/shared/MasterSignature';
-import { PrintableFicha } from '../../../../components/patient/PrintableFicha';
+import { PatientWorkspace } from '@/components/patient/PatientWorkspace';
+import { DynamicIntakeForm } from '@/components/DynamicIntakeForm';
+import { ClinicalEditor } from '@/components/clinical/ClinicalEditor';
+import { MasterSignature } from '@/components/shared/MasterSignature';
+import { PrintableFicha } from '@/components/patient/PrintableFicha';
 import { useTenant } from '@/contexts/TenantContext';
 import {
   IconUserPlus, IconSearch, IconFileText, IconEdit, IconShieldCheck, IconPrinter, IconCamera, IconCalendarPlus, IconStethoscope
