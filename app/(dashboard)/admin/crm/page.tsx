@@ -5,7 +5,7 @@ import {
   Title, Text, Card, Grid, Button, Group, Tabs, Stack, Badge, Avatar, ActionIcon, ScrollArea, TextInput, Textarea, Divider, Switch, Menu, Box, Modal, Paper, Select, Center, Loader, ThemeIcon, Progress, Tooltip, Alert
 } from '@mantine/core';
 import { 
-  IconBrandWhatsapp, IconBrandInstagram, IconMail, IconMessageCircle, IconPlus, IconCalendarEvent, IconSend, IconUserCheck, IconUsers, IconTrendingUp, IconCoin, IconPhoneCall, IconExchange, IconRefresh, IconExternalLink, IconSparkles
+  IconBrandWhatsapp, IconBrandInstagram, IconMail, IconMessageCircle, IconPlus, IconCalendarEvent, IconSend, IconUserCheck, IconUsers, IconTrendingUp, IconCoin, IconPhoneCall, IconExchange, IconRefresh, IconExternalLink, IconSparkles, IconGitBranch, IconFileCheck, IconAlertTriangle, IconRobot
 } from '@tabler/icons-react';
 import { useMedplum } from '@medplum/react-hooks';
 import { Task, Practitioner, Patient, Appointment } from '@medplum/fhirtypes';
@@ -21,6 +21,10 @@ interface LeadItem {
   time: string;
   assignedDoctorId?: string;
   assignedDoctorName?: string;
+  patientId?: string;
+  intakeUrl?: string;
+  isHumanHandoff?: boolean;
+  handoffReason?: string;
 }
 
 const initialLeads: LeadItem[] = [
@@ -53,6 +57,10 @@ function AdminCRMContent() {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedLeadForAssign, setSelectedLeadForAssign] = useState<LeadItem | null>(null);
   const [selectedDoctorToAssign, setSelectedDoctorToAssign] = useState<string | null>(null);
+
+  // Modal de Execução de Nodos ZernFlow & Antigravity
+  const [activeTraceResult, setActiveTraceResult] = useState<any>(null);
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
 
   // Form Novo Lead Manual
   const [leadName, setLeadName] = useState('');
@@ -318,6 +326,97 @@ function AdminCRMContent() {
     }
   };
 
+  // 8. SIMULADOR DO FLUXO "COMMENT-TO-DM" (ZERNFLOW + ANTIGRAVITY + LINK DE ANAMNESE)
+  const handleSimulateCommentToDm = async () => {
+    const mockNames = ['Gabriela Lima', 'Beatriz Castilho', 'Renata Vasconcellos'];
+    const mockComments = [
+      'Qual o valor do tratamento para Melasma? Gostaria muito de agendar uma consulta!',
+      'Vocês fazem aplicação de Botox e bioestimulador? Meu número é 11988887766.',
+      'Amei o resultado desse peeling! Como faço para marcar minha avaliação?'
+    ];
+    const randomName = mockNames[Math.floor(Math.random() * mockNames.length)];
+    const randomComment = mockComments[Math.floor(Math.random() * mockComments.length)];
+
+    try {
+      const res = await fetch('/api/crm/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: 'instagram_comment',
+          name: randomName,
+          phone: '11988887766',
+          message: randomComment,
+          clinicName
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        const newLead: LeadItem = {
+          id: data.fhir?.taskId || `wh-ig-${Date.now()}`,
+          name: randomName,
+          phone: '11988887766',
+          source: 'instagram',
+          intent: `${data.antigravity?.procedure || 'Interesse Clínico'} (Comment-to-DM)`,
+          status: 'novo',
+          time: 'Agora',
+          patientId: data.fhir?.patientId,
+          intakeUrl: data.fhir?.intakeUrl,
+          isHumanHandoff: false
+        };
+
+        setLeads(prev => [newLead, ...prev]);
+        setActiveTraceResult(data);
+        setIsTraceModalOpen(true);
+      } else {
+        alert('Falha ao processar Comment-to-DM.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao conectar ao motor agéntico.');
+    }
+  };
+
+  // 9. SIMULADOR DO FLUXO DE TRIAGEM & ESCALADA HUMANA (ZERNFLOW HANDOFF)
+  const handleSimulateZernFlowHandoff = async () => {
+    const urgentMessage = 'Fiz peeling facial ontem na clínica e hoje meu rosto está com bolhas, queimadura e muita dor!';
+    try {
+      const res = await fetch('/api/crm/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: 'whatsapp',
+          name: 'Rodrigo Silva (Urgência)',
+          phone: '11977771234',
+          message: urgentMessage,
+          clinicName
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        const urgentLead: LeadItem = {
+          id: data.fhir?.taskId || `wh-urg-${Date.now()}`,
+          name: 'Rodrigo Silva (Alerta Vermelho)',
+          phone: '11977771234',
+          source: 'whatsapp',
+          intent: '🚨 Pós-Procedimento: Queimadura e Dor Aguda',
+          status: 'contato',
+          time: 'Agora',
+          patientId: data.fhir?.patientId,
+          isHumanHandoff: true,
+          handoffReason: data.zernflow?.handoffReason || 'Risco Clínico Detectado'
+        };
+
+        setLeads(prev => [urgentLead, ...prev]);
+        setActiveTraceResult(data);
+        setIsTraceModalOpen(true);
+      }
+    } catch (err) {
+      alert('Erro ao simular handoff.');
+    }
+  };
+
   // Gerador de Link Direto wa.me
   const getWhatsAppDirectLink = (lead: LeadItem) => {
     const cleanPhone = lead.phone ? lead.phone.replace(/\D/g, '') : '5511999999999';
@@ -359,17 +458,30 @@ function AdminCRMContent() {
           </Text>
         </div>
         <Group>
-          <Tooltip label="Testar recebimento de lead simulando envio de cliente pelo WhatsApp">
+          <Tooltip label="Testar motor ZernFlow + Antigravity respondendo comentário com DM e capturando FHIR">
             <Button 
-              variant="light" 
-              color="teal" 
+              variant="gradient" 
+              gradient={{ from: 'grape', to: 'pink' }}
               radius="xl" 
-              leftSection={<IconSparkles size={16} />}
-              onClick={handleSimulateIncomingWhatsApp}
+              leftSection={<IconRobot size={16} />}
+              onClick={handleSimulateCommentToDm}
             >
-              Simular Lead WhatsApp
+              Simular Comment-to-DM
             </Button>
           </Tooltip>
+
+          <Tooltip label="Testar triagem de risco e escalada automática ZernFlow para atendimento humano">
+            <Button 
+              variant="light" 
+              color="red" 
+              radius="xl" 
+              leftSection={<IconAlertTriangle size={16} />}
+              onClick={handleSimulateZernFlowHandoff}
+            >
+              Simular Handoff Urgente
+            </Button>
+          </Tooltip>
+
           <Button 
             color={primaryColor} 
             radius="xl" 
@@ -434,6 +546,7 @@ function AdminCRMContent() {
           <Tabs.Tab value="pipeline" fw={700} fz="sm">📋 Pipeline Kanban ({leads.length})</Tabs.Tab>
           <Tabs.Tab value="inbox" fw={700} fz="sm">💬 Inbox Central Omnichannel</Tabs.Tab>
           <Tabs.Tab value="campanhas" fw={700} fz="sm">🚀 Campanhas de Retorno & Disparos</Tabs.Tab>
+          <Tabs.Tab value="zernflow" fw={700} fz="sm">🔀 Nodos ZernFlow & IA</Tabs.Tab>
         </Tabs.List>
 
         {/* 1. PIPELINE KANBAN */}
@@ -510,6 +623,27 @@ function AdminCRMContent() {
                             }}>
                               + Atribuir Profissional
                             </Badge>
+                          )}
+
+                          {lead.isHumanHandoff && (
+                            <Badge color="red" variant="filled" size="xs" mb="xs" fullWidth>
+                              🚨 Transferência Humana (ZernFlow)
+                            </Badge>
+                          )}
+
+                          {lead.intakeUrl && (
+                            <Button 
+                              variant="light" 
+                              color="indigo" 
+                              size="xs" 
+                              fullWidth 
+                              radius="md"
+                              mb="xs"
+                              leftSection={<IconFileCheck size={14} />}
+                              onClick={() => window.open(lead.intakeUrl, '_blank')}
+                            >
+                              Ficha Pré-Atendimento
+                            </Button>
                           )}
 
                           {/* BOTÕES DE AÇÃO RÁPIDA */}
@@ -770,6 +904,82 @@ function AdminCRMContent() {
             </Grid.Col>
           </Grid>
         </Tabs.Panel>
+
+        {/* 4. NODOS ZERNFLOW & ANTIGRAVITY ENGINE */}
+        <Tabs.Panel value="zernflow" pt="xl">
+          <Card p="xl" radius="xl" withBorder bg="white" mb="lg">
+            <Group justify="space-between" mb="md">
+              <div>
+                <Group gap="xs">
+                  <ThemeIcon size="lg" radius="md" color="grape" variant="light">
+                    <IconGitBranch size={22} />
+                  </ThemeIcon>
+                  <Title order={3}>ZernFlow + Gemini Antigravity Pipeline</Title>
+                </Group>
+                <Text size="sm" c="dimmed" mt={4}>
+                  Arquitetura visual de automação de canais de mensageria com nós condicionais e processamento agéntico de saúde.
+                </Text>
+              </div>
+              <Badge color="teal" variant="light" size="lg">
+                Motor Agéntico Ativo • Cloud-First
+              </Badge>
+            </Group>
+
+            <Grid gutter="lg" mt="lg">
+              {/* NÓ 1 */}
+              <Grid.Col span={{ base: 12, md: 3 }}>
+                <Paper p="md" radius="lg" withBorder bg="#f8fafc" style={{ borderTop: '4px solid #8b5cf6', height: '100%' }}>
+                  <Badge color="grape" size="xs" mb="xs">NÓ 1: GATILHO OMNICANAL</Badge>
+                  <Title order={5} mb="xs">Comment-to-DM & Mensagens</Title>
+                  <Text size="xs" c="dimmed">
+                    Captura comentários no Instagram/Facebook ou DMs de WhatsApp e Telegram instantaneamente via webhook.
+                  </Text>
+                  <Divider my="sm" />
+                  <Text size="10px" ff="monospace" c="teal.8">/api/crm/webhook (POST)</Text>
+                </Paper>
+              </Grid.Col>
+
+              {/* NÓ 2 */}
+              <Grid.Col span={{ base: 12, md: 3 }}>
+                <Paper p="md" radius="lg" withBorder bg="#f8fafc" style={{ borderTop: '4px solid #0d9488', height: '100%' }}>
+                  <Badge color="teal" size="xs" mb="xs">NÓ 2: IA ANTIGRAVITY</Badge>
+                  <Title order={5} mb="xs">Análise Semântica & FHIR</Title>
+                  <Text size="xs" c="dimmed">
+                    Extrai queixa clínica, procedimento desejado e telefone. Formata payloads padrão HL7 FHIR R4 sem sobrecarga local.
+                  </Text>
+                  <Divider my="sm" />
+                  <Text size="10px" ff="monospace" c="teal.8">lib/crm/antigravity-agent.ts</Text>
+                </Paper>
+              </Grid.Col>
+
+              {/* NÓ 3 */}
+              <Grid.Col span={{ base: 12, md: 3 }}>
+                <Paper p="md" radius="lg" withBorder bg="#f8fafc" style={{ borderTop: '4px solid #f59e0b', height: '100%' }}>
+                  <Badge color="orange" size="xs" mb="xs">NÓ 3: CONDICIONAL (IF/ELSE)</Badge>
+                  <Title order={5} mb="xs">Roteamento Inteligente</Title>
+                  <Text size="xs" c="dimmed">
+                    Verifica risco clínico, dor aguda ou solicitação humana. Se verdadeiro, transfere imediatamente para a recepção.
+                  </Text>
+                  <Divider my="sm" />
+                  <Text size="10px" ff="monospace" c="teal.8">lib/crm/zernflow-engine.ts</Text>
+                </Paper>
+              </Grid.Col>
+
+              {/* NÓ 4 */}
+              <Grid.Col span={{ base: 12, md: 3 }}>
+                <Paper p="md" radius="lg" withBorder bg="#f8fafc" style={{ borderTop: '4px solid #3b82f6', height: '100%' }}>
+                  <Badge color="blue" size="xs" mb="xs">NÓ 4: PRÉ-ATENDIMENTO & TCLE</Badge>
+                  <Title order={5} mb="xs">Link de Anamnese Digital</Title>
+                  <Text size="xs" c="dimmed">
+                    Dispara link seguro único para o paciente preencher antecedentes médicos e consentimento LGPD antes da consulta.
+                  </Text>
+                  <Divider my="sm" />
+                  <Text size="10px" ff="monospace" c="teal.8">/patient/[id]/anamnese</Text>
+                </Paper>
+              </Grid.Col>
+            </Grid>
+          </Card>
+        </Tabs.Panel>
       </Tabs>
 
       {/* MODAL: NOVO LEAD MANUAL */}
@@ -862,6 +1072,87 @@ function AdminCRMContent() {
             Converter em Paciente & Agendar
           </Button>
         </Stack>
+      </Modal>
+
+      {/* MODAL: EXECUÇÃO AGÉNTICA ZERNFLOW & ANTIGRAVITY */}
+      <Modal
+        opened={isTraceModalOpen}
+        onClose={() => setIsTraceModalOpen(false)}
+        title="Execução do Motor Agéntico (ZernFlow + Antigravity)"
+        centered
+        size="lg"
+        radius="lg"
+      >
+        {activeTraceResult && (
+          <Stack gap="md">
+            <Paper p="md" bg="#f8fafc" withBorder radius="md">
+              <Group justify="space-between" mb="xs">
+                <Badge color={activeTraceResult.mode === 'comment_to_dm' ? 'grape' : 'teal'}>
+                  {activeTraceResult.mode === 'comment_to_dm' ? 'Instagram Comment-to-DM' : 'Mensagem Direta'}
+                </Badge>
+                <Text size="xs" c="dimmed">Status: 200 OK</Text>
+              </Group>
+              <Text size="xs" fw={700} c="dark.9">Intenção Detectada: {activeTraceResult.antigravity?.intent}</Text>
+              <Text size="xs" c="teal.8">Procedimento de Interesse: {activeTraceResult.antigravity?.procedure}</Text>
+              <Text size="xs" c="dimmed">Confiança da IA: {Math.round(activeTraceResult.antigravity?.confidence * 100)}%</Text>
+            </Paper>
+
+            <div>
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={4}>Nós ZernFlow Executados:</Text>
+              <Stack gap="xs">
+                {activeTraceResult.zernflow?.nodesTraversed?.map((node: any, idx: number) => (
+                  <Paper key={idx} p="xs" bg="white" withBorder radius="md">
+                    <Group justify="space-between">
+                      <Text size="xs" fw={700}>#{idx + 1} {node.title}</Text>
+                      <Badge size="xs" color={node.type === 'HANDOFF_HUMAN' ? 'red' : 'blue'} variant="light">
+                        {node.type}
+                      </Badge>
+                    </Group>
+                    <Text size="11px" c="dimmed">Resultado: {String(node.result)}</Text>
+                  </Paper>
+                ))}
+              </Stack>
+            </div>
+
+            {activeTraceResult.zernflow?.requiresHumanHandoff && (
+              <Alert icon={<IconAlertTriangle size={16} />} color="red" title="Ação ZernFlow: Handoff para Humano" radius="md">
+                {activeTraceResult.zernflow?.handoffReason}
+              </Alert>
+            )}
+
+            <div>
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={4}>Mensagem de Resposta Gerada (DM / WhatsApp):</Text>
+              <Paper p="sm" bg="#f0fdf4" withBorder radius="md" style={{ borderColor: '#bbf7d0' }}>
+                <Text size="xs" c="dark.8" style={{ whiteSpace: 'pre-line' }}>
+                  {activeTraceResult.outboundDmMessage}
+                </Text>
+              </Paper>
+            </div>
+
+            {activeTraceResult.fhir?.intakeUrl && (
+              <Paper p="sm" bg="#e0e7ff" withBorder radius="md" style={{ borderColor: '#c7d2fe' }}>
+                <Text size="xs" fw={700} c="indigo.9">Link de Pré-Atendimento Gerado:</Text>
+                <Text size="xs" truncate c="indigo.7">{activeTraceResult.fhir.intakeUrl}</Text>
+                <Button
+                  size="xs"
+                  color="indigo"
+                  radius="md"
+                  mt="xs"
+                  leftSection={<IconExternalLink size={14} />}
+                  onClick={() => window.open(activeTraceResult.fhir.intakeUrl, '_blank')}
+                >
+                  Abrir Ficha de Pré-Anamnese & Consentimento
+                </Button>
+              </Paper>
+            )}
+
+            <Group justify="flex-end">
+              <Button variant="default" radius="xl" onClick={() => setIsTraceModalOpen(false)}>
+                Fechar
+              </Button>
+            </Group>
+          </Stack>
+        )}
       </Modal>
 
     </div>
