@@ -10,6 +10,7 @@ import {
 import { useMedplum } from '@medplum/react-hooks';
 import { Task, Practitioner, Patient, Appointment } from '@medplum/fhirtypes';
 import { useTenant } from '@/contexts/TenantContext';
+import { ChannelManager } from '@/components/crm/ChannelManager';
 
 interface LeadItem {
   id: string;
@@ -547,6 +548,7 @@ function AdminCRMContent() {
           <Tabs.Tab value="inbox" fw={700} fz="sm">💬 Inbox Central Omnichannel</Tabs.Tab>
           <Tabs.Tab value="campanhas" fw={700} fz="sm">🚀 Campanhas de Retorno & Disparos</Tabs.Tab>
           <Tabs.Tab value="zernflow" fw={700} fz="sm">🔀 Nodos ZernFlow & IA</Tabs.Tab>
+          <Tabs.Tab value="channels" fw={700} fz="sm">⚙️ Contas & Redes Sociais</Tabs.Tab>
         </Tabs.List>
 
         {/* 1. PIPELINE KANBAN */}
@@ -979,6 +981,11 @@ function AdminCRMContent() {
               </Grid.Col>
             </Grid>
           </Card>
+        </Tabs.Panel>
+
+        {/* 5. GESTÃO DE CONTAS & CANAIS DE MENSAGERIA */}
+        <Tabs.Panel value="channels" pt="xl">
+          <ChannelManager mode="all" />
         </Tabs.Panel>
       </Tabs>
 

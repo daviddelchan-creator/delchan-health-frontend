@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { 
-  Title, Text, Card, Grid, TextInput, Button, Group, FileInput, PasswordInput, Stack, Badge, ThemeIcon, Avatar, Switch, Center, Alert, Paper, FileButton
+  Title, Text, Card, Grid, TextInput, Button, Group, FileInput, PasswordInput, Stack, Badge, ThemeIcon, Avatar, Switch, Center, Alert, Paper, FileButton, Box
 } from '@mantine/core';
 import { useMedplum, useMedplumProfile } from '@medplum/react-hooks';
 import { Practitioner } from '@medplum/fhirtypes';
 import { useTenant } from '../../../../contexts/TenantContext';
 import { IconShieldCheck, IconLock, IconCheck, IconCertificate, IconCamera } from '@tabler/icons-react';
+import { ChannelManager } from '@/components/crm/ChannelManager';
 
 export default function DoctorSettings() {
   const medplum = useMedplum();
@@ -224,6 +225,11 @@ export default function DoctorSettings() {
           </Card>
         </Grid.Col>
       </Grid>
+
+      {/* SEÇÃO: MEUS CANAIS INDIVIDUAIS DE ATENDIMENTO & REDES SOCIAIS */}
+      <Box mt="xl">
+        <ChannelManager mode="practitioner-only" currentPractitionerId={profile?.id} />
+      </Box>
     </div>
   );
 }

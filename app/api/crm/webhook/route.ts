@@ -38,6 +38,7 @@ export async function GET(request: Request) {
 // 2. INGESTIÓN Y ENRUTAMIENTO INTELIGENTE (POST)
 export async function POST(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
     const body = await request.json();
 
     let rawMessage = 'Olá, gostaria de saber mais informações.';
@@ -45,7 +46,8 @@ export async function POST(request: Request) {
     let senderName = 'Usuário Social';
     let senderPhone = '';
     let isCommentEvent = false;
-    let tenantId = body.tenantId || 'tenant-1';
+    let tenantId = body.tenantId || searchParams.get('tenantId') || 'tenant-1';
+    let doctorId = body.doctorId || searchParams.get('doctorId') || undefined;
 
     // A. Parseo de Comentario de Instagram ("Comment-to-DM")
     if (body.entry?.[0]?.changes?.[0]?.field === 'comments') {
@@ -143,6 +145,13 @@ export async function POST(request: Request) {
         };
         communicationPayload.subject = {
           reference: `Patient/${savedPatient.id}`
+        };
+      }
+
+      // Se o canal pertencer a um médico individual, atribuir a Task automaticamente a ele
+      if (doctorId) {
+        taskPayload.owner = {
+          reference: `Practitioner/${doctorId}`
         };
       }
 
