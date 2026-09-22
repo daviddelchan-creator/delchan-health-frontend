@@ -473,8 +473,116 @@ function AdminPortalContent() {
                 radius="md"
                 swatches={['#0d9488', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899']}
               />
+              <Select
+                label="Tipo de Negócio (Vertical / Nicho)"
+                placeholder="Selecione o tipo de clínica/negócio"
+                data={[
+                  { value: 'clinica', label: 'Clínica Médica / Centro de Saúde' },
+                  { value: 'pet', label: 'Pet Shop / Veterinária' },
+                  { value: 'salao', label: 'Salão de Beleza / Estética' },
+                  { value: 'unhas', label: 'Estúdio de Unhas' },
+                  { value: 'bemestar', label: 'Spa / Bem-Estar' },
+                  { value: 'spa', label: 'Clínica de SPA & Estética Avançada' }
+                ]}
+                value={clinicType}
+                onChange={(v) => {
+                  if (v) setClinicType(v);
+                }}
+                radius="md"
+              />
+              <Select
+                label="Tipo de Negócio (Vertical / Nicho)"
+                placeholder="Selecione o tipo de clínica/negócio"
+                data={[
+                  { value: 'clinica', label: 'Clínica Médica / Centro de Saúde' },
+                  { value: 'pet', label: 'Pet Shop / Veterinária' },
+                  { value: 'salao', label: 'Salão de Beleza / Estética' },
+                  { value: 'unhas', label: 'Estúdio de Unhas' },
+                  { value: 'bemestar', label: 'Spa / Bem-Estar' },
+                  { value: 'spa', label: 'Clínica de SPA & Estética Avançada' }
+                ]}
+                value={clinicType}
+                onChange={(v) => {
+                  if (v) setClinicType(v);
+                }}
+                radius="md"
+              />
               <Button color={primaryColor} radius="xl" size="md" mt="md" onClick={() => alert('Identidade visual salva e propagada!')}>
                 Salvar White-Label
+              </Button>
+            </Stack>
+          </Card>
+        )}
+
+        {/* 4.5. ABA COMPLIANCE BRASIL */}
+        {activeSidebarTab === 'compliance' && (
+          <Card p="xl" radius="xl" withBorder bg="white">
+            <Title order={3} mb="xs">Compliance Brasil (LGPD, Gov.br)</Title>
+            <Text size="sm" c="dimmed" mb="xl">Configurações regionais e jurídicas exigidas no Brasil.</Text>
+
+            <Stack gap="md" style={{ maxWidth: '600px' }}>
+              <Switch
+                label="Exigir Termo de Consentimento LGPD (Lei 13.709/2018)"
+                description="Adiciona automaticamente a cláusula de consentimento na Ficha de Admissão."
+                color="teal"
+                defaultChecked
+              />
+              <Switch
+                label="Habilitar Login via Gov.br / e-CNPJ"
+                description="Permite que profissionais de saúde façam login com certificado digital."
+                color="teal"
+              />
+              <Switch
+                label="Validação Estrita de CNS (Cartão Nacional de Saúde)"
+                description="Obriga e valida o algoritmo do número do CNS."
+                color="teal"
+                defaultChecked
+              />
+              <Switch
+                label="Validação Estrita de CPF"
+                description="Obriga e valida o algoritmo do número do CPF na base da Receita."
+                color="teal"
+                defaultChecked
+              />
+              <Button color={primaryColor} radius="xl" size="md" mt="md" onClick={() => alert('Configurações de Compliance salvas!')}>
+                Salvar Configurações de Compliance
+              </Button>
+            </Stack>
+          </Card>
+        )}
+
+        {/* 4.5. ABA COMPLIANCE BRASIL */}
+        {activeSidebarTab === 'compliance' && (
+          <Card p="xl" radius="xl" withBorder bg="white">
+            <Title order={3} mb="xs">Compliance Brasil (LGPD, Gov.br)</Title>
+            <Text size="sm" c="dimmed" mb="xl">Configurações regionais e jurídicas exigidas no Brasil.</Text>
+
+            <Stack gap="md" style={{ maxWidth: '600px' }}>
+              <Switch
+                label="Exigir Termo de Consentimento LGPD (Lei 13.709/2018)"
+                description="Adiciona automaticamente a cláusula de consentimento na Ficha de Admissão."
+                color="teal"
+                defaultChecked
+              />
+              <Switch
+                label="Habilitar Login via Gov.br / e-CNPJ"
+                description="Permite que profissionais de saúde façam login com certificado digital."
+                color="teal"
+              />
+              <Switch
+                label="Validação Estrita de CNS (Cartão Nacional de Saúde)"
+                description="Obriga e valida o algoritmo do número do CNS."
+                color="teal"
+                defaultChecked
+              />
+              <Switch
+                label="Validação Estrita de CPF"
+                description="Obriga e valida o algoritmo do número do CPF na base da Receita."
+                color="teal"
+                defaultChecked
+              />
+              <Button color={primaryColor} radius="xl" size="md" mt="md" onClick={() => alert('Configurações de Compliance salvas!')}>
+                Salvar Configurações de Compliance
               </Button>
             </Stack>
           </Card>

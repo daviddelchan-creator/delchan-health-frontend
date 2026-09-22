@@ -125,7 +125,7 @@ export default function PatientAnamnesePage({ params }: AnamnesePageProps) {
               <Title order={3} c="dark.9" fw={800} style={{ letterSpacing: '-0.5px' }}>
                 Pré-Atendimento & Anamnese
               </Title>
-              <Text size="xs" c="dimmed">Delchan Health OS • Portal Seguro do Paciente</Text>
+              <Text size="xs" c="dimmed">Delchan Health OS • Portal Seguro do {dict.patient || 'Paciente'}</Text>
             </div>
           </Group>
           <Badge color="teal" variant="light">

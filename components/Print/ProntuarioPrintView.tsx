@@ -257,9 +257,18 @@ export const ProntuarioPrintView = forwardRef<HTMLDivElement, ProntuarioPrintVie
             </Box>
           </Group>
 
+          <Box mt="lg" pt="xs" style={{ borderTop: '1px solid #000', width: '320px', textAlign: 'center', paddingTop: '8px', marginBottom: '20px' }}>
+            <Text size="xs" fw={700}>{patientName}</Text>
+            <Text size="xs" c="dimmed">Assinatura Paciente / Responsável (LGPD)</Text>
+          </Box>
           <Box mt="lg" pt="xs" style={{ borderTop: '1px dashed #cbd5e1' }}>
+            <Text size="xs" fw={700} c="dimmed" ta="justify" mb="xs">
+              Termo LGPD: Declaro serem verdadeiras as informações contidas nesta ficha. Concordo expressamente com a coleta, processamento,
+              armazenamento e compartilhamento de meus dados pessoais sensíveis e de saúde, nos estritos termos da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados - LGPD)
+              para finalidades de diagnóstico, atendimento clínico e cumprimento de obrigação legal ou regulatória pelo Controlador/Operador {tenantName}.
+            </Text>
             <Text size="xs" c="dimmed" ta="center">
-              Documento médico confidencial gerado pelo ecossistema Delchan Health OS. Criptografado de acordo com as normas CFM e LGPD.
+              Documento médico confidencial impresso por {printedBy} | Auditoria Interna Delchan Health OS.
             </Text>
           </Box>
         </Box>

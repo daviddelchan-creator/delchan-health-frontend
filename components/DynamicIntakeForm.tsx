@@ -199,6 +199,22 @@ export function DynamicIntakeForm({ medplum, clinicType, patient, onSuccess }: D
       } else {
         savedPatient = { ...patientPayload, id: `local-${Date.now()}` };
       }
+
+      // Create RelatedPerson for family nucleus integration (Requirement Task 2)
+      if (medplum && savedPatient.id) {
+        try {
+          await medplum.createResource({
+             resourceType: 'RelatedPerson',
+             patient: { reference: `Patient/${savedPatient.id}` },
+             relationship: [
+               { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v3-RoleCode', code: 'FAMMEMB', display: 'Family Member' }] }
+             ],
+             name: [{ text: 'Responsável Familiar / Acompanhante' }]
+          });
+        } catch (relatedPersonError) {
+          console.error("Failed to create RelatedPerson:", relatedPersonError);
+        }
+      }
       
       if (onSuccess) {
         onSuccess(savedPatient);

@@ -4,10 +4,16 @@ import { useState } from 'react';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import { RichTextEditor } from '@mantine/tiptap';
+import dynamic from 'next/dynamic';
+
+const RichTextEditor = dynamic(() => import('@mantine/tiptap').then(mod => mod.RichTextEditor), {
+  ssr: false,
+  loading: () => <p>Carregando Editor de Texto...</p>
+});
 import { Button, Group, Paper, Stack, Tooltip } from '@mantine/core';
 import { IconQrcode, IconPrinter } from '@tabler/icons-react';
 import { FormPrintDialog } from '../FormPrintDialog';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface ClinicalEditorProps {
   onSave: (contentJson: object, contentHtml: string) => void;
@@ -83,7 +89,7 @@ export function ClinicalEditor({
           <Group justify="space-between" wrap="wrap">
             <Group gap="xs" wrap="wrap">
               {/* RENDERIZADO DINÂMICO DE BOTÕES DE MODELOS */}
-              {dynamicTemplates.map((tmpl) => (
+              {getReplacedTemplates().map((tmpl) => (
                 <Button 
                   key={tmpl.id}
                   size="xs" 

@@ -123,7 +123,8 @@ function AdminCRMContent() {
             status: t.status === 'requested' ? 'novo' : t.status === 'in-progress' ? 'contato' : t.status === 'accepted' ? 'agendado' : 'concluido',
             time: t.authoredOn ? new Date(t.authoredOn).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Hoje',
             assignedDoctorId: t.owner?.reference?.split('/')[1],
-            assignedDoctorName: t.owner?.display
+            assignedDoctorName: t.owner?.display,
+            patientId: t.for?.reference?.startsWith('Patient/') ? t.for.reference.split('/')[1] : undefined
           }));
           setLeads(formatted);
         }
@@ -743,10 +744,17 @@ function AdminCRMContent() {
                   </Group>
                   <Group>
                     <Button 
-                      component="a"
-                      href={activeChatLead ? getWhatsAppDirectLink(activeChatLead) : '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      {...(activeChatLead ? {
+                        component: "a",
+                        href: getWhatsAppDirectLink(activeChatLead),
+                        target: "_blank",
+                        rel: "noopener noreferrer"
+                      } : {
+                        onClick: (e) => {
+                          e.preventDefault();
+                          alert('Selecione um lead primeiro (Em breve)');
+                        }
+                      })}
                       variant="outline" 
                       color="teal" 
                       radius="xl" 

@@ -7,7 +7,7 @@ import {
 import { useMedplum, useMedplumProfile } from '@medplum/react-hooks';
 import { Practitioner } from '@medplum/fhirtypes';
 import { useTenant } from '../../../../contexts/TenantContext';
-import { IconShieldCheck, IconLock, IconCheck, IconCertificate, IconCamera } from '@tabler/icons-react';
+import { IconShieldCheck, IconLock, IconCheck, IconCertificate, IconCamera, IconBrandWhatsapp } from '@tabler/icons-react';
 import { ChannelManager } from '@/components/crm/ChannelManager';
 
 export default function DoctorSettings() {
@@ -225,6 +225,40 @@ export default function DoctorSettings() {
           </Card>
         </Grid.Col>
       </Grid>
+
+      {/* SEÇÃO: CONFIGURAÇÃO DE WHATSAPP (META CLOUD API) */}
+      <Box mt="xl">
+        <Card p="xl" radius="lg" withBorder bg="white">
+          <Group mb="md">
+            <ThemeIcon color="teal" size="lg" radius="md">
+              <IconBrandWhatsapp size={20} />
+            </ThemeIcon>
+            <div>
+              <Title order={4}>Integração WhatsApp Business / Cloud API</Title>
+              <Text size="sm" c="dimmed">Configure os tokens da Meta para disparos de mensagens automáticas e CRM.</Text>
+            </div>
+          </Group>
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <TextInput label="Phone Number ID (Meta)" placeholder="Ex: 1059345..." radius="md" />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <TextInput label="Business Account ID" placeholder="Ex: 103284..." radius="md" />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12 }}>
+              <TextInput label="Access Token" placeholder="EAA..." radius="md" />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <TextInput label="Webhook Verify Token" placeholder="delchan_health_webhook_token" radius="md" />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12 }}>
+              <Button color={primaryColor} radius="xl" onClick={() => alert('Configurações salvas com sucesso!')}>
+                Salvar Configurações do WhatsApp
+              </Button>
+            </Grid.Col>
+          </Grid>
+        </Card>
+      </Box>
 
       {/* SEÇÃO: MEUS CANAIS INDIVIDUAIS DE ATENDIMENTO & REDES SOCIAIS */}
       <Box mt="xl">
