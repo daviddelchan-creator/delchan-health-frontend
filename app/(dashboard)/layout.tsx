@@ -6,6 +6,7 @@ import { ReactNode, useState } from 'react';
 import { useMedplumProfile } from '@medplum/react-hooks';
 import { useTenant } from '@/contexts/TenantContext';
 import { DoctorProfile } from '@/components/profile/DoctorProfile';
+import { GOD_MODE_MODULES } from '@/lib/god-mode-menu';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -73,6 +74,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <UnstyledButton onClick={() => router.push('/admin?tab=modules')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Módulos SaaS</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=whitelabel')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>White-Label</UnstyledButton>
             
+            {GOD_MODE_MODULES.map((module) => (
+              <UnstyledButton
+                key={module.id}
+                onClick={() => router.push(module.path)}
+                p="sm"
+                bg={pathname.startsWith(module.path) ? 'teal.0' : 'transparent'}
+                c={pathname.startsWith(module.path) ? 'teal.9' : 'gray.8'}
+                style={{ borderRadius: 8, fontWeight: pathname.startsWith(module.path) ? 700 : 500 }}
+              >
+                {module.name}
+              </UnstyledButton>
+            ))}
+
             <Text size="xs" fw={700} c="dimmed" mt="sm" mb="xs" px="xs" lts={1}>COMERCIAL & MARKETING</Text>
             <UnstyledButton 
               onClick={() => router.push('/admin/crm')} 
