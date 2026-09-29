@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model CiscoDevice {
+  id          String  @id @default(uuid())
+  mac_address String  @unique
+  model       String  @default("9861")
+  ip          String
+  sip_domain  String
+  sip_server  String
+  sip_proxy   String
+  sip_port    Int     @default(5061)
+  transport   String  @default("TLS")
+  vpn_config  String?
+  status      String
+}
+
+model SipExtension {
+  id           String  @id @default(uuid())
+  user_id      String
+  extension    String  @unique
+  sip_username String  @unique
+  sip_password String
+  domain       String
+  tenant_id    String
+  device_id    String?
+}
+
+model VoipProviderConfig {
+  id            String  @id @default(uuid())
+  tenant_id     String
+  provider      String
+  sip_server    String
+  sip_proxy     String
+  domain        String
+  port          String
+  transport     String
+  realm         String
+  codec         String
+  vpn_enabled   Boolean
+  api_token     String
+  client_id     String?
+  tenant_ms_id  String?
+  client_secret String?
+  is_active     Boolean
+}
+
+model IdentityProvisioningLog {
+  id           String   @id @default(uuid())
+  user_id      String
+  provider     String
+  external_id  String?
+  sip_username String?
+  extension    String?
+  status       String
+  last_error   String?
+  created_at   DateTime @default(now())
+}
+
+model CiscoCall {
+  id        String   @id @default(uuid())
+  phone     String
+  name      String
+  direction String   @default("inbound")
+  status    String   @default("active")
+  date      DateTime @default(now())
+}
