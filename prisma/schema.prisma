@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -70,4 +70,12 @@ model CiscoCall {
   direction String   @default("inbound")
   status    String   @default("active")
   date      DateTime @default(now())
+}
+
+model CiscoHotDeskSession {
+  id         Int      @id @default(autoincrement())
+  device_id  String
+  user_id    String
+  tenant_id  String
+  started_at DateTime @default(now())
 }

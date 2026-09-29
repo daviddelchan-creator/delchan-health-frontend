@@ -14,6 +14,7 @@ import type { JSX, ReactNode } from 'react';
 import Root from './root';
 import { theme } from './theme';
 import { TenantProvider } from '../contexts/TenantContext';
+import { PermissionsProvider } from '../contexts/PermissionsContext';
 
 export const metadata: Metadata = {
   title: 'Delchan Health OS',
@@ -38,10 +39,13 @@ export default function RootLayout(props: { children: ReactNode }): JSX.Element 
           {/* 1. ROOT INICIALIZA LA CONEXIÓN A MEDPLUM PRIMERO */}
           <Root>
             
-            {/* 2. TENANTPROVIDER LEE EL TENANT Y CONTROLA EL GOD MODE */}
-            <TenantProvider>
-              {children}
-            </TenantProvider>
+            {/* 2. PERMISSIONSPROVIDER CARGA LA CASCADA DE PERMISOS */}
+            <PermissionsProvider>
+              {/* 3. TENANTPROVIDER LEE EL TENANT Y CONTROLA EL GOD MODE */}
+              <TenantProvider>
+                {children}
+              </TenantProvider>
+            </PermissionsProvider>
             
           </Root>
           

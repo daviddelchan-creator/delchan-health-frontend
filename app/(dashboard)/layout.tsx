@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useState } from 'react';
 import { useMedplumProfile } from '@medplum/react-hooks';
 import { useTenant } from '@/contexts/TenantContext';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { DoctorProfile } from '@/components/profile/DoctorProfile';
 import { GOD_MODE_MODULES } from '@/lib/god-mode-menu';
 import { CallWidget } from '@/components/telefonia/CallWidget';
@@ -14,6 +15,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const profile = useMedplumProfile();
   const { tenantConfig } = useTenant();
+  const { hasPermission } = usePermissions();
   
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -39,13 +41,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Text>
               <Group ml="xl" gap="sm">
                 <UnstyledButton onClick={() => router.push('/doctor')} px="md" py="xs" bg={pathname === '/doctor' ? 'dark.9' : 'transparent'} c={pathname === '/doctor' ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Início</UnstyledButton>
-                <UnstyledButton onClick={() => router.push('/doctor/pacientes')} px="md" py="xs" bg={pathname?.includes('/pacientes') ? 'dark.9' : 'transparent'} c={pathname?.includes('/pacientes') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Pacientes</UnstyledButton>
-                <UnstyledButton onClick={() => router.push('/doctor/agenda')} px="md" py="xs" bg={pathname?.includes('/agenda') ? 'dark.9' : 'transparent'} c={pathname?.includes('/agenda') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Agenda</UnstyledButton>
+
+                {hasPermission('modules.CRM.submodules.patient_registry.visible') && (
+                  <UnstyledButton onClick={() => router.push('/doctor/pacientes')} px="md" py="xs" bg={pathname?.includes('/pacientes') ? 'dark.9' : 'transparent'} c={pathname?.includes('/pacientes') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Pacientes</UnstyledButton>
+                )}
+
+                {hasPermission('modules.CRM.submodules.scheduling.visible') && (
+                  <UnstyledButton onClick={() => router.push('/doctor/agenda')} px="md" py="xs" bg={pathname?.includes('/agenda') ? 'dark.9' : 'transparent'} c={pathname?.includes('/agenda') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Agenda</UnstyledButton>
+                )}
+
                 <UnstyledButton onClick={() => router.push('/doctor/crm')} px="md" py="xs" bg={pathname?.includes('/crm') ? 'dark.9' : 'transparent'} c={pathname?.includes('/crm') ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>CRM</UnstyledButton>
               </Group>
             </Group>
             <Group>
-              <Button color="teal.9" radius="xl" onClick={() => router.push('/doctor/pacientes/novo')}>+ Novo Registro</Button>
+              {hasPermission('modules.CRM.submodules.patient_registry.functions.create_patient') && (
+                <Button color="teal.9" radius="xl" onClick={() => router.push('/doctor/pacientes/novo')}>+ Novo Registro</Button>
+              )}
               <UnstyledButton onClick={() => setProfileOpen(true)}>
                 <Avatar color="dark" radius="xl" style={{ cursor: 'pointer' }}>
                   {profile?.name?.[0]?.given?.[0] || 'DR'}
@@ -76,6 +87,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <UnstyledButton onClick={() => router.push('/admin?tab=whitelabel')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>White-Label</UnstyledButton>
             
             {GOD_MODE_MODULES.map((module) => (
+              // Módulo dinámico (ej. Telefonia) también pasa por el control de permisos si se expande la jerarquía a más módulos
               <UnstyledButton
                 key={module.id}
                 onClick={() => router.push(module.path)}
@@ -107,6 +119,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </UnstyledButton>
             
             <Text size="xs" fw={700} c="dimmed" mt="sm" mb="xs" px="xs" lts={1}>CONFIG. CLÍNICA</Text>
+            <UnstyledButton onClick={() => router.push('/admin/permisos')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Accesos y Permisos</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=clinic')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Dados da Clínica</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=security')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Segurança & Acesso</UnstyledButton>
             

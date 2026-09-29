@@ -6,6 +6,6 @@ export async function GET() {
     const count = await prisma.ciscoCall.count();
     return NextResponse.json({ count });
   } catch (error) {
-    return NextResponse.json({ count: 0 }); // No mock fallback
+    return NextResponse.json({ count: 0 });
   }
 }
