@@ -1,45 +1,75 @@
 import { NextResponse } from 'next/server';
 import { MedplumClient } from '@medplum/core';
-import type { PractitionerRole } from '@medplum/fhirtypes';
 
-const medplum = new MedplumClient({ baseUrl: process.env.MEDPLUM_BASE_URL });
+const medplum = new MedplumClient({
+  baseUrl: process.env.MEDPLUM_BASE_URL
+});
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { practitionerRoleId, role, overrides } = body;
+    const { practitionerRoleId, role, overrides } = await request.json();
 
-    if (!practitionerRoleId) {
-      return NextResponse.json({ error: 'Missing practitionerRoleId' }, { status: 400 });
+    if (!practitionerRoleId || !role) {
+      return NextResponse.json({ error: 'Missing required validation parameters: practitionerRoleId and role.' }, { status: 400 });
     }
 
-    // Retrieve existing practitioner role
-    const practitionerRole = await medplum.readResource('PractitionerRole', practitionerRoleId);
+    // 1. Fetch current live resource state from Medplum to inspect existing extensions
+    const currentRole = await medplum.readResource('PractitionerRole', practitionerRoleId);
 
-    // Update the extensions array
-    const newExtensions = [
-      {
-        url: 'https://saasplatform.health',
-        extension: [
-          { url: 'profile-group', valueString: role },
-          { url: 'profile-name', valueString: role }, // Could be derived differently depending on domain rules
-          { url: 'individual-overrides', valueString: overrides }
-        ]
-      }
-    ];
+    const extensionUrl = 'https://saasplatform.health';
+    const extensionsArray = currentRole.extension || [];
+    const targetExtensionIndex = extensionsArray.findIndex(e => e.url === extensionUrl);
 
-    // Filter out previous saasplatform.health extensions if any, and append the new one
-    const existingExtensions = practitionerRole.extension?.filter(ext => ext.url !== 'https://saasplatform.health') || [];
-
-    const updatedPractitionerRole: PractitionerRole = {
-      ...practitionerRole,
-      extension: [...existingExtensions, ...newExtensions]
+    // 2. Build the updated complex sub-extension matrix structure
+    const updatedAccessMatrixExtension = {
+      url: extensionUrl,
+      extension: [
+        { url: 'profile-group', valueString: role },
+        { url: 'individual-overrides', valueString: overrides || '{}' }
+      ]
     };
 
-    const updatedResource = await medplum.updateResource(updatedPractitionerRole);
-    return NextResponse.json({ success: true, resource: updatedResource });
+    let patchOperations = [];
+
+    // 3. Compile RFC 6902 JSON Patch operations dynamically based on existing data layout
+    if (targetExtensionIndex === -1) {
+      // If extension block doesn't exist yet, initialize or append to the array
+      if (!currentRole.extension) {
+        patchOperations.push({
+          op: 'add',
+          path: '/extension',
+          value: [updatedAccessMatrixExtension]
+        });
+      } else {
+        patchOperations.push({
+          op: 'add',
+          path: '/extension/-',
+          value: updatedAccessMatrixExtension
+        });
+      }
+    } else {
+      // If it exists, replace the elements atomically at the exact matched index array position
+      patchOperations.push({
+        op: 'replace',
+        path: `/extension/${targetExtensionIndex}`,
+        value: updatedAccessMatrixExtension
+      });
+    }
+
+    // 4. Fire the atomic patch request directly into Medplum using the standard Content-Type
+    const patchedResource = await medplum.patchResource('PractitionerRole', practitionerRoleId, patchOperations);
+
+    return NextResponse.json({
+      success: true,
+      versionId: patchedResource.meta?.versionId,
+      updatedAt: patchedResource.meta?.lastUpdated
+    });
+
   } catch (error: any) {
-    console.error('Error updating practitioner role extensions:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Critical authorization patch transaction failed on Medplum backend:', error);
+    return NextResponse.json({
+      error: 'Failed to update access control matrix parameters.',
+      details: error.message
+    }, { status: 500 });
   }
 }
