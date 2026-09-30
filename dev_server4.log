@@ -1,0 +1,172 @@
+
+> medplum-nextjs-demo@5.0.4 dev
+> npm run clean && next dev
+
+
+> medplum-nextjs-demo@5.0.4 clean
+> node -e "const fs = require('fs'); if (fs.existsSync('.next')) fs.rmSync('.next', { recursive: true, force: true });"
+
+   ▲ Next.js 15.5.6
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+
+ ✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+ ✓ Ready in 3.8s
+ ○ Compiling /test-chatter ...
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '@/components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '@/components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '@/components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '@/components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '@/components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '@/components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ GET /test-chatter 500 in 38815ms
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '../../components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '../../components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '../../components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '../../components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '../../components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '../../components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ GET /test-chatter 500 in 1297ms
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '../components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '../components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '../components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '../components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '../components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '../components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ GET /test-chatter 500 in 967ms
+ ⨯ ./app/test-chatter/page.tsx:2:1
+Module not found: Can't resolve '../../components/ChatterTimeline'
+  1 | 'use client';
+> 2 | import ChatterTimeline from '../../components/ChatterTimeline';
+    | ^
+  3 | import { MedplumProvider } from '@medplum/react';
+  4 | import { MedplumClient } from '@medplum/core';
+  5 |
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./components/ChatterTimeline.tsx:6:1
+Module not found: Can't resolve 'dompurify'
+  4 | import { useMedplum } from '@medplum/react-hooks';
+  5 | import { Communication } from '@medplum/fhirtypes';
+> 6 | import DOMPurify from 'dompurify';
+    | ^
+  7 |
+  8 | interface ChatterTimelineProps {
+  9 |   resourceType: string;
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/test-chatter/page.tsx
+ ⨯ ./components/ChatterTimeline.tsx:6:1
+Module not found: Can't resolve 'dompurify'
+  4 | import { useMedplum } from '@medplum/react-hooks';
+  5 | import { Communication } from '@medplum/fhirtypes';
+> 6 | import DOMPurify from 'dompurify';
+    | ^
+  7 |
+  8 | interface ChatterTimelineProps {
+  9 |   resourceType: string;
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/test-chatter/page.tsx
+ ⨯ ./components/ChatterTimeline.tsx:6:1
+Module not found: Can't resolve 'dompurify'
+  4 | import { useMedplum } from '@medplum/react-hooks';
+  5 | import { Communication } from '@medplum/fhirtypes';
+> 6 | import DOMPurify from 'dompurify';
+    | ^
+  7 |
+  8 | interface ChatterTimelineProps {
+  9 |   resourceType: string;
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/test-chatter/page.tsx
+ GET /test-chatter 500 in 2377ms
+ ✓ Compiled /_not-found in 1619ms (1339 modules)
+ ○ Compiling /test-chatter ...
+ ✓ Compiled /test-chatter in 524ms (1703 modules)
+ GET /test-chatter 200 in 1631ms
+ GET /test-chatter 200 in 200ms
+ ✓ Compiled in 2.5s (1299 modules)
