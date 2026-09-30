@@ -1,0 +1,20 @@
+
+> medplum-nextjs-demo@5.0.4 dev
+> npm run clean && next dev
+
+
+> medplum-nextjs-demo@5.0.4 clean
+> node -e "const fs = require('fs'); if (fs.existsSync('.next')) fs.rmSync('.next', { recursive: true, force: true });"
+
+ ⚠ Port 3000 is in use by an unknown process, using available port 3002 instead.
+   ▲ Next.js 15.5.6
+   - Local:        http://localhost:3002
+   - Network:      http://192.168.0.2:3002
+
+ ✓ Starting...
+ ✓ Ready in 2s
+ ○ Compiling /test-chatter ...
+ ✓ Compiled /test-chatter in 25.1s (2539 modules)
+ GET /test-chatter 200 in 29433ms
+ ✓ Compiled in 48ms
+ ✓ Compiled in 2.1s (944 modules)
