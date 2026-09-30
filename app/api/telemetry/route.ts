@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RfidTelemetrySchema } from '../../../modules/inventory/schemas/rfid-event.schema';
-import { AssetTrackerService } from '../../../modules/inventory/services/asset-tracker.service';
+import { RfidTelemetrySchema } from '@/modules/inventory/schemas/rfid-event.schema';
+import { AssetTrackerService } from '@/modules/inventory/services/asset-tracker.service';
 import { MedplumClient } from '@medplum/core';
 
 export async function POST(req: NextRequest) {
