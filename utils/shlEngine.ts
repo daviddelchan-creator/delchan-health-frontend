@@ -14,7 +14,7 @@ interface SHLManifestPayload {
  */
 export async function generateSmartHealthLinkManifest(
   fhirBundle: Record<string, any>,
-  domain: string,
+  runtimeDomain: string,
   manifestId: string
 ): Promise<{ shlUri: string; manifestPayload: SHLManifestPayload }> {
 
@@ -42,7 +42,8 @@ export async function generateSmartHealthLinkManifest(
   };
 
   // 5. Construct SHLink URI placing the decryption key strictly after the hash fragment identifier
-  const shlUri = `shlink:/https://${domain}/api/shl/manifest/${manifestId}#${base64UrlKey}`;
+  // The protocol URL now completely adapts to whatever custom domain the tenant uses at runtime
+  const shlUri = `shlink:/https://${runtimeDomain}/api/shl/manifest/${manifestId}#${base64UrlKey}`;
 
   return { shlUri, manifestPayload };
 }
@@ -75,7 +76,9 @@ export async function generateSmartHealthLink(medplum: MedplumClient, patientId:
     entry: entries
   };
 
-  const domain = process.env.NEXT_PUBLIC_APP_URL || 'localhost:3000';
+  const { getActiveTenantContext } = require('./tenant/context');
+  const tenant = await getActiveTenantContext();
+  const domain = tenant.customDomain;
   const manifestId = crypto2.randomUUID();
 
   const { shlUri, manifestPayload } = await generateSmartHealthLinkManifest(bundle, domain, manifestId);

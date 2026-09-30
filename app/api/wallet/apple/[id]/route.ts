@@ -1,29 +1,40 @@
 import { NextResponse } from 'next/server';
 import { Buffer } from 'buffer';
-import * as archiver from 'archiver';
+import archiver = require('archiver');
 import forge from 'node-forge';
+import { getActiveTenantContext } from '@/utils/tenant/context';
 
 // Database simulation for SHL URI retrieval
-async function getPatientShlUri(patientId: string): Promise<string> {
+async function getPatientShlUri(patientId: string, customDomain: string): Promise<string> {
   // Fetches the previously generated shlink:/ protocol string
-  return `shlink:/https://delchan.site/${patientId}#exampleKey`;
+  // It should be fetched from DB/Medplum realistically, but simulating as per template
+  return `shlink:/https://${customDomain}/api/shl/manifest/${patientId}#exampleKey`;
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: patientId } = await params;
-  const shlUri = await getPatientShlUri(patientId);
+
+  const tenant = await getActiveTenantContext();
+  const shlUri = await getPatientShlUri(patientId, tenant.customDomain);
+
+  // Read credentials from tenant config or use Master fallbacks
+  const teamId = tenant.walletCredentials?.appleTeamId || process.env.MASTER_APPLE_TEAM_ID || 'TEAMID12345';
+  const passTypeId = tenant.walletCredentials?.applePassTypeId || process.env.MASTER_APPLE_PASS_TYPE_IDENTIFIER || 'pass.com.saasplatform.health';
+  const orgName = tenant.customDomain || 'Health SaaS Platform';
+  const certPem = tenant.walletCredentials?.appleCertPem || process.env.MASTER_APPLE_PASS_CERTIFICATE_PEM || '';
+  const keyPem = tenant.walletCredentials?.appleKeyPem || process.env.MASTER_APPLE_PASS_PRIVATE_KEY_PEM || '';
 
   try {
     // 1. Define the internal pass.json structural layout (Premium Dark Healthcare Theme)
     const passJson = {
       formatVersion: 1,
-      passTypeIdentifier: "pass.com.delchan.health",
-      teamIdentifier: "TEAMID12345",
+      passTypeIdentifier: passTypeId,
+      teamIdentifier: teamId,
       serialNumber: `SHL-${patientId}`,
       backgroundColor: "rgb(24, 24, 27)", // Slate 900
       foregroundColor: "rgb(255, 255, 255)",
       labelColor: "rgb(161, 161, 170)", // Zinc 400
-      organizationName: "Delchan Health",
+      organizationName: orgName,
       description: "Cartão de Saúde Interoperável (IPS / SUS)",
       generic: {
         primaryFields: [
@@ -39,6 +50,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           message: shlUri,
           messageEncoding: "iso-8859-1",
           altText: "Scan para ver o prontuário completo"
+        },
+        {
+          format: "PKBarcodeFormatPDF417",
+          message: patientId,
+          messageEncoding: "iso-8859-1",
+          altText: patientId
         }
       ]
     };
@@ -65,10 +82,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     archive.append(manifestBuffer, { name: 'manifest.json' });
 
     // 4. Generate Criptographic PKCS7 Detached Signature File
-    // Loading keys from environment variables safely
-    const certPem = process.env.APPLE_PASS_CERTIFICATE_PEM || '';
-    const keyPem = process.env.APPLE_PASS_PRIVATE_KEY_PEM || '';
-
     if (certPem && keyPem) {
       const p7 = forge.pkcs7.createSignedData();
       p7.content = forge.util.createBuffer(manifestBuffer.toString('binary'));

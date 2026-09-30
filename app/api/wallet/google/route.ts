@@ -1,23 +1,33 @@
 import { NextResponse } from 'next/server';
 import { SignJWT, importPKCS8 } from 'jose';
+import { getActiveTenantContext } from '@/utils/tenant/context';
 
 export async function POST(request: Request) {
   const { patientId, patientName, shlUri } = await request.json();
 
   try {
+    const tenant = await getActiveTenantContext();
+
+    // Read credentials from tenant config or use Master fallbacks
+    const issuerId = tenant.walletCredentials?.googleIssuerId || process.env.MASTER_ISSUER_ID || '3388000000022xxxxxx';
+    const saEmail = tenant.walletCredentials?.googleServiceAccountEmail || process.env.MASTER_SERVICE_ACCOUNT_EMAIL || 'saas-master-signer@://gserviceaccount.com';
+    const privateKeyRaw = tenant.walletCredentials?.googlePrivateKey || process.env.MASTER_GOOGLE_PRIVATE_KEY || '';
+
+    const cardTitle = tenant.customDomain || 'Health SaaS Platform';
+
     // 1. Structure the Google Wallet Generic Object payload template
     const claims = {
-      iss: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      iss: saEmail,
       aud: "google",
-      origins: ["https://delchan.site"],
+      origins: [`https://${tenant.customDomain}`],
       typ: "savetowallet",
       payload: {
         genericObjects: [
           {
-            id: `${process.env.GOOGLE_ISSUER_ID}.PASSPORT_${patientId}`,
-            classId: `${process.env.GOOGLE_ISSUER_ID}.HEALTH_PASS_CLASS`,
+            id: `${issuerId}.PASSPORT_${patientId}`,
+            classId: `${issuerId}.HEALTH_PASS_CLASS`,
             genericType: "GENERIC_HEALTH_PASS",
-            cardTitle: { defaultValue: { language: "pt-BR", value: "Delchan Saúde" } },
+            cardTitle: { defaultValue: { language: "pt-BR", value: cardTitle } },
             header: { defaultValue: { language: "pt-BR", value: patientName } },
             subheader: { defaultValue: { language: "pt-BR", value: "Prontuário Digital IPS" } },
             barcode: {
@@ -31,10 +41,11 @@ export async function POST(request: Request) {
     };
 
     // 2. Cryptographically sign claims using service account credentials via RS256
-    const privateKeyInput = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+    const privateKeyInput = privateKeyRaw.replace(/\\n/g, '\n');
 
-    if (!privateKeyInput) {
-      return NextResponse.json({ saveUrl: `https://google.com` });
+    if (!privateKeyInput || privateKeyInput.includes('saas-master-signer')) {
+      // In development or if keys are completely missing/mocked
+      return NextResponse.json({ saveUrl: `https://pay.google.com/gp/v/save/` });
     }
 
     const ecPrivateKey = await importPKCS8(privateKeyInput, 'RS256');
