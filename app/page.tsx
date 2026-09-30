@@ -24,32 +24,31 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // 1. Inicia login no servidor Medplum
-      let loginResponse = await medplum.startLogin({ email, password });
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // 2. Seleção de perfil automática se múltiplos
-      if (!loginResponse.code && loginResponse.memberships && loginResponse.memberships.length > 0) {
-        loginResponse = await medplum.post('auth/profile', {
-          login: loginResponse.login,
-          profile: loginResponse.memberships[0].id,
-        });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Credenciais inválidas ou falha ao autenticar no servidor.");
       }
 
-      // 3. Processamento do código
-      if (loginResponse.code) {
-        await medplum.processCode(loginResponse.code);
-      } else {
-        throw new Error("Credenciais inválidas ou falha ao autenticar no servidor.");
+      if (data.mfaRequired) {
+        // Redirect to MFA handling page if required in the future
+        // For now just console log
+        console.log("MFA Required for login:", data.loginId);
+        return;
       }
 
-      // 4. Roteamento por perfil
-      const activeProfile = medplum.getProfile();
-      if (activeProfile?.resourceType === 'Patient') {
-        router.push('/patient');
-      } else if (activeProfile?.resourceType === 'Practitioner') {
-        router.push('/doctor');
+      if (data.success && data.redirectUrl) {
+        router.push(data.redirectUrl);
       } else {
-        router.push('/admin');
+        throw new Error("Resposta de autenticação malformada.");
       }
     } catch (err: any) {
       console.error("Erro na autenticação:", err);
