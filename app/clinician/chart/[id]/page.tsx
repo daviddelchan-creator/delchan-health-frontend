@@ -4,7 +4,10 @@ import { useMedplumProfile, useMedplum } from '@medplum/react';
 import { Practitioner, Patient, AuditEvent, Observation, CarePlan } from '@medplum/fhirtypes';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Card, Text, Title, Stack, Group, Badge, Loader, Alert } from '@mantine/core';
+import { Card, Text, Title, Stack, Group, Badge, Loader, Alert, TextInput, Button, Select, NumberInput } from '@mantine/core';
+
+import { PodiatryAnamnesisSchema } from '@/utils/fhir/templates/podiatry';
+import { NutritionAnamnesisSchema } from '@/utils/fhir/templates/nutrition';
 
 export default function ClinicalChartPage() {
   const { id } = useParams() as { id: string };
@@ -67,149 +70,108 @@ export default function ClinicalChartPage() {
       </Card>
 
       {/* Dynamic forms based on specialty */}
-      {specialty === 'podiatry' && <PodiatryChart patientId={id} practitionerId={profile.id as string} />}
-      {specialty === 'nutrition' && <NutritionChart patientId={id} practitionerId={profile.id as string} />}
-      {specialty === 'esthetics' && <EstheticsChart patientId={id} practitionerId={profile.id as string} />}
+      {specialty === 'podiatry' && <DynamicFormChart schema={PodiatryAnamnesisSchema} patientId={id} practitionerId={profile.id as string} />}
+      {specialty === 'nutrition' && <DynamicFormChart schema={NutritionAnamnesisSchema} patientId={id} practitionerId={profile.id as string} />}
       {specialty === 'general' && <GeneralChart patientId={id} practitionerId={profile.id as string} />}
     </Stack>
   );
 }
 
 // ----------------------------------------------------------------------
-// Dynamic Viewports (Discrete forms using SNOMED/LOINC rather than unstructured text)
+// Generic Dynamic Viewport Mapping
 
-import { TextInput, Button } from '@mantine/core';
-
-function PodiatryChart({ patientId, practitionerId }: { patientId: string, practitionerId: string }) {
+function DynamicFormChart({ schema, patientId, practitionerId }: { schema: any, patientId: string, practitionerId: string }) {
   const medplum = useMedplum();
+  const [formData, setFormData] = useState<Record<string, any>>({});
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const pulse = formData.get('pulse') as string;
 
-    if (pulse) {
-      const obs = await medplum.createResource<Observation>({
-        resourceType: 'Observation',
-        status: 'final',
-        subject: { reference: `Patient/${patientId}` },
-        performer: [{ reference: `Practitioner/${practitionerId}` }],
-        code: { coding: [{ system: 'http://snomed.info/sct', code: '429210006', display: 'Pedal pulse finding' }] },
-        valueString: pulse
-      });
+    for (const section of schema.sections) {
+      for (const field of section.fields) {
+        const val = formData[field.id];
+        if (val) {
+          const system = field.snomed ? 'http://snomed.info/sct' : (field.loinc ? 'http://loinc.org' : 'http://terminology.hl7.org/CodeSystem/observation-category');
+          const code = field.snomed || field.loinc || field.id;
 
-      await medplum.createResource<AuditEvent>({
-        resourceType: 'AuditEvent',
-        type: { system: 'http://terminology.hl7.org/CodeSystem/audit-event-type', code: 'rest' },
-        action: 'C',
-        recorded: new Date().toISOString(),
-        agent: [{ requestor: true, who: { reference: `Practitioner/${practitionerId}` } }],
-        source: { observer: { reference: `Practitioner/${practitionerId}` } },
-        entity: [{ what: { reference: `Observation/${obs.id}` } }]
-      });
+          const obs = await medplum.createResource<Observation>({
+            resourceType: 'Observation',
+            status: 'final',
+            subject: { reference: `Patient/${patientId}` },
+            performer: [{ reference: `Practitioner/${practitionerId}` }],
+            code: { coding: [{ system, code, display: field.label }] },
+            // Handle different types (number vs choice vs string)
+            ...(field.type === 'number' ? { valueQuantity: { value: Number(val) } } : { valueString: String(val) })
+          });
+
+          await medplum.createResource<AuditEvent>({
+            resourceType: 'AuditEvent',
+            type: { system: 'http://terminology.hl7.org/CodeSystem/audit-event-type', code: 'rest' },
+            action: 'C',
+            recorded: new Date().toISOString(),
+            agent: [{ requestor: true, who: { reference: `Practitioner/${practitionerId}` } }],
+            source: { observer: { reference: `Practitioner/${practitionerId}` } },
+            entity: [{ what: { reference: `Observation/${obs.id}` } }]
+          });
+        }
+      }
     }
-    // Form can be extended further
+
+    // Clear form or show success toast (implement if needed)
+    alert("Saved successfully!");
+  };
+
+  const handleFieldChange = (fieldId: string, value: string | number | null) => {
+    setFormData((prev) => ({ ...prev, [fieldId]: value }));
   };
 
   return (
     <Card shadow="sm" radius="md" withBorder>
-      <Title order={4} mb="md">Podiatry Clinical Assessment</Title>
+      <Title order={4} mb="md">{schema.specialty} Clinical Assessment</Title>
       <form onSubmit={handleSubmit}>
         <Stack>
-           <TextInput label="Pedal Pulses (SNOMED-CT: 429210006)" name="pulse" placeholder="e.g. Normal, Absent" />
-           <TextInput label="Vascular Assessment (SNOMED-CT: 257002005)" name="vascular" placeholder="Vascular findings" />
-           <TextInput label="Dermatological Foot Integrity (SNOMED-CT: 84666005)" name="dermatological" placeholder="Skin integrity status" />
-           <TextInput label="Nail Status (SNOMED-CT: 110052002)" name="nail" placeholder="Nail observations" />
-           <Button type="submit" color="teal">Save Observations</Button>
-        </Stack>
-      </form>
-    </Card>
-  );
-}
+          {schema.sections.map((section: any) => (
+            <Card key={section.id} shadow="none" withBorder p="sm">
+              <Title order={5} mb="sm">{section.title}</Title>
+              <Stack>
+                {section.fields.map((field: any) => {
+                  const keyText = field.snomed ? `(SNOMED-CT: ${field.snomed})` : (field.loinc ? `(LOINC: ${field.loinc})` : '');
+                  const label = `${field.label} ${keyText}`;
 
-function NutritionChart({ patientId, practitionerId }: { patientId: string, practitionerId: string }) {
-  const medplum = useMedplum();
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const mass = formData.get('mass') as string;
-
-    if (mass) {
-      const obs = await medplum.createResource<Observation>({
-        resourceType: 'Observation',
-        status: 'final',
-        subject: { reference: `Patient/${patientId}` },
-        performer: [{ reference: `Practitioner/${practitionerId}` }],
-        code: { coding: [{ system: 'http://loinc.org', code: '73708-0', display: 'Body fat [Mass]' }] },
-        valueString: mass
-      });
-
-      await medplum.createResource<AuditEvent>({
-        resourceType: 'AuditEvent',
-        type: { system: 'http://terminology.hl7.org/CodeSystem/audit-event-type', code: 'rest' },
-        action: 'C',
-        recorded: new Date().toISOString(),
-        agent: [{ requestor: true, who: { reference: `Practitioner/${practitionerId}` } }],
-        source: { observer: { reference: `Practitioner/${practitionerId}` } },
-        entity: [{ what: { reference: `Observation/${obs.id}` } }]
-      });
-    }
-  };
-
-  return (
-    <Card shadow="sm" radius="md" withBorder>
-      <Title order={4} mb="md">Nutrition & Biometric Analysis</Title>
-      <form onSubmit={handleSubmit}>
-        <Stack>
-           <TextInput label="Muscle Mass (LOINC: 73708-0)" name="mass" placeholder="Value in kg" />
-           <TextInput label="Fat Percentage (LOINC: 41982-0)" name="fat" placeholder="Value in %" />
-           <TextInput label="Basal Metabolic Rate (LOINC: 64966-5)" name="bmr" placeholder="Value in kcal" />
-           <Button type="submit" color="teal">Save Observations</Button>
-        </Stack>
-      </form>
-    </Card>
-  );
-}
-
-function EstheticsChart({ patientId, practitionerId }: { patientId: string, practitionerId: string }) {
-  const medplum = useMedplum();
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const skinType = formData.get('skinType') as string;
-
-    if (skinType) {
-      const obs = await medplum.createResource<Observation>({
-        resourceType: 'Observation',
-        status: 'final',
-        subject: { reference: `Patient/${patientId}` },
-        performer: [{ reference: `Practitioner/${practitionerId}` }],
-        code: { coding: [{ system: 'http://snomed.info/sct', code: '399587005', display: 'Fitzpatrick skin type finding' }] },
-        valueString: skinType
-      });
-
-      await medplum.createResource<AuditEvent>({
-        resourceType: 'AuditEvent',
-        type: { system: 'http://terminology.hl7.org/CodeSystem/audit-event-type', code: 'rest' },
-        action: 'C',
-        recorded: new Date().toISOString(),
-        agent: [{ requestor: true, who: { reference: `Practitioner/${practitionerId}` } }],
-        source: { observer: { reference: `Practitioner/${practitionerId}` } },
-        entity: [{ what: { reference: `Observation/${obs.id}` } }]
-      });
-    }
-  };
-
-  return (
-    <Card shadow="sm" radius="md" withBorder>
-      <Title order={4} mb="md">Cosmetology & Esthetics Assessment</Title>
-      <form onSubmit={handleSubmit}>
-        <Stack>
-           <TextInput label="Skin Type (Fitzpatrick Scale) (SNOMED-CT: 399587005)" name="skinType" placeholder="Type I-VI" />
-           <TextInput label="Vascularity Markings (SNOMED-CT: 301048003)" name="vascularity" placeholder="Findings" />
-           <Button type="submit" color="teal">Save Observations</Button>
+                  if (field.type === 'choice') {
+                    return (
+                      <Select
+                        key={field.id}
+                        label={label}
+                        data={field.options}
+                        value={formData[field.id] || ''}
+                        onChange={(v) => handleFieldChange(field.id, v)}
+                      />
+                    );
+                  } else if (field.type === 'number') {
+                    return (
+                      <NumberInput
+                        key={field.id}
+                        label={label}
+                        value={formData[field.id] || ''}
+                        onChange={(v) => handleFieldChange(field.id, v)}
+                      />
+                    );
+                  } else {
+                    return (
+                      <TextInput
+                        key={field.id}
+                        label={label}
+                        value={formData[field.id] || ''}
+                        onChange={(v) => handleFieldChange(field.id, v.currentTarget.value)}
+                      />
+                    );
+                  }
+                })}
+              </Stack>
+            </Card>
+          ))}
+          <Button type="submit" color="teal" mt="md">Save Observations</Button>
         </Stack>
       </form>
     </Card>
