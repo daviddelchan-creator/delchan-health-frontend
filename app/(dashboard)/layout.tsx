@@ -4,7 +4,7 @@ import { AppShell, Group, Avatar, Text, UnstyledButton, Stack, Badge, Center, Bu
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useState } from 'react';
 import { useMedplumProfile } from '@medplum/react-hooks';
-import { useTenant } from '@/contexts/TenantContext';
+import { useTenant, TenantProvider } from '@/contexts/TenantContext';
 import { DoctorProfile } from '@/components/profile/DoctorProfile';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -103,7 +103,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </AppShell.Navbar>
       )}
 
-      <AppShell.Main>{children}</AppShell.Main>
+      <AppShell.Main>
+        <TenantProvider>
+          {children}
+        </TenantProvider>
+      </AppShell.Main>
 
       <Drawer opened={profileOpen} onClose={() => setProfileOpen(false)} position="right" size="100%" title="Perfil e Funções CRM" padding="xl" bg="#f8fafc">
         <DoctorProfile practitioner={profile} onClose={() => setProfileOpen(false)} />

@@ -16,7 +16,7 @@ const nextConfig = {
       {
         source: '/api/medplum/:path*',
         // Apuntamos directamente a ubuntu-medplum-1 (API Backend)
-        destination: 'https://delchan-health-portal-medplum.6jpght.easypanel.host/:path*'
+        destination: 'http://ubuntu-medplum-1:8103/:path*'
       }
     ];
   }
