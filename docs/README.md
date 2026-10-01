@@ -16,5 +16,10 @@ Esta documentação descreve o sistema a partir do código-fonte da branch `main
 - [Segurança e governança](11-seguranca.md)
 - [Referência de rotas e componentes](12-referencia.md)
 - [Matriz de cobertura](13-matriz-cobertura.md)
+- [Inventário dos 85 arquivos e cobertura](14-inventario-100-arquivos.md)
+- [Referência completa de APIs e fluxos](15-referencia-apis-e-fluxos.md)
+- [CRM omnicanal — detalhe funcional e técnico](16-crm-omnicanal-detalhado.md)
+- [Documentos, QR, scanner e Mayan EDMS](17-documentos-qr-scanner-mayan.md)
+- [Configuração de ambiente, dependências e secrets](18-configuracao-ambiente-e-secrets.md)
 
 > Regra: quando uma capacidade não estiver comprovada pelo código analisado, ela é marcada como **não identificada no repositório**, evitando transformar intenção de produto em instrução técnica falsa.
