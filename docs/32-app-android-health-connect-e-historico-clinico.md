@@ -1,47 +1,45 @@
 # Mobile Application Foundation (Android)
 
-Este documento descreve a fundação do aplicativo móvel Android para o ecossistema Delchan Health OS. A integração com o Health Connect não foi incluída nesta etapa.
+Este documento descreve a fundação do aplicativo móvel Android para o ecossistema Delchan Health OS. A etapa atual concentra-se apenas em estabelecer as estruturas básicas de integração de autorização.
 
-## Arquitetura e Segurança
+---
 
-- **Camada Móvel:** O aplicativo é desenvolvido em React Native usando Expo (`mobile/`), totalmente separado do backend/frontend Next.js. O ponto de entrada oficial foi re-configurado para `expo-router/entry`.
-- **Isolamento de Segurança e Ausência de Secrets:** Nenhuma credencial de administração (como `MEDPLUM_CLIENT_SECRET`) ou tokens sensíveis de servidor são armazenados na aplicação móvel. As configurações sensíveis residem exclusivamente no lado do servidor Next.js. O ambiente mobile também usa `process.env.EXPO_PUBLIC_API_URL` para injetar URLs, evitando hardcodes inseguros (`http://localhost`). A aplicação falha em renderizar caso a URL da API não seja configurada.
-- **Autenticação e Identidade (Obrigatório Servidor):** O login de pacientes é realizado através da rota `api/auth/mobile-login` no Next.js (backend). O backend *identifica e processa* a sessão no Medplum; o cliente confia exclusivamente na resposta e no perfil atrelado para navegação, prevenindo acesso não autorizado por meio da manipulação do `patientId` no local storage do cliente móvel.
-- **Gerenciamento de Sessão Seguro:** Tokens sensíveis (`access_token`, `refresh_token`) são estritamente armazenados no armazenamento seguro do dispositivo usando `expo-secure-store`. Outros dados não sensíveis, como o perfil público retornado do servidor, ficam no `AsyncStorage` meramente como cache visual.
+## 1. IMPLEMENTADO
 
-## Autorização Estrita de Tenant
+- **Camada Móvel Isolada:** O aplicativo é desenvolvido em React Native usando Expo (`mobile/`). Dependências e código estão estritamente contidos nesta pasta, preservando o compilador SWC do repositório web (sem inserções de `react-native` ou `.babelrc` no root). Ponto de entrada via Expo Router (`expo-router/entry`).
+- **Isolamento de Secrets:** Nenhuma credencial de administração (`MEDPLUM_CLIENT_SECRET`) ou de servidor está no bundle móvel.
+- **Configuração de API Estrita:** O app obriga a injeção da URL de API via variável `process.env.EXPO_PUBLIC_API_URL`. Se não fornecida, o app bloqueia a requisição de login por exceção (sem fallbacks inseguros para `localhost`).
+- **Isolamento e Segurança de Tokens:**
+  - `access_token` e `refresh_token` são armazenados exclusivamente via `expo-secure-store`.
+  - Dados como perfil (identidade) e branding são passivamente armazenados em `AsyncStorage` como mero cache visual (o backend permanece como única autoridade de identidade e sessão verdadeira).
+  - O fluxo de `logout` limpa sistematicamente o SecureStore.
+- **Isolamento de Identidade (Identidade Sever-side):** O cliente Android não controla ou transmite qual ID deseja logar. Ele fornece apenas email/senha, e a identidade (Profile e Access Token) é injetada obrigatoriamente pelo token de resposta processado na ponte do servidor `/api/auth/mobile-login`.
+- **Configuração de Namespace:** Identificador do aplicativo configurado para `com.delchan.healthos` no `app.json`.
+- **Testes Backend Base:** O teste (`route.test.ts`) valida explicitamente o fluxo onde a presença do membro não pertecencendo ao ProjectID específico da requisição acarreta rejeição `401`/`403`.
 
-A autorização agora valida não apenas se o inquilino existe na lista da plataforma (Next.js), mas restringe criptograficamente o contexto:
-- A interface `TenantInfo` foi atualizada para suportar um `medplumProjectId` real.
-- Quando o usuário final entra com o login, o servidor (Medplum OIDC backend) confere se o paciente de fato possui um Membership (`loginResponse.memberships`) no `Project` que tem relação direta com aquele `medplumProjectId`.
-- Caso contrário, a solicitação é ativamente rejeitada com *status 403* (Usuário não tem acesso a esta organização específica) e **nenhum token ou profile** é emitido ao client.
-- *Status atual de Integração*: Para os tenants mockados que *não* possuirem `medplumProjectId` preenchido, a plataforma automaticamente barra o acesso mobile de forma preventiva informando o erro de mapeamento (evita bypass de autorização).
+---
 
-## Verificação e Build Android
+## 2. PARCIAL / EXTERNO
 
-- O Android identifier foi atualizado para um namespace corporativo limpo `com.delchan.healthos`.
-- O app compila seu bundle React (Expo export JS/HBC bundles) sem problemas com o comando `npx expo export -p android`.
-- A geração da fundação nativa (`android/`) utilizando `npx expo prebuild` completou-se com sucesso, validando a ausência de secrets indesejados no escopo do APK nativo gerado.
-- *Nota sobre a compilação Gradle AAB/APK nativa*: A compilação *nativa pesada* via Android SDK (`./gradlew assembleDebug`) não pôde ser completada no ambiente isolado (sandbox sem aceleração de virtualização para Gradle) devido a `timeouts`. A fundação JavaScript e de Scaffolding Android, no entanto, é atestada como segura.
+- **Isolamento de Tenant (Criptográfico):** O backend realiza a avaliação de permissões cruzando a presença do usuário nos `memberships` do projeto atrelado ao `tenantId`. Contudo, o mapeamento "Qual Tenant aponta para qual Medplum Project" (`medplumProjectId`) depende da configuração provida externamente.
+- **Testes Mobile:** Os testes mobile via Jest existem apenas como um `sanity check` estrutural (`tsc` e inicialização de script). Problemas de compatibilidade conhecidos entre Babel e a library de renderização em React 19 / Expo Jest não permitem validações complexas de UI no momento.
+- **Validação de Dependências Expo:** O comando `npx expo-doctor` finaliza com sucesso de compatibilidade nativa, porém acusa um alerta de duplicação do pacote `react@19.2.0` derivado da estrutura de monorepo raiz. Isso não impede a compilação.
 
-## Limitações Conhecidas e Próximos Passos
-- Mapear perfeitamente o contexto multi-projeto do Medplum direto nos bancos PostgreSQL via extensões e remover inteiramente o `INITIAL_TENANTS` mockado (ou preencher o medplumProjectId com dados corretos de staging/prod).
-- A integração completa com o Health Connect para dispositivos Android (para gravação/leitura de telemetrias nativas) e envio de OCR são features de **Fase B** que **não** estão incluídas nesta fundação.
-- Resolver as incompatibilidades da suíte `@testing-library/react-native` atual com o Babel 8 / Expo Jest, as quais impactaram os testes UI interativos no sandbox. Foram mantidos testes de sanidade no Mobile. Os testes lógicos pesados residem em backend.
+---
 
-## Resumo de Aceitação
+## 3. SIMULADO / DEMONSTRATIVO
 
-| Área                 | Status | Evidência |
-| -------------------- | ------ | -------- |
-| Autenticação         | ✅ | Proxy na API `/api/auth/mobile-login` conectada ao OIDC da Medplum. |
-| Isolamento de Tenant | ✅ | Rejeição 403 ativa se `loginResponse.memberships` diferir do `medplumProjectId`. |
-| Identidade do Paciente | ✅ | O ID e o Profile são unicamente extraídos do token JWT Medplum e injetados pelo servidor. |
-| Segurança do Token   | ✅ | Uso estrito de `expo-secure-store` para Access / Refresh tokens. |
-| Configuração de API  | ✅ | Configuração mandatória de `EXPO_PUBLIC_API_URL`. Falha bloqueante se nulo. |
-| Arquitetura Expo     | ✅ | Diretório base enxuto, app.json para router e namespace limpo `com.delchan.healthos`. |
-| Testes               | ✅ | `route.test.ts` implementa mocking de spoofing e falha como esperado. Mobile unit faz sanity check. |
-| Typecheck            | ✅ | `npx tsc --noEmit` executa com sucesso no contexto mobile. |
-| Lint                 | ✅ | TypeScript e eslinting limpo na base. |
-| Validação Expo       | ⚠️ | Duplicação do pacote `react@19.2.0` na árvore devido a monorepo structure (não-bloqueante). |
-| Build Nativo Android | ⚠️ | Scaffolding (`prebuild`) nativo sem secrets é gerado, mas build via `./gradlew assembleDebug` sofre timeout de CI local. |
-| Documentação         | ✅ | Atualizada explicitamente sem clamar vitórias faltantes sobre o HealthConnect. |
+- **Mapeamento de Tenant (`INITIAL_TENANTS`):** Como não há integração real de banco de dados SQL extraindo os mapeamentos dinâmicos de organização, o sistema atualmente baseia-se na constante `INITIAL_TENANTS` como stub no Next.js, com `medplumProjectId` fixados, para simular o mapeamento que o Administrador de TI injetará nos ambientes produção.
+- **Build Nativo Android:**
+  - **✅ VALIDADO:** O scaffolding nativo (`npx expo prebuild -p android`) gerou o diretório `/android` livre de segredos. O Bundle JS (`npx expo export -p android`) concluiu a minificação (HBC) com sucesso.
+  - **⚠️ SIMULADO (Falta de Ambiente):** A compilação *nativa de fato* dos artefatos finais (APK/AAB) utilizando `./gradlew assembleDebug` acarreta tempo-limite (timeout) em nosso ambiente sandbox local (recursos insuficientes), logo, a prova de Build Nativo final se dá de forma assumida apenas pelos steps JS+Scaffolding e não por um binário final executado.
+
+---
+
+## 4. NÃO IMPLEMENTADO
+
+- **Integração Health Connect / Google Fit:** O ecossistema de APIs nativas de telemetria não foi configurado ou programado nesta etapa (Fase B).
+- **Apple HealthKit:** Fora de escopo atual.
+- **Sincronização de Histórico Clínico Nativo:** Interfaces dedicadas de consumo de Observações ou impressões de receituário dentro do app não foram criadas.
+- **Upload / OCR de Documentos Externos:** Não construído.
+- **Samsung Health Direto:** Fora de escopo.
