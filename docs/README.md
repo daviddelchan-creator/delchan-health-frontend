@@ -33,3 +33,5 @@ Esta documentação descreve o sistema a partir do código-fonte da branch `main
 - [Prontuário — componentes e recursos FHIR](20-prontuario-componentes-fhir.md)
 
 - [Rotas de perfil, cadastro e impressão](21-rotas-perfil-cadastro-impressao.md)
+
+- [Matriz final de cobertura técnica](30-matriz-final-de-cobertura.md)
