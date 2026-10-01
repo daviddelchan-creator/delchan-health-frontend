@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 /**
  * Función interna utilitaria para disparar la alerta desde el backend al detectar una intrusión.
  */
-export function dispatchSecurityAlert(tenantId: string, alertPayload: object) {
+function dispatchSecurityAlert(tenantId: string, alertPayload: object) {
   const listeners = centralSecurityStreams.get(tenantId);
   if (listeners && listeners.size > 0) {
     const serializedData = JSON.stringify(alertPayload);
