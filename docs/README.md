@@ -24,6 +24,7 @@ Esta documentação descreve o sistema a partir do código-fonte da branch `main
 
 - [Auditoria final de rotas, administração e integrações](27-auditoria-final-rotas-administracao-integracoes.md)
 - [Auditoria de componentes clínicos complementares](28-auditoria-componentes-clinicos-complementares.md)
+- [Auditoria do portal do paciente, webhooks e Mayan](29-auditoria-portal-paciente-webhooks-e-mayan.md)
 
 > Regra: quando uma capacidade não estiver comprovada pelo código analisado, ela é marcada como **não identificada no repositório**, evitando transformar intenção de produto em instrução técnica falsa.
 
