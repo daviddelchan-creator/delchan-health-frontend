@@ -67,6 +67,7 @@ A documentação é derivada do código-fonte auditado do repositório. Quando u
 # 6. Integrações externas
 
 - [08 — Integrações](08-integracoes.md)
+- [32 — App Android, Health Connect e histórico clínico](32-app-android-health-connect-e-historico-clinico.md)
 - [10 — VoIP/SIP](10-voip-sip.md)
 - [15 — Referência completa de APIs e fluxos](15-referencia-apis-e-fluxos.md)
 - [27 — Auditoria final de rotas, administração e integrações](27-auditoria-final-rotas-administracao-integracoes.md)
