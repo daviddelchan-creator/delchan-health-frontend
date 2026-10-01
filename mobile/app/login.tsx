@@ -5,10 +5,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
+// TEMPORARY STAGING CONFIGURATION:
+// Since there is currently no public API endpoint returning a dynamic directory of clinical organizations,
+// we are hardcoding the human-readable selection mapping corresponding to INITIAL_TENANTS in the backend.
+// In Phase B, this should be replaced by a dynamic fetch (e.g. `GET /api/tenants/directory`).
+const STAGING_TENANT_DIRECTORY = [
+  { id: 'tenant-1', label: 'Delchan Health - Unidade Jardins' },
+  { id: 'tenant-2', label: 'Clínica Dermatológica Alpha' },
+  { id: 'tenant-3', label: 'Centro de Estética & Longevidade' },
+  { id: 'tenant-4', label: 'Instituto de Telemedicina BR' },
+];
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [tenantId, setTenantId] = useState('tenant-1');
+  const [tenantId, setTenantId] = useState(STAGING_TENANT_DIRECTORY[0].id);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -17,7 +28,7 @@ export default function LoginScreen() {
     try {
       const baseUrl = process.env.EXPO_PUBLIC_API_URL;
       if (!baseUrl) {
-          throw new Error('API URL n\u00e3o configurada. Configure a vari\u00e1vel EXPO_PUBLIC_API_URL.');
+          throw new Error('API URL não configurada. Configure a variável EXPO_PUBLIC_API_URL.');
       }
 
       const response = await axios.post(`${baseUrl}/api/auth/mobile-login`, {
@@ -55,12 +66,17 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Tenant ID (ex: tenant-1)"
-        value={tenantId}
-        onChangeText={setTenantId}
-      />
+      <Text style={styles.label}>Organização de Saúde (Staging):</Text>
+      <View style={styles.pickerContainer}>
+          {STAGING_TENANT_DIRECTORY.map((tenant) => (
+             <Button
+                key={tenant.id}
+                title={tenantId === tenant.id ? `✓ ${tenant.label}` : tenant.label}
+                onPress={() => setTenantId(tenant.id)}
+                color={tenantId === tenant.id ? "#0d9488" : "#aaaaaa"}
+             />
+          ))}
+      </View>
 
       <TextInput
         style={styles.input}
@@ -101,6 +117,16 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
     color: '#0d9488',
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333'
+  },
+  pickerContainer: {
+     marginBottom: 20,
+     gap: 5,
   },
   input: {
     height: 50,

@@ -4,12 +4,16 @@ import { MedplumProvider as ReactMedplumProvider } from '@medplum/react-hooks';
 
 const baseUrl = process.env.EXPO_PUBLIC_API_URL;
 
-if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test' && !baseUrl) {
-    console.warn('API URL não configurada. Configure a variável EXPO_PUBLIC_API_URL no ambiente mobile.');
+if (!baseUrl && process.env.NODE_ENV !== 'test') {
+    throw new Error('API URL obrigatória. Configure a variável EXPO_PUBLIC_API_URL no ambiente mobile antes de compilar.');
 }
 
+// In test environment, the SDK requires a string format.
+// We inject a dummy string ONLY if in Jest testing environment, otherwise we strictly use the env var.
+const finalUrl = process.env.NODE_ENV === 'test' && !baseUrl ? 'http://test-env.local' : baseUrl;
+
 const medplum = new MedplumClient({
-  baseUrl: baseUrl || 'https://api.placeholder.com', // Safe placeholder to satisfy SDK typing when undefined in tests
+  baseUrl: finalUrl as string,
 });
 
 export default function RootLayout() {

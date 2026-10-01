@@ -29,11 +29,17 @@ export async function POST(req: Request) {
     let activeMembershipId = null;
 
     if (loginResponse.code) {
-        // If login response directly gives a code, we process it. But to know the tenant, we usually need the memberships first.
-        // In standard Medplum Auth, code is given directly only if there is exactly 1 project and the app doesn't enforce profile selection.
-        // For a multi-tenant system, we strongly expect memberships array to evaluate tenant isolation.
-        // We'll process the code, but we must verify the active profile later.
+        // If login response directly gives a code, we process it to get tokens.
         await medplum.processCode(loginResponse.code);
+
+        // VULNERABILITY FIX: We MUST verify the tenant mapping immediately after code processing.
+        // Even if Medplum gave us a token, we must prove the user belongs to the requested Tenant.
+        const meResponse = await medplum.get('auth/me');
+        if (meResponse?.project?.reference !== `Project/${tenantData.medplumProjectId}`) {
+            // Throwing triggers catch block returning 401, discarding tokens.
+            throw new Error('Usuário não tem acesso a esta organização específica.');
+        }
+
     } else if (loginResponse.memberships && loginResponse.memberships.length > 0) {
 
       // 3. Strict Tenant membership check mapping
@@ -64,10 +70,6 @@ export async function POST(req: Request) {
 
     // Server remains the authority for the authenticated identity
     const activeProfile = medplum.getProfile();
-
-    // Double check if a direct code was issued (rare in multi-tenant, but possible).
-    // We would need an additional call to `/auth/me` to verify project if we didn't do it via memberships,
-    // but the profile returned should belong to the project.
 
     // Return the safe token and profile
     return NextResponse.json({

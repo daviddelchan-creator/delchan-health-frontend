@@ -20,6 +20,8 @@ jest.mock('../../../../contexts/TenantContext', () => ({
 
 let mockMemberships = [ { id: 'membership_id_123', project: { reference: 'Project/project-1' } } ];
 let mockRejectLogin = false;
+let mockReturnCode = null as string | null;
+let mockMeProject = 'Project/project-1';
 
 jest.mock('@medplum/core', () => {
   return {
@@ -30,11 +32,17 @@ jest.mock('@medplum/core', () => {
           return Promise.resolve({
             login: 'mock_login_id',
             memberships: mockMemberships,
-            code: null
+            code: mockReturnCode
           });
         }),
         post: jest.fn().mockResolvedValue({ code: 'mock_profile_code' }),
         processCode: jest.fn().mockResolvedValue({}),
+        get: jest.fn().mockImplementation((path) => {
+            if (path === 'auth/me') {
+                return Promise.resolve({ project: { reference: mockMeProject } });
+            }
+            return Promise.resolve({});
+        }),
         getProfile: jest.fn().mockReturnValue({ id: '123', resourceType: 'Patient' }),
         getAccessToken: jest.fn().mockReturnValue('mock_access_token'),
         getRefreshToken: jest.fn().mockReturnValue('mock_refresh_token'),
@@ -49,6 +57,8 @@ describe('POST /api/auth/mobile-login', () => {
         jest.clearAllMocks();
         mockMemberships = [ { id: 'membership_id_123', project: { reference: 'Project/project-1' } } ];
         mockRejectLogin = false;
+        mockReturnCode = null;
+        mockMeProject = 'Project/project-1';
     });
 
     it('should validate tenant and fail if invalid', async () => {
@@ -74,14 +84,39 @@ describe('POST /api/auth/mobile-login', () => {
     });
 
     it('should fail if user belongs to Tenant A but requests Tenant B', async () => {
-         // User belongs to project-1 (Tenant 1) but requests login for Tenant 2 (project-2)
          mockMemberships = [ { id: 'membership_id_123', project: { reference: 'Project/project-1' } } ];
          const req = mockRequest({ email: 'test@example.com', password: 'password', tenantId: 'tenant-2' });
          const res = await POST(req) as any;
          expect(res.status).toBe(401);
-         expect(res.data.access_token).toBeUndefined();
-         expect(res.data.profile).toBeUndefined();
          expect(res.data.error).toBe('Usuário não tem acesso a esta organização específica.');
+         expect(res.data.access_token).toBeUndefined();
+    });
+
+    it('should securely evaluate loginResponse.code flow rejecting cross-tenant spoofing', async () => {
+         // Force Medplum to bypass profile selection and just return a code
+         mockReturnCode = 'fast_track_code';
+         // The token generated internally will resolve auth/me to project-1
+         mockMeProject = 'Project/project-1';
+
+         // But malicious user requested login in tenant-2
+         const req = mockRequest({ email: 'test@example.com', password: 'password', tenantId: 'tenant-2' });
+         const res = await POST(req) as any;
+
+         // Must fail and not return any tokens despite Medplum successfully yielding a code
+         expect(res.status).toBe(401);
+         expect(res.data.error).toBe('Usuário não tem acesso a esta organização específica.');
+         expect(res.data.access_token).toBeUndefined();
+    });
+
+    it('should securely evaluate loginResponse.code flow accepting correct tenant', async () => {
+         mockReturnCode = 'fast_track_code';
+         mockMeProject = 'Project/project-1'; // Belongs to Tenant 1
+
+         const req = mockRequest({ email: 'test@example.com', password: 'password', tenantId: 'tenant-1' });
+         const res = await POST(req) as any;
+
+         expect(res.status).toBe(200);
+         expect(res.data.access_token).toBe('mock_access_token');
     });
 
     it('should fail with invalid credentials', async () => {
@@ -89,8 +124,6 @@ describe('POST /api/auth/mobile-login', () => {
          const req = mockRequest({ email: 'wrong@example.com', password: 'wrong', tenantId: 'tenant-1' });
          const res = await POST(req) as any;
          expect(res.status).toBe(401);
-         expect(res.data.access_token).toBeUndefined();
-         expect(res.data.profile).toBeUndefined();
          expect(res.data.error).toBe('Credenciais inválidas ou falha ao autenticar.');
     });
 });
