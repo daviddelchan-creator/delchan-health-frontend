@@ -102,7 +102,7 @@ A documentação é derivada do código-fonte auditado do repositório. Quando u
 
 ---
 
-## Índice completo 01–31
+## Índice completo 01–32
 
 | # | Documento | Foco |
 |---:|---|---|
@@ -137,6 +137,7 @@ A documentação é derivada do código-fonte auditado do repositório. Quando u
 | 29 | [Auditoria portal/webhooks/Mayan](29-auditoria-portal-paciente-webhooks-e-mayan.md) | Portal e integrações |
 | 30 | [Matriz final](30-matriz-final-de-cobertura.md) | Status consolidado |
 | 31 | [Go-Live](31-checklist-go-live.md) | Validação antes da produção |
+| 32 | [App Android/Health Connect/histórico](32-app-android-health-connect-e-historico-clinico.md) | Aplicativo móvel, saúde digital e histórico documental |
 
 ## Critério editorial
 
