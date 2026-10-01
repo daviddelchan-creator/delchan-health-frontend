@@ -23,3 +23,5 @@ Esta documentação descreve o sistema a partir do código-fonte da branch `main
 - [Configuração de ambiente, dependências e secrets](18-configuracao-ambiente-e-secrets.md)
 
 > Regra: quando uma capacidade não estiver comprovada pelo código analisado, ela é marcada como **não identificada no repositório**, evitando transformar intenção de produto em instrução técnica falsa.
+
+- [Multi-tenant, White-Label, RBAC e Construtor](19-multitenant-whitelabel-rbac-construtor.md)
