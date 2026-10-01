@@ -35,3 +35,5 @@ Esta documentação descreve o sistema a partir do código-fonte da branch `main
 - [Rotas de perfil, cadastro e impressão](21-rotas-perfil-cadastro-impressao.md)
 
 - [Matriz final de cobertura técnica](30-matriz-final-de-cobertura.md)
+
+- [Checklist de Go-Live](31-checklist-go-live.md)
