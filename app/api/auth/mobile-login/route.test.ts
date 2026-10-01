@@ -79,6 +79,8 @@ describe('POST /api/auth/mobile-login', () => {
          const req = mockRequest({ email: 'test@example.com', password: 'password', tenantId: 'tenant-2' });
          const res = await POST(req) as any;
          expect(res.status).toBe(401);
+         expect(res.data.access_token).toBeUndefined();
+         expect(res.data.profile).toBeUndefined();
          expect(res.data.error).toBe('Usuário não tem acesso a esta organização específica.');
     });
 
@@ -87,6 +89,8 @@ describe('POST /api/auth/mobile-login', () => {
          const req = mockRequest({ email: 'wrong@example.com', password: 'wrong', tenantId: 'tenant-1' });
          const res = await POST(req) as any;
          expect(res.status).toBe(401);
+         expect(res.data.access_token).toBeUndefined();
+         expect(res.data.profile).toBeUndefined();
          expect(res.data.error).toBe('Credenciais inválidas ou falha ao autenticar.');
     });
 });
