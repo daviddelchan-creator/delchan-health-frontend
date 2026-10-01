@@ -164,7 +164,74 @@ O conjunto de evidências permite separar:
 3. **Demonstrativo/simulado:** pagamentos, OCR, algumas integrações de calendário/telemedicina, assinatura ICP-Brasil, métricas financeiras e parte do portal/perfis.
 4. **Não identificado:** arquitetura SIP/VoIP concreta e alguns serviços operacionais que a UI menciona.
 
-## 7. Regra para as próximas páginas do manual
+## 7. Runtime e dependências confirmados
+
+O `package.json` atual confirma:
+
+- Next.js 15.5.6;
+- React 19.2.0;
+- TypeScript 5.9.3;
+- Node.js `^22.18.0 || >=24.2.0`;
+- npm 10.9.4;
+- Medplum 5.0.4;
+- Mantine 8.3.7;
+- TipTap 3.30.5;
+- Google APIs;
+- pdf-lib;
+- qrcode/qrcode.react;
+- jsQR;
+- react-to-print;
+- Recharts;
+- rfc6902.
+
+Scripts disponíveis: `dev`, `build`, `start` e `clean`.
+
+A configuração de build atual define `eslint.ignoreDuringBuilds=true` e `typescript.ignoreBuildErrors=true`. Portanto, uma compilação bem-sucedida não deve ser interpretada automaticamente como ausência de erros de lint ou TypeScript.
+
+## 8. Checklist final para transformar o manual em documentação operacional
+
+### Antes de publicar em produção
+
+- [ ] substituir todos os fallbacks/defaults de desenvolvimento;
+- [ ] configurar `MEDPLUM_BASE_URL`, client ID e secret;
+- [ ] configurar Google OAuth e persistência segura do refresh token;
+- [ ] configurar tokens Meta/WhatsApp;
+- [ ] definir `INTAKE_SECRET_KEY` forte e exclusivo;
+- [ ] definir `NEXT_PUBLIC_APP_URL`;
+- [ ] configurar Mayan somente se houver servidor e fluxo de upload validado;
+- [ ] validar isolamento real de tenant;
+- [ ] validar AccessPolicy/RBAC no backend;
+- [ ] validar assinatura digital real antes de anunciar ICP-Brasil/e-CPF;
+- [ ] validar gateway de pagamento antes de anunciar cobrança online;
+- [ ] validar notificações externas;
+- [ ] executar testes com dados fictícios;
+- [ ] revisar logs, auditoria e tratamento de falhas;
+- [ ] validar backup/restore e retenção documental;
+- [ ] confirmar requisitos jurídicos/LGPD com responsável competente.
+
+### O que já pode ser documentado como implementação de código
+
+- cadastro/edição de Patient;
+- Practitioner;
+- Organization;
+- agenda FHIR;
+- tarefas;
+- CarePlan;
+- vitais;
+- alergias;
+- condições;
+- cobertura;
+- SOAP/DiagnosticReport;
+- documentos/Binary/DocumentReference;
+- geração de formulários PDF + QR;
+- ingestão por tracking/QR;
+- pré-anamnese com HMAC;
+- CRM omnichannel em nível de webhook/FHIR;
+- Questionnaire builder;
+- fotografia clínica com Media/Binary;
+- impressão do prontuário.
+
+## 9. Regra para as próximas páginas do manual
 
 Sempre que uma página mencionar uma capacidade operacional, usar uma destas etiquetas:
 
