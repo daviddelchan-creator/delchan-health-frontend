@@ -11,6 +11,7 @@ export interface TenantInfo {
   plan: string;
   status: 'active' | 'suspended' | 'trial';
   doctorsCount: number;
+  medplumProjectId?: string;
 }
 
 export interface TenantConfig {
@@ -33,7 +34,7 @@ export interface TenantConfig {
 }
 
 export const INITIAL_TENANTS: TenantInfo[] = [
-  { id: 'tenant-1', name: 'Delchan Health - Unidade Jardins', cnpj: '45.123.456/0001-89', city: 'São Paulo - SP', color: '#0d9488', plan: 'Enterprise SaaS', status: 'active', doctorsCount: 14 },
+  { id: 'tenant-1', name: 'Delchan Health - Unidade Jardins', cnpj: '45.123.456/0001-89', city: 'São Paulo - SP', color: '#0d9488', plan: 'Enterprise SaaS', status: 'active', doctorsCount: 14, medplumProjectId: '4c483ec7-802c-47b2-8415-ee57c8bf1025' },
   { id: 'tenant-2', name: 'Clínica Dermatológica Alpha', cnpj: '12.987.654/0001-32', city: 'Rio de Janeiro - RJ', color: '#3b82f6', plan: 'Profissional', status: 'active', doctorsCount: 6 },
   { id: 'tenant-3', name: 'Centro de Estética & Longevidade', cnpj: '33.444.555/0001-11', city: 'Belo Horizonte - MG', color: '#8b5cf6', plan: 'Starter', status: 'active', doctorsCount: 4 },
   { id: 'tenant-4', name: 'Instituto de Telemedicina BR', cnpj: '98.765.432/0001-90', city: 'Curitiba - PR', color: '#10b981', plan: 'Enterprise SaaS', status: 'trial', doctorsCount: 22 },

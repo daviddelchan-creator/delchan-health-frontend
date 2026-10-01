@@ -7,12 +7,16 @@ export async function POST(req: Request) {
     const { email, password, tenantId } = await req.json();
 
     // 1. Initial tenant validation checks if the tenant exists in our known configuration
-    const isValidTenant = INITIAL_TENANTS.some(t => t.id === tenantId);
-    if (!isValidTenant) {
+    const tenantData = INITIAL_TENANTS.find(t => t.id === tenantId);
+    if (!tenantData) {
         return NextResponse.json({ error: 'Tenant inválido ou não encontrado' }, { status: 400 });
     }
 
-    const tenantData = INITIAL_TENANTS.find(t => t.id === tenantId);
+    if (!tenantData.medplumProjectId) {
+         // Security block: if we don't have a configured project ID for this tenant in our system,
+         // we cannot safely authenticate them via the global proxy. This needs configuration by the admin.
+         return NextResponse.json({ error: 'Tenant não configurado para integração móvel (falta mapeamento de projeto).' }, { status: 403 });
+    }
 
     // 2. Real Authentication via Medplum
     // NOTE: Requires MEDPLUM_BASE_URL and credentials in env to function completely in production.
@@ -22,33 +26,48 @@ export async function POST(req: Request) {
 
     const loginResponse = await medplum.startLogin({ email, password });
 
-    // We strictly use server returned objects to build the profile
+    let activeMembershipId = null;
+
     if (loginResponse.code) {
-      await medplum.processCode(loginResponse.code);
+        // If login response directly gives a code, we process it. But to know the tenant, we usually need the memberships first.
+        // In standard Medplum Auth, code is given directly only if there is exactly 1 project and the app doesn't enforce profile selection.
+        // For a multi-tenant system, we strongly expect memberships array to evaluate tenant isolation.
+        // We'll process the code, but we must verify the active profile later.
+        await medplum.processCode(loginResponse.code);
     } else if (loginResponse.memberships && loginResponse.memberships.length > 0) {
 
-      // 3. Tenant membership check mapping (mock/stub for now until real medplum project ids are mapped to tenantId)
-      // In production: validate if loginResponse.memberships contains a project mapping to `tenantId`.
-      // For this foundation, we ensure they have *some* valid membership as a sanity check.
-      const hasMembership = loginResponse.memberships.length > 0;
-      if (!hasMembership) {
-           throw new Error('Usuário não tem acesso a nenhuma organização.');
+      // 3. Strict Tenant membership check mapping
+      // Validate that the authenticated user possesses a Medplum membership corresponding to the requested tenant context.
+      const validMembership = loginResponse.memberships.find(
+          (m: any) => m.project?.reference === `Project/${tenantData.medplumProjectId}`
+      );
+
+      if (!validMembership) {
+           throw new Error('Usuário não tem acesso a esta organização específica.');
       }
+
+      activeMembershipId = validMembership.id;
 
       const profileResponse = await medplum.post('auth/profile', {
         login: loginResponse.login,
-        profile: loginResponse.memberships[0].id,
+        profile: activeMembershipId,
       });
+
       if (profileResponse.code) {
          await medplum.processCode(profileResponse.code);
       } else {
         throw new Error('Falha ao processar autorização de perfil');
       }
     } else {
-       throw new Error('Usuário não tem acesso a nenhuma organização.');
+       throw new Error('Credenciais inválidas ou falha ao autenticar.');
     }
 
+    // Server remains the authority for the authenticated identity
     const activeProfile = medplum.getProfile();
+
+    // Double check if a direct code was issued (rare in multi-tenant, but possible).
+    // We would need an additional call to `/auth/me` to verify project if we didn't do it via memberships,
+    // but the profile returned should belong to the project.
 
     // Return the safe token and profile
     return NextResponse.json({

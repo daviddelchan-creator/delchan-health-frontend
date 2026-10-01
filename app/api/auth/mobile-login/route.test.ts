@@ -12,11 +12,13 @@ jest.mock('next/server', () => ({
 
 jest.mock('../../../../contexts/TenantContext', () => ({
   INITIAL_TENANTS: [
-    { id: 'tenant-1', name: 'Delchan Health - Unidade Jardins', color: '#0d9488' }
+    { id: 'tenant-1', name: 'Delchan Health - Unidade Jardins', color: '#0d9488', medplumProjectId: 'project-1' },
+    { id: 'tenant-2', name: 'Delchan Health - Unidade B', color: '#000', medplumProjectId: 'project-2' },
+    { id: 'tenant-no-config', name: 'Tenant Sem Projeto', color: '#000' }
   ]
 }));
 
-let mockMemberships = [ { id: 'membership_id_123', project: { reference: 'Project/tenant-1' } } ];
+let mockMemberships = [ { id: 'membership_id_123', project: { reference: 'Project/project-1' } } ];
 let mockRejectLogin = false;
 
 jest.mock('@medplum/core', () => {
@@ -45,7 +47,7 @@ describe('POST /api/auth/mobile-login', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockMemberships = [ { id: 'membership_id_123', project: { reference: 'Project/tenant-1' } } ];
+        mockMemberships = [ { id: 'membership_id_123', project: { reference: 'Project/project-1' } } ];
         mockRejectLogin = false;
     });
 
@@ -56,6 +58,13 @@ describe('POST /api/auth/mobile-login', () => {
         expect(res.data.error).toBe('Tenant inválido ou não encontrado');
     });
 
+    it('should fail if tenant lacks medplum project mapping', async () => {
+        const req = mockRequest({ email: 'test@example.com', password: 'password', tenantId: 'tenant-no-config' });
+        const res = await POST(req) as any;
+        expect(res.status).toBe(403);
+        expect(res.data.error).toBe('Tenant não configurado para integração móvel (falta mapeamento de projeto).');
+    });
+
     it('should pass tenant validation and authenticate', async () => {
         const req = mockRequest({ email: 'test@example.com', password: 'password', tenantId: 'tenant-1' });
         const res = await POST(req) as any;
@@ -64,12 +73,13 @@ describe('POST /api/auth/mobile-login', () => {
         expect(res.data.branding.name).toBe('Delchan Health - Unidade Jardins');
     });
 
-    it('should fail if user has no memberships', async () => {
-         mockMemberships = [];
-         const req = mockRequest({ email: 'test@example.com', password: 'password', tenantId: 'tenant-1' });
+    it('should fail if user belongs to Tenant A but requests Tenant B', async () => {
+         // User belongs to project-1 (Tenant 1) but requests login for Tenant 2 (project-2)
+         mockMemberships = [ { id: 'membership_id_123', project: { reference: 'Project/project-1' } } ];
+         const req = mockRequest({ email: 'test@example.com', password: 'password', tenantId: 'tenant-2' });
          const res = await POST(req) as any;
          expect(res.status).toBe(401);
-         expect(res.data.error).toBe('Usuário não tem acesso a nenhuma organização.');
+         expect(res.data.error).toBe('Usuário não tem acesso a esta organização específica.');
     });
 
     it('should fail with invalid credentials', async () => {

@@ -15,7 +15,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     try {
-      const baseUrl = 'http://localhost:3000'; // Or process.env.API_URL in production
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
       const response = await axios.post(`${baseUrl}/api/auth/mobile-login`, {
         email,

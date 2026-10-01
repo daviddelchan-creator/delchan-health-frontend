@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { MedplumProvider, MedplumClient } from '@medplum/core';
+import { MedplumClient } from '@medplum/core';
 import { MedplumProvider as ReactMedplumProvider } from '@medplum/react-hooks';
 
 const medplum = new MedplumClient({
