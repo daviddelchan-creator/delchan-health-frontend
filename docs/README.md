@@ -27,3 +27,5 @@ Esta documentação descreve o sistema a partir do código-fonte da branch `main
 - [Multi-tenant, White-Label, RBAC e Construtor](19-multitenant-whitelabel-rbac-construtor.md)
 
 - [Prontuário — componentes e recursos FHIR](20-prontuario-componentes-fhir.md)
+
+- [Rotas de perfil, cadastro e impressão](21-rotas-perfil-cadastro-impressao.md)
