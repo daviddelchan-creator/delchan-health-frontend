@@ -23,6 +23,7 @@ Esta documentação descreve o sistema a partir do código-fonte da branch `main
 - [Configuração de ambiente, dependências e secrets](18-configuracao-ambiente-e-secrets.md)
 
 - [Auditoria final de rotas, administração e integrações](27-auditoria-final-rotas-administracao-integracoes.md)
+- [Auditoria de componentes clínicos complementares](28-auditoria-componentes-clinicos-complementares.md)
 
 > Regra: quando uma capacidade não estiver comprovada pelo código analisado, ela é marcada como **não identificada no repositório**, evitando transformar intenção de produto em instrução técnica falsa.
 
