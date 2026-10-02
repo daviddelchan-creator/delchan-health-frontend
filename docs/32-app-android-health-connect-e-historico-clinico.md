@@ -39,9 +39,21 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 
 ---
 
-## 4. NÃO IMPLEMENTADO
+## 4. PARCIAL / FASE C
 
-- **Integração Health Connect / Google Fit:** Pertence estritamente à Fase C (Fora de escopo atual).
+- **Integração Health Connect:**
+  - **Status:** Implementada/Testada com Mock.
+  - **API/SDK:** `react-native-health-connect` instalada via Expo Plugin nativo.
+  - **Arquitetura:** Camada de serviço `HealthConnectService` isolada na pasta `services`. Tela independente em `/patient/health-connect`. O dado flui via `HealthConnect -> registros nativos -> modelo interno (HealthData)` com `source: 'health_connect'`. Não há write-back para Medplum no momento.
+  - **Permissões Implementadas:** `READ_STEPS`, `READ_HEART_RATE`, `READ_BLOOD_PRESSURE`, `READ_HYDRATION`, `READ_SLEEP`, `READ_OXYGEN_SATURATION`, `READ_WEIGHT`.
+  - **Tratamento de Indisponibilidade:** Diferencia ausência de Android, API indisponível, e app desatualizado.
+  - **Tratamento de Permissões:** Permissões são requisitadas sob demanda e validadas antes de toda leitura.
+  - **Limitações:** AAB/APK não validado neste ambiente (depende de compilação externa com Expo EAS ou Android Studio). Write-back não implementado (somente leitura).
+
+---
+
+## 5. NÃO IMPLEMENTADO
+
 - **Apple HealthKit:** Fora de escopo.
 - **Samsung Health Direto:** Fora de escopo.
 - **Upload e OCR de Documentos no Mobile:** A capacidade atual do Dashboard do Paciente é em modo "somente leitura" (Read-Only) da área clínica, preservando a autoridade de diagnóstico apenas para médicos no backend core web.
