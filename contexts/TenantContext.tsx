@@ -14,6 +14,8 @@ export interface TenantInfo {
   medplumProjectId?: string;
 }
 
+import { TenantVertical, VERTICAL_CONFIGS } from '../lib/tenant-config';
+
 export interface TenantConfig {
   name: string;
   internalColor: string;
@@ -56,7 +58,7 @@ interface TenantContextType {
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const [clinicType, setClinicType] = useState('medical');
+  const [clinicType, setClinicType] = useState('clinica');
   const [tenants, setTenants] = useState<TenantInfo[]>(INITIAL_TENANTS);
 
   const [tenantConfig, setTenantConfigState] = useState<TenantConfig>({
@@ -146,12 +148,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setTenantConfig({ ...tenantConfig, require2FA: req });
   };
 
+  const currentConfig = VERTICAL_CONFIGS[clinicType] || VERTICAL_CONFIGS['clinica'];
   const dict = {
-    patient: clinicType === 'medical' ? 'Paciente' : 'Cliente',
-    chart: clinicType === 'medical' ? 'Prontuário' : 'Ficha',
-    doctor: clinicType === 'medical' ? 'Médico' : 'Profissional',
-    prescription: clinicType === 'medical' ? 'Receituário' : 'Recomendação',
-    room: clinicType === 'medical' ? 'Consultório' : 'Cabine',
+    patient: currentConfig.labels.paciente,
+    chart: currentConfig.labels.prontuario,
+    doctor: currentConfig.labels.medico,
+    prescription: currentConfig.labels.receituario,
+    room: currentConfig.labels.consultorio,
+    evolucao: currentConfig.labels.evolucao,
+    ficha_admissao: currentConfig.templates.ficha_admissao,
   };
 
   return (

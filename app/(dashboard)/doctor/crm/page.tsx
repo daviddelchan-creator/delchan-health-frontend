@@ -37,12 +37,37 @@ function DoctorCRMDashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Leads
-  const [myLeads, setMyLeads] = useState<DoctorLead[]>([
-    { id: '1', name: 'Juliana Costa', phone: '11987654321', source: 'whatsapp', intent: 'Consulta Dermatologia / Melasma', status: 'novo', time: '10:45', assignedDoctorId: profile?.id, assignedDoctorName: doctorName },
-    { id: '2', name: 'Carlos Mendes', phone: '11977778888', source: 'instagram', intent: 'Orçamento Harmonização Facial', status: 'novo', time: '09:15' },
-    { id: '3', name: 'Mariana Duarte', phone: '21998881122', source: 'whatsapp', intent: 'Retorno Tratamento Acne', status: 'contato', time: 'Ontem', assignedDoctorId: profile?.id, assignedDoctorName: doctorName },
-    { id: '4', name: 'Lucas Ferreira', phone: '11965432109', source: 'tiktok', intent: 'Bioestimulador de Colágeno', status: 'agendado', time: 'Há 2 dias' },
-  ]);
+  const [myLeads, setMyLeads] = useState<DoctorLead[]>([]);
+
+  useEffect(() => {
+    async function loadLeads() {
+      if (!medplum) return;
+      setIsLoading(true);
+      try {
+        const tasks = await medplum.searchResources('Task', { _sort: '-_lastUpdated', _count: 50 }).catch(() => []);
+        if (tasks && tasks.length > 0) {
+          const formatted = tasks.map((t: any) => ({
+            id: t.id || `lead-${Date.now()}`,
+            name: t.for?.display || 'Lead Sem Nome',
+            phone: t.identifier?.find((i: any) => i.system === 'phone')?.value || '11999999999',
+            source: t.businessStatus?.text || 'whatsapp',
+            intent: t.description || 'Interesse Clínico Geral',
+            status: t.status === 'requested' ? 'novo' : t.status === 'in-progress' ? 'contato' : t.status === 'accepted' ? 'agendado' : 'concluido',
+            time: t.authoredOn ? new Date(t.authoredOn).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Hoje',
+            assignedDoctorId: t.owner?.reference?.split('/')[1],
+            assignedDoctorName: t.owner?.display,
+            patientId: t.for?.reference?.startsWith('Patient/') ? t.for.reference.split('/')[1] : undefined
+          }));
+          setMyLeads(formatted);
+        }
+      } catch (e) {
+        console.error('Erro ao carregar leads:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadLeads();
+  }, [medplum]);
   const [myAudienceCount] = useState(86);
 
   // Modais
@@ -482,10 +507,17 @@ function DoctorCRMDashboardContent() {
                   </Group>
                   <Group>
                     <Button 
-                      component="a"
-                      href={currentSelectedChatLead ? getWhatsAppDirectLink(currentSelectedChatLead) : '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      {...(currentSelectedChatLead ? {
+                        component: "a",
+                        href: getWhatsAppDirectLink(currentSelectedChatLead),
+                        target: "_blank",
+                        rel: "noopener noreferrer"
+                      } : {
+                        onClick: (e) => {
+                          e.preventDefault();
+                          alert('Selecione um lead primeiro (Em breve)');
+                        }
+                      })}
                       variant="outline" 
                       color="teal" 
                       radius="xl" 
