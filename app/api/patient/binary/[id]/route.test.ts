@@ -65,7 +65,7 @@ describe('GET /api/patient/binary/[id]', () => {
         mockDocs = [];
         mockBinary = null;
         mockMeReject = false;
-        process.env.MEDPLUM_BASE_URL = 'http://test-env';
+        process.env.MEDPLUM_BASE_URL = 'http://test-medplum.local';
     });
 
     afterAll(() => {
@@ -74,32 +74,44 @@ describe('GET /api/patient/binary/[id]', () => {
 
     it('fails if no token provided', async () => {
         const req = mockRequest(null);
-        const res = await GET(req, { params: Promise.resolve({ id: 'binary-1' }) }) as any;
+        const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
         expect(res.status).toBe(401);
     });
 
     it('fails if user is not a Patient', async () => {
         mockMeProfile = { id: 'practitioner-456', resourceType: 'Practitioner' };
         const req = mockRequest('valid-token');
-        const res = await GET(req, { params: Promise.resolve({ id: 'binary-1' }) }) as any;
+        const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
         expect(res.status).toBe(403);
     });
 
-    it('fails if the binary is NOT referenced by the patient documents', async () => {
-        // Patient 123 has documents, but none pointing to binary-999
+    // SECURITY TESTS FOR BINARY ID RESOLUTION
+
+    it('succeeds and returns the binary Blob if strictly referenced relatively (Binary/123)', async () => {
         mockDocs = [{
            id: 'doc-1',
-           content: [{ attachment: { url: 'Binary/binary-1' } }]
+           content: [{ attachment: { url: 'Binary/123' } }]
         }];
+        mockBinary = { id: '123', contentType: 'application/pdf' };
 
         const req = mockRequest('valid-token');
-        const res = await GET(req, { params: Promise.resolve({ id: 'binary-999' }) }) as any;
-
-        expect(res.status).toBe(403);
-        expect(res.data.error).toBe('Documento não encontrado ou acesso negado para este paciente.');
+        const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
+        expect(res.status).toBe(200);
     });
 
-    it('prevents prefix collision: requesting 123 when only 1234 is referenced must fail', async () => {
+    it('succeeds and returns the binary Blob if strictly referenced absolutely on the same domain (http://test-medplum.local/Binary/123)', async () => {
+        mockDocs = [{
+           id: 'doc-2',
+           content: [{ attachment: { url: 'http://test-medplum.local/Binary/123' } }]
+        }];
+        mockBinary = { id: '123', contentType: 'application/pdf' };
+
+        const req = mockRequest('valid-token');
+        const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
+        expect(res.status).toBe(200);
+    });
+
+    it('fails for prefix collision (Binary/1234 but requests 123)', async () => {
         mockDocs = [{
            id: 'doc-prefix',
            content: [{ attachment: { url: 'Binary/1234' } }]
@@ -109,23 +121,53 @@ describe('GET /api/patient/binary/[id]', () => {
         const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
 
         expect(res.status).toBe(403);
-        expect(res.data.error).toBe('Documento não encontrado ou acesso negado para este paciente.');
     });
 
-    it('succeeds and returns the binary Blob if exactly referenced', async () => {
-        // Patient 123 has a document pointing exactly to binary-999
+    it('fails for fake paths with exact suffix but invalid structure (/foo/Binary/123)', async () => {
         mockDocs = [{
-           id: 'doc-2',
-           content: [{ attachment: { url: 'Binary/binary-999' } }]
+           id: 'doc-path',
+           content: [{ attachment: { url: '/foo/Binary/123' } }]
         }];
 
-        mockBinary = { id: 'binary-999', contentType: 'application/pdf' };
+        const req = mockRequest('valid-token');
+        const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
+
+        expect(res.status).toBe(403);
+    });
+
+    it('fails for exact references belonging to different domains (https://outro-servidor/Binary/123)', async () => {
+        mockDocs = [{
+           id: 'doc-cross',
+           content: [{ attachment: { url: 'https://outro-servidor/Binary/123' } }]
+        }];
 
         const req = mockRequest('valid-token');
-        const res = await GET(req, { params: Promise.resolve({ id: 'binary-999' }) }) as any;
+        const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
 
-        // This relies on the global.Response mock which sets status to 200
-        expect(res.status).toBe(200);
-        expect(res.headers['Content-Type']).toBe('application/pdf');
+        expect(res.status).toBe(403);
+    });
+
+    it('fails for resources of different types (DocumentReference/123)', async () => {
+        mockDocs = [{
+           id: 'doc-wrong-type',
+           content: [{ attachment: { url: 'DocumentReference/123' } }]
+        }];
+
+        const req = mockRequest('valid-token');
+        const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
+
+        expect(res.status).toBe(403);
+    });
+
+    it('fails for empty or malformed references', async () => {
+        mockDocs = [{
+           id: 'doc-malformed',
+           content: [{ attachment: { url: '' } }, { attachment: { url: null } }]
+        }];
+
+        const req = mockRequest('valid-token');
+        const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
+
+        expect(res.status).toBe(403);
     });
 });

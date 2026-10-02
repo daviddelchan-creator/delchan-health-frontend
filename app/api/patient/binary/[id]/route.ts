@@ -45,10 +45,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
        if (doc.content) {
           for (const contentItem of doc.content) {
              const url = contentItem.attachment?.url;
-             // Ensure exact match or exact suffix match to prevent prefix collision (e.g. Binary/123 matching Binary/1234)
-             if (url && (url === expectedReference || url.endsWith(`/${expectedReference}`))) {
+             if (!url) continue;
+
+             // Prioritize relative FHIR reference
+             if (url === expectedReference) {
                  isAuthorizedBinary = true;
                  break;
+             }
+
+             // Strictly parse absolute URL if necessary, but only allow same Medplum server references
+             try {
+                const parsedUrl = new URL(url);
+                const baseUrlParsed = new URL(process.env.MEDPLUM_BASE_URL as string);
+
+                // If it is absolute, it MUST be hosted on our authorized Medplum server domain
+                // AND the pathname must resolve to exactly `/Binary/{id}`.
+                if (parsedUrl.hostname === baseUrlParsed.hostname &&
+                    parsedUrl.pathname === `/Binary/${id}`) {
+                    isAuthorizedBinary = true;
+                    break;
+                }
+             } catch (e) {
+                // Not a valid absolute URL, already failed relative check, skip.
              }
           }
        }
