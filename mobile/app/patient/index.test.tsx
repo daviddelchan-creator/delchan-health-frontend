@@ -1,6 +1,6 @@
 import React from 'react';
 import { create, act } from 'react-test-renderer';
-import PatientScreen from './patient';
+import PatientScreen from './index';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -48,10 +48,17 @@ describe('PatientScreen Behavioral Verification', () => {
       expect(mockReplace).toHaveBeenCalledWith('/login');
   });
 
-  it('obtains access_token from SecureStore, fetches identity from /mobile-me with Bearer, and renders profile', async () => {
+  it('obtains access_token, fetches dashboard data, and renders empty states correctly', async () => {
       (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('valid-mock-token');
       (axios.get as jest.Mock).mockResolvedValue({
-          data: { profile: { id: 'auth-patient-abc', name: [{ given: ['Valid'], family: 'Patient' }] } }
+          data: {
+              profile: { id: 'auth-patient-abc', name: [{ given: ['Valid'], family: 'Patient' }] },
+              appointments: [],
+              documents: [],
+              diagnostics: [],
+              observations: [],
+              medications: []
+          }
       });
 
       let root: any;
@@ -61,28 +68,55 @@ describe('PatientScreen Behavioral Verification', () => {
       });
 
       expect(SecureStore.getItemAsync).toHaveBeenCalledWith('access_token');
-
-      // Ensures AsyncStorage is NOT the source of identity mapping
-      expect(AsyncStorage.getItem).not.toHaveBeenCalled();
-
       expect(axios.get).toHaveBeenCalledWith(
-          'https://jest-mock.internal/api/auth/mobile-me',
+          'https://jest-mock.internal/api/patient/dashboard',
           expect.objectContaining({ headers: { Authorization: 'Bearer valid-mock-token' } })
       );
 
-      // Assert the profile data returned by axios is rendered
       const stringifiedTree = JSON.stringify(root.toJSON());
-      expect(stringifiedTree).toContain('auth-patient-abc');
       expect(stringifiedTree).toContain('Valid');
-      expect(stringifiedTree).toContain('Patient');
+      expect(stringifiedTree).toContain('Nenhuma consulta agendada.');
+      expect(stringifiedTree).toContain('Nenhum documento disponível.');
+      expect(stringifiedTree).toContain('Sem registros vitais recentes.');
   });
 
-  it('clears session and sends user to /login if /mobile-me rejects token', async () => {
+  it('renders dashboard data when available', async () => {
+      (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('valid-mock-token');
+      (axios.get as jest.Mock).mockResolvedValue({
+          data: {
+              profile: { id: 'auth-patient-abc', name: [{ given: ['Valid'], family: 'Patient' }] },
+              appointments: [{ id: '1', start: '2025-10-10T10:00:00Z', status: 'booked' }],
+              documents: [{ id: '1', date: '2025-01-01T10:00:00Z' }],
+              diagnostics: [],
+              observations: [{ id: '1', code: { text: 'Peso' }, valueQuantity: { value: 70, unit: 'kg' } }],
+              medications: []
+          }
+      });
+
+      let root: any;
+      await act(async () => {
+         root = create(<PatientScreen />);
+         jest.runAllTimers();
+      });
+
+      const stringifiedTree = JSON.stringify(root.toJSON());
+      expect(stringifiedTree).not.toContain('Nenhuma consulta agendada.');
+      expect(stringifiedTree).not.toContain('Nenhum documento disponível.');
+      expect(stringifiedTree).not.toContain('Sem registros vitais recentes.');
+
+      expect(stringifiedTree).toContain('booked');
+      expect(stringifiedTree).toContain('Peso');
+      expect(stringifiedTree).toContain('70');
+      expect(stringifiedTree).toContain('kg');
+  });
+
+  it('clears session and shows error if dashboard API rejects token', async () => {
       (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('invalid-mock-token');
       (axios.get as jest.Mock).mockRejectedValue(new Error('Unauthorized 401'));
 
+      let root: any;
       await act(async () => {
-         create(<PatientScreen />);
+         root = create(<PatientScreen />);
          jest.runAllTimers();
       });
 
@@ -90,5 +124,8 @@ describe('PatientScreen Behavioral Verification', () => {
       expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('refresh_token');
       expect(AsyncStorage.removeItem).toHaveBeenCalledWith('profile');
       expect(mockReplace).toHaveBeenCalledWith('/login');
+
+      const stringifiedTree = JSON.stringify(root.toJSON());
+      expect(stringifiedTree).toContain('Sessão expirada ou não autorizada');
   });
 });
