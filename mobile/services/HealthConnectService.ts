@@ -151,9 +151,8 @@ export class HealthConnectService {
         metadata: record.metadata as any
       }));
     } catch (error: any) {
-      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading steps:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -176,9 +175,8 @@ export class HealthConnectService {
         }))
       );
     } catch (error: any) {
-      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading heart rate:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -199,9 +197,8 @@ export class HealthConnectService {
         metadata: record.metadata as any
       }));
     } catch (error: any) {
-      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading blood pressure:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -222,9 +219,8 @@ export class HealthConnectService {
         metadata: record.metadata as any
       }));
     } catch (error: any) {
-      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading hydration:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -244,9 +240,8 @@ export class HealthConnectService {
         metadata: record.metadata as any
       }));
     } catch (error: any) {
-      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading sleep:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -267,9 +262,8 @@ export class HealthConnectService {
         metadata: record.metadata as any
       }));
     } catch (error: any) {
-      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading oxygen saturation:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -290,27 +284,40 @@ export class HealthConnectService {
         metadata: record.metadata as any
       }));
     } catch (error: any) {
-      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading weight:', error);
-      return [];
+      throw error;
     }
   }
 
   static async readAllData(): Promise<HealthData[]> {
     if (Platform.OS !== 'android') return [];
 
-    // Execute calls, catching and filtering out permission errors for ungranted types
-    const results = await Promise.all([
-      this.readSteps().catch(() => []),
-      this.readHeartRate().catch(() => []),
-      this.readBloodPressure().catch(() => []),
-      this.readHydration().catch(() => []),
-      this.readSleep().catch(() => []),
-      this.readOxygenSaturation().catch(() => []),
-      this.readWeight().catch(() => [])
-    ]);
+    // Attempt to read all types
+    const fetchPromises = [
+      this.readSteps(),
+      this.readHeartRate(),
+      this.readBloodPressure(),
+      this.readHydration(),
+      this.readSleep(),
+      this.readOxygenSaturation(),
+      this.readWeight()
+    ];
 
-    return results.flat().sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+    const outcomes = await Promise.allSettled(fetchPromises);
+
+    const results: HealthData[] = [];
+    for (const outcome of outcomes) {
+      if (outcome.status === 'fulfilled') {
+        results.push(...outcome.value);
+      } else {
+        // If a real error occurred (not just our permission gate), throw it to bubble up
+        if (!outcome.reason?.message?.includes('Permission not granted')) {
+          throw outcome.reason;
+        }
+      }
+    }
+
+    return results.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   }
 
   // FHIR Mapping Preparation

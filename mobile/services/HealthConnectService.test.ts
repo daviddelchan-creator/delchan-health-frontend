@@ -171,13 +171,12 @@ describe('HealthConnectService', () => {
       expect(data).toEqual([]);
     });
 
-    it('15. should handle API error internally', async () => {
+    it('15. should throw API error instead of hiding it as empty data', async () => {
       (readRecords as jest.Mock).mockRejectedValue(new Error('Internal API Error'));
-      const data = await HealthConnectService.readSteps();
-      expect(data).toEqual([]); // Internal generic errors return empty list per the try/catch in the service
+      await expect(HealthConnectService.readSteps()).rejects.toThrow('Internal API Error');
     });
 
-    it('16. readAllData should combine results correctly without throwing when some are missing', async () => {
+    it('16. readAllData should combine results correctly and ignore missing permissions', async () => {
       // Mock that only Steps are granted, others are denied
       (getGrantedPermissions as jest.Mock).mockResolvedValue([{ accessType: 'read', recordType: 'Steps' }]);
       (readRecords as jest.Mock).mockImplementation(async (type) => {
@@ -190,7 +189,17 @@ describe('HealthConnectService', () => {
       expect(allData[0].type).toBe('Steps');
     });
 
-    it('17. provenance is preserved in FHIR mapping', () => {
+    it('17. readAllData should throw if an actual native readRecords API error occurs', async () => {
+      (getGrantedPermissions as jest.Mock).mockResolvedValue([{ accessType: 'read', recordType: 'Steps' }]);
+      (readRecords as jest.Mock).mockImplementation(async (type) => {
+        if (type === 'Steps') throw new Error('Real Native Health Connect Crash');
+        return { records: [] };
+      });
+
+      await expect(HealthConnectService.readAllData()).rejects.toThrow('Real Native Health Connect Crash');
+    });
+
+    it('18. provenance is preserved in FHIR mapping', () => {
       const mockData = {
         source: 'health_connect' as const,
         type: 'Steps',
