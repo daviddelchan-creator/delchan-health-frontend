@@ -8,8 +8,6 @@ if (!baseUrl && process.env.NODE_ENV !== 'test') {
     throw new Error('API URL obrigatória. Configure a variável EXPO_PUBLIC_API_URL no ambiente mobile antes de compilar.');
 }
 
-// In test environment, the SDK requires a string format.
-// We inject a dummy string ONLY if in Jest testing environment, otherwise we strictly use the env var.
 const finalUrl = process.env.NODE_ENV === 'test' && !baseUrl ? 'http://test-env.local' : baseUrl;
 
 const medplum = new MedplumClient({

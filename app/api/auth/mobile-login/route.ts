@@ -4,6 +4,10 @@ import { INITIAL_TENANTS } from '../../../../contexts/TenantContext';
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.MEDPLUM_BASE_URL) {
+      return NextResponse.json({ error: 'Erro de configuração do servidor: MEDPLUM_BASE_URL não está definida.' }, { status: 500 });
+    }
+
     const { email, password, tenantId } = await req.json();
 
     // 1. Initial tenant validation checks if the tenant exists in our known configuration
@@ -19,9 +23,8 @@ export async function POST(req: Request) {
     }
 
     // 2. Real Authentication via Medplum
-    // NOTE: Requires MEDPLUM_BASE_URL and credentials in env to function completely in production.
     const medplum = new MedplumClient({
-      baseUrl: process.env.MEDPLUM_BASE_URL || 'http://localhost:8103',
+      baseUrl: process.env.MEDPLUM_BASE_URL,
     });
 
     const loginResponse = await medplum.startLogin({ email, password });

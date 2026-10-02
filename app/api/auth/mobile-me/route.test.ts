@@ -35,6 +35,19 @@ describe('GET /api/auth/mobile-me', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockGetReject = false;
+        process.env.MEDPLUM_BASE_URL = 'http://test-env';
+    });
+
+    afterAll(() => {
+        delete process.env.MEDPLUM_BASE_URL;
+    });
+
+    it('fails if MEDPLUM_BASE_URL is missing', async () => {
+        delete process.env.MEDPLUM_BASE_URL;
+        const req = mockRequest('valid-token');
+        const res = await GET(req) as any;
+        expect(res.status).toBe(500);
+        expect(res.data.error).toBe('Erro de configuração do servidor: MEDPLUM_BASE_URL não está definida.');
     });
 
     it('fails if no token provided', async () => {

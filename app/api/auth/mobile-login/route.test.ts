@@ -59,6 +59,11 @@ describe('POST /api/auth/mobile-login', () => {
         mockRejectLogin = false;
         mockReturnCode = null;
         mockMeProject = 'Project/project-1';
+        process.env.MEDPLUM_BASE_URL = 'http://test-env';
+    });
+
+    afterAll(() => {
+        delete process.env.MEDPLUM_BASE_URL;
     });
 
     it('should validate tenant and fail if invalid', async () => {
@@ -125,5 +130,13 @@ describe('POST /api/auth/mobile-login', () => {
          const res = await POST(req) as any;
          expect(res.status).toBe(401);
          expect(res.data.error).toBe('Credenciais inválidas ou falha ao autenticar.');
+    });
+
+    it('should fail if MEDPLUM_BASE_URL is not set', async () => {
+         delete process.env.MEDPLUM_BASE_URL;
+         const req = mockRequest({ email: 'test@example.com', password: 'password', tenantId: 'tenant-1' });
+         const res = await POST(req) as any;
+         expect(res.status).toBe(500);
+         expect(res.data.error).toBe('Erro de configuração do servidor: MEDPLUM_BASE_URL não está definida.');
     });
 });
