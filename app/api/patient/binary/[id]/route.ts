@@ -39,10 +39,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     let isAuthorizedBinary = false;
 
+    const expectedReference = `Binary/${id}`;
+
     for (const doc of docs) {
        if (doc.content) {
           for (const contentItem of doc.content) {
-             if (contentItem.attachment?.url?.includes(`Binary/${id}`)) {
+             const url = contentItem.attachment?.url;
+             // Ensure exact match or exact suffix match to prevent prefix collision (e.g. Binary/123 matching Binary/1234)
+             if (url && (url === expectedReference || url.endsWith(`/${expectedReference}`))) {
                  isAuthorizedBinary = true;
                  break;
              }

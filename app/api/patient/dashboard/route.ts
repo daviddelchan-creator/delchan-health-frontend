@@ -19,18 +19,17 @@ export async function GET(req: Request) {
     });
     medplum.setAccessToken(token);
 
-    // Identidade determinada puramente pelo auth/me autorizado pelo servidor
+    // Fetch the authoritative profile directly from Medplum server via the proxy
     const meResponse = await medplum.get('auth/me');
     const profile = meResponse.profile;
 
-    // Rigorous checks: Must be a patient. No arbitrary IDs accepted.
     if (!profile || profile.resourceType !== 'Patient') {
        return NextResponse.json({ error: 'Usuário autenticado não é um paciente.' }, { status: 403 });
     }
 
     const patientId = profile.id;
 
-    // Fetch only resources strictly bound to the authenticated patient's ID
+    // We fetch everything in parallel for the patient dashboard
     const [appointments, documents, diagnostics, observations, medications] = await Promise.all([
         medplum.searchResources('Appointment', { actor: `Patient/${patientId}`, _sort: '-date', _count: 10 }),
         medplum.searchResources('DocumentReference', { subject: `Patient/${patientId}`, _sort: '-date', _count: 10 }),
@@ -41,11 +40,11 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
         profile: profile,
-        appointments: appointments || [],
-        documents: documents || [],
-        diagnostics: diagnostics || [],
-        observations: observations || [],
-        medications: medications || []
+        appointments: appointments,
+        documents: documents,
+        diagnostics: diagnostics,
+        observations: observations,
+        medications: medications
     });
 
   } catch (error: any) {

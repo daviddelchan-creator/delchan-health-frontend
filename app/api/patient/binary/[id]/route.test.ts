@@ -99,7 +99,20 @@ describe('GET /api/patient/binary/[id]', () => {
         expect(res.data.error).toBe('Documento não encontrado ou acesso negado para este paciente.');
     });
 
-    it('succeeds and returns the binary Blob if properly referenced', async () => {
+    it('prevents prefix collision: requesting 123 when only 1234 is referenced must fail', async () => {
+        mockDocs = [{
+           id: 'doc-prefix',
+           content: [{ attachment: { url: 'Binary/1234' } }]
+        }];
+
+        const req = mockRequest('valid-token');
+        const res = await GET(req, { params: Promise.resolve({ id: '123' }) }) as any;
+
+        expect(res.status).toBe(403);
+        expect(res.data.error).toBe('Documento não encontrado ou acesso negado para este paciente.');
+    });
+
+    it('succeeds and returns the binary Blob if exactly referenced', async () => {
         // Patient 123 has a document pointing exactly to binary-999
         mockDocs = [{
            id: 'doc-2',

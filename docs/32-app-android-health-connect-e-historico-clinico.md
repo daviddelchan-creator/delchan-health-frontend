@@ -17,7 +17,7 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
   - `DiagnosticReport` (Laudos de Exames).
   - `Observation` (Sinais vitais como peso, altura, PA, etc).
   - `MedicationRequest` (Prescrições e Medicamentos).
-- **Acesso Seguro a Binários Clínicos (Fase B):** A rota `/api/patient/binary/[id]` verifica explicitamente se o ID do `Binary` solicitado faz parte do conteúdo (no array `.content.attachment.url`) de um `DocumentReference` que pertença estritamente ao paciente dono do token antes de liberar o download original. Não há exposição cega baseada em adivinhação de ID.
+- **Acesso Seguro a Binários Clínicos (Fase B):** A rota `/api/patient/binary/[id]` verifica explicitamente se o ID do `Binary` solicitado faz parte do conteúdo (no array `.content.attachment.url`) de um `DocumentReference` que pertença estritamente ao paciente dono do token antes de liberar o download original. Não há exposição cega baseada em adivinhação de ID, tampouco risco de prefix collision na autorização.
 - **Testes Comportamentais (Jest - Backend & Frontend):** Testes unitários/comportamentais *mockados* validam corretamente: ausência de token, bloqueios cross-tenant, rejeição a Practitioner, renderização correta de coleções vazias e cheias no Dashboard, e restrição expressa de download de binários a arquivos não referenciados pelo paciente em questão.
 
 ---
