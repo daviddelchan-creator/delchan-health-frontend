@@ -1,45 +1,47 @@
-# Mobile Application Foundation (Android)
+# Mobile Application Foundation (Android) - Fase A e Fase B
 
-Este documento descreve a fundação do aplicativo móvel Android para o ecossistema Delchan Health OS. A etapa atual concentra-se apenas em estabelecer as estruturas básicas de integração de autorização.
+Este documento descreve a evolução funcional do aplicativo móvel Android integrado ao ecossistema Delchan Health OS, cobrindo autenticação inicial segura (Fase A) e o Portal do Paciente completo (Fase B).
 
 ---
 
-## 1. IMPLEMENTADO
+## 1. IMPLEMENTADO (Fase A & Fase B)
 
-- **Camada Móvel Isolada:** O aplicativo é desenvolvido em React Native usando Expo (`mobile/`). Dependências e código estão estritamente contidos nesta pasta, preservando o compilador SWC do repositório web (sem inserções de `react-native` ou `.babelrc` no root). Ponto de entrada via Expo Router (`expo-router/entry`). Nenhuma URL de API está hardcoded; o app utiliza obrigatoriamente `EXPO_PUBLIC_API_URL`.
-- **Isolamento de Secrets:** Nenhuma credencial de administração (`MEDPLUM_CLIENT_SECRET`) ou de servidor está no bundle móvel. Variáveis sensíveis do Next.js obrigatórias (`MEDPLUM_BASE_URL`) quebram a inicialização (Erro 500) se ausentes em prod, impedindo o bypass local.
-- **Isolamento e Segurança de Tokens:**
-  - `access_token` e `refresh_token` são armazenados exclusivamente via `expo-secure-store`.
-  - Dados como perfil (identidade) e branding são armazenados em `AsyncStorage` apenas como cache visual. A interface **nunca** confia no cache para navegação autorizada.
-  - O fluxo de `logout` limpa sistematicamente o SecureStore e encerra a sessão.
-- **Identidade Autorizada pelo Servidor (Patient Identity):** Foi implementada a rota `/api/auth/mobile-me`. A tela `/patient` extrai o JWT do SecureStore, bate no servidor e aguarda a extração da identidade autoritativa retornada pelo Medplum através de auth/me. É **impossível** um usuário injetar um ID arbitrário no `AsyncStorage` local e forjar a identidade, pois a renderização da área protegida trava até a resposta real do servidor.
-- **Isolamento de Tenant (Testado Backend):** O backend realiza a avaliação de permissões cruzando a presença do usuário nos `memberships` do projeto atrelado ao `medplumProjectId`. Os testes mockados (`route.test.ts`) validam rigorosamente esta **lógica de negócios** bloqueando a sessão quando um usuário de um Tenant tenta forjar logon em outro Tenant. A autenticação cross-tenant é rejeitada com HTTP 401 e nenhum access token é retornado.
-- **Fluxo .code de Autenticação Estrito:** Se a autenticação fluir pelo caso onde um código é devolvido pelo OIDC (`loginResponse.code`), a API processa esse código internamente, consulta `/auth/me` **e compara se o projeto retornado bate com o solicitado**. Em caso de incompatibilidade, a API *interrompe* a requisição: a autenticação cross-tenant é rejeitada com HTTP 401 e nenhum access token é retornado ao cliente.
-- **Configuração de Namespace:** Identificador do aplicativo configurado para `com.delchan.healthos` no `app.json`.
+- **Camada Móvel Isolada:** O aplicativo é desenvolvido em React Native usando Expo (`mobile/`). Dependências e código estão estritamente contidos nesta pasta, preservando o compilador SWC do repositório web. Nenhuma URL de API está hardcoded (`EXPO_PUBLIC_API_URL` é obrigatória).
+- **Isolamento de Secrets:** Nenhuma credencial de administração (`MEDPLUM_CLIENT_SECRET`) está no bundle. Variáveis sensíveis de Next.js (`MEDPLUM_BASE_URL`) causam erro 500 no proxy, barrando contornos locais não-autorizados.
+- **Isolamento de Tokens (Fase A):** `access_token` e `refresh_token` são armazenados exclusivamente via `expo-secure-store`. O cache `AsyncStorage` não fornece autoridade para navegação de acesso restrito. Logout elimina as chaves seguras.
+- **Identidade e Autorização do Servidor:** Na Fase B, o frontend consulta `/api/patient/dashboard`. Em todos os fluxos, a extração do Bearer Token cruza a identidade autoritativa com o servidor via proxy e rejeita o acesso caso não seja um `Patient` genuíno. É impossível que um paciente forneça um `patientId` arbitrário e obtenha dados de outro paciente.
+- **Dashboard Real do Paciente (Fase B):** O paciente possui uma tela funcional no Android (`mobile/app/patient/index.tsx`) com dados carregados via requisição restrita do servidor.
+- **Mapeamento Clínico Simultâneo (Fase B):** Apenas se autorizado no contexto do Tenant e restrito estritamente a um `Patient` resource, a rota `/api/patient/dashboard` entrega os dados clínicos limitados ao paciente do token:
+  - `Appointment` (Próximas Consultas).
+  - `DocumentReference` (Documentos Clínicos / PDFs).
+  - `DiagnosticReport` (Laudos de Exames).
+  - `Observation` (Sinais vitais como peso, altura, PA, etc).
+  - `MedicationRequest` (Prescrições e Medicamentos).
+- **Acesso Seguro a Binários Clínicos (Fase B):** A rota `/api/patient/binary/[id]` verifica explicitamente se o ID do `Binary` solicitado faz parte do conteúdo (no array `.content.attachment.url`) de um `DocumentReference` que pertença estritamente ao paciente dono do token antes de liberar o download original. Não há exposição cega baseada em adivinhação de ID, tampouco risco de prefix collision na autorização.
+- **Testes Comportamentais (Jest - Backend & Frontend):** Testes unitários/comportamentais *mockados* validam corretamente: ausência de token, bloqueios cross-tenant, rejeição a Practitioner, renderização correta de coleções vazias e cheias no Dashboard, e restrição expressa de download de binários a arquivos não referenciados pelo paciente em questão.
 
 ---
 
 ## 2. PARCIAL / EXTERNO
 
-- **Validação de Dependências Expo:** O comando `npx expo-doctor` finaliza com sucesso de compatibilidade nativa, porém acusa um alerta de duplicação do pacote `react@19.2.0` derivado da estrutura de monorepo raiz. Isso não impede a compilação.
-- **Seleção de Tenant UI:** A seleção visual por nome está implementada na tela, baseada estritamente na lista constante de configuração (`STAGING_TENANT_DIRECTORY`). O diretório dinâmico de organizações atrelado ao banco **não está implementado**. A lista constante funciona unicamente como staging/estática. O usuário não precisa mais digitar o UUID técnico (o respectivo `tenantId` nos bastidores viaja para o backend).
+- **Validação de Dependências Expo:** O comando `npx expo-doctor` acusa alerta de duplicação do pacote `react@19.2.0` derivado da estrutura de monorepo raiz. Isso não impede a compilação.
+- **Seleção de Tenant UI:** A seleção visual de Tenant é estática e estrita para staging, e sua interface ainda aguarda endpoints públicos dinâmicos (`GET /api/tenants/directory`).
 
 ---
 
 ## 3. SIMULADO / DEMONSTRATIVO (Mocks para Staging/Config)
 
-- **Mapeamento Criptográfico e de Organização (`INITIAL_TENANTS`):** Atualmente a listagem `INITIAL_TENANTS` no backend é tratada explicitamente como **Configuração/Staging**. O *Mapeamento Dinâmico* em BD real **ainda não está implementado**. Em produção real, este stub estático necessita substituição para a tabela principal do DB SaaS.
+- **Mapeamento Criptográfico e de Organização (`INITIAL_TENANTS`):** Atualmente tratado explicitamente como **Configuração/Staging**. Não utiliza um DB Saas dinâmico ainda.
+- **Integração Real com Medplum (Mocks):** Os testes apresentados usam **MOCKS** na biblioteca `@medplum/core` no Next.js Backend. Embora provem rigorosamente a lógica de segurança de acesso cruzado (A -> B), ausência de token, bloqueios de Patient, etc., eles **não atestam integração real na rede com um banco local do Medplum R4**.
 - **Build Nativo Android (Compilação Gradle):**
-  - **✅ VALIDADO:** O scaffolding nativo (`npx expo prebuild -p android`) gerou o diretório `/android` seguro e limpo. O Export Bundle JS (`npx expo export -p android`) concluiu a compilação da lógica corretamente.
-  - **⚠️ NÃO VALIDADO (AAB/APK):** O binário final `assembleDebug` causa **timeout** no ambiente local por restrições operacionais. O AAB/APK não está validado.
-- **Testes Backend (Medplum Client Mock):** Os testes em `route.test.ts` e `mobile-me/route.test.ts` implementam mocks unitários rigorosos da classe `MedplumClient`. Eles validam a **lógica de autorização e de bloqueio cross-tenant**, e **não constituem integração real com uma instância Medplum**.
+  - **✅ VALIDADO:** O scaffolding nativo (`npx expo prebuild -p android`) gerou o diretório e compilação lógica (`npx expo export -p android`).
+  - **⚠️ NÃO VALIDADO (AAB/APK):** O binário final `assembleDebug` causa **timeout** por limitação do ambiente local/Docker; portanto, o arquivo binário direto (.apk) **não foi validado neste ambiente**.
 
 ---
 
 ## 4. NÃO IMPLEMENTADO
 
-- **Integração Health Connect / Google Fit:** Pertence à Fase C, não implementada.
+- **Integração Health Connect / Google Fit:** Pertence estritamente à Fase C (Fora de escopo atual).
 - **Apple HealthKit:** Fora de escopo.
 - **Samsung Health Direto:** Fora de escopo.
-- **Seleção Dinâmica e Diretório Real de Tenant Mobile:** O backend SaaS de Tenants ainda não expõe APIs públicas dinâmicas.
-- **Upload e OCR de Documentos Clínicos Históricos.**
+- **Upload e OCR de Documentos no Mobile:** A capacidade atual do Dashboard do Paciente é em modo "somente leitura" (Read-Only) da área clínica, preservando a autoridade de diagnóstico apenas para médicos no backend core web.
