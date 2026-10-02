@@ -43,12 +43,14 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 
 - **Integração Health Connect:**
   - **Status:** Implementada/Testada com Mock.
-  - **API/SDK:** `react-native-health-connect` instalada via Expo Plugin nativo.
-  - **Arquitetura:** Camada de serviço `HealthConnectService` isolada na pasta `services`. Tela independente em `/patient/health-connect`. O dado flui via `HealthConnect -> registros nativos -> modelo interno (HealthData)` com `source: 'health_connect'`. Não há write-back para Medplum no momento.
-  - **Permissões Implementadas:** `READ_STEPS`, `READ_HEART_RATE`, `READ_BLOOD_PRESSURE`, `READ_HYDRATION`, `READ_SLEEP`, `READ_OXYGEN_SATURATION`, `READ_WEIGHT`.
-  - **Tratamento de Indisponibilidade:** Diferencia ausência de Android, API indisponível, e app desatualizado.
-  - **Tratamento de Permissões:** Permissões são requisitadas sob demanda e validadas antes de toda leitura.
-  - **Limitações:** AAB/APK não validado neste ambiente (depende de compilação externa com Expo EAS ou Android Studio). Write-back não implementado (somente leitura).
+  - **API/SDK:** `react-native-health-connect@4.1.3` instalada via Expo Plugin nativo.
+  - **Configuração:** `minSdkVersion: 26` configurado via `expo-build-properties` para suportar o Android Health Connect adequadamente.
+  - **Arquitetura:** Camada de serviço `HealthConnectService` isolada na pasta `services`. Tela independente em `/patient/health-connect`.
+  - **Fluxo e Modelo (Provenance & FHIR):** O dado flui via `HealthConnect -> registros nativos -> modelo interno (HealthData) -> mapToFHIRObservation`. A UI consome dados com proveniência (`dataOrigin`, `recordId`, e `source: 'health_connect'`) mantidos.
+  - **Mapeamento FHIR:** Foi introduzido um método estático `mapToFHIRObservation` que traduz `HealthData` para `Observation`, inserindo a extensão de origem (`http://delchan.site/health-connect-origin`) e o ID original, preparando-o para o backend (sem write-back). Não inferimos diagnósticos ou Conditions.
+  - **Permissões (Parciais e Gatilhos Internos):** `READ_STEPS`, `READ_HEART_RATE`, `READ_BLOOD_PRESSURE`, `READ_HYDRATION`, `READ_SLEEP`, `READ_OXYGEN_SATURATION`, `READ_WEIGHT`. As permissões são validadas de maneira estrita _internamente no Service_ antes de solicitar `readRecords` para evitar leitura não autorizada (independente da UI). O modelo e UI dão suporte a *permissões parciais* (concedidas x faltantes).
+  - **Testes (Testes Diretos no Service & UI):** Adicionada suite intensiva no `HealthConnectService.test.ts` que valida mapeamentos dos 7 tipos de dados, falhas de permissão parciais, tratamento de indisponibilidade e compilação de metadados. Testes da UI processam avisos de permissões parciais e "Sem dados". Total: 24 testes validados.
+  - **Limitações e Build:** Pré-build Android nativo gerado e compatibilidade com SDK validada (`android/gradle.properties` com `minSdkVersion=26`). No entanto, o AAB/APK não está validado (testes visuais de dispositivo real não foram emulados) devido a limitações deste ambiente. O fluxo baseia-se em mocks locais consistentes com o contrato original da biblioteca `react-native-health-connect`.
 
 ---
 

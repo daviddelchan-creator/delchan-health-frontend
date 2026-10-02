@@ -16,7 +16,16 @@ export interface HealthData {
   unit?: string;
   startTime: string;
   endTime: string;
-  metadata?: any;
+  recordId?: string;
+  dataOrigin?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface PermissionStatus {
+  granted: Permission[];
+  missing: Permission[];
+  hasAll: boolean;
+  hasSome: boolean;
 }
 
 const REQUIRED_PERMISSIONS: Permission[] = [
@@ -66,19 +75,43 @@ export class HealthConnectService {
     }
   }
 
-  static async hasRequiredPermissions(): Promise<boolean> {
-    if (Platform.OS !== 'android') return false;
+  static async hasRequiredPermissions(): Promise<PermissionStatus> {
+    if (Platform.OS !== 'android') {
+      return { granted: [], missing: REQUIRED_PERMISSIONS, hasAll: false, hasSome: false };
+    }
     try {
       const granted = await this.getPermissions();
-      // Check if all required permissions are in granted list
-      return REQUIRED_PERMISSIONS.every(reqPerm =>
-        granted.some(grantPerm =>
+      const missing: Permission[] = [];
+      const actuallyGranted: Permission[] = [];
+
+      REQUIRED_PERMISSIONS.forEach(reqPerm => {
+        const isGranted = granted.some(grantPerm =>
           grantPerm.accessType === reqPerm.accessType &&
           grantPerm.recordType === reqPerm.recordType
-        )
-      );
+        );
+        if (isGranted) {
+          actuallyGranted.push(reqPerm);
+        } else {
+          missing.push(reqPerm);
+        }
+      });
+
+      return {
+        granted: actuallyGranted,
+        missing: missing,
+        hasAll: missing.length === 0,
+        hasSome: actuallyGranted.length > 0
+      };
     } catch (error) {
-      return false;
+      return { granted: [], missing: REQUIRED_PERMISSIONS, hasAll: false, hasSome: false };
+    }
+  }
+
+  private static async ensurePermission(recordType: string): Promise<void> {
+    const status = await this.hasRequiredPermissions();
+    const isGranted = status.granted.some(p => p.recordType === recordType);
+    if (!isGranted) {
+      throw new Error(`Permission not granted for ${recordType}`);
     }
   }
 
@@ -104,6 +137,7 @@ export class HealthConnectService {
   static async readSteps(): Promise<HealthData[]> {
     if (Platform.OS !== 'android') return [];
     try {
+      await this.ensurePermission('Steps');
       const result = await readRecords('Steps', { timeRangeFilter: this.getTimeRange() });
       return result.records.map(record => ({
         source: 'health_connect',
@@ -112,9 +146,12 @@ export class HealthConnectService {
         unit: 'count',
         startTime: record.startTime,
         endTime: record.endTime,
-        metadata: record.metadata
+        recordId: record.metadata?.id,
+        dataOrigin: record.metadata?.dataOrigin,
+        metadata: record.metadata as any
       }));
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading steps:', error);
       return [];
     }
@@ -123,6 +160,7 @@ export class HealthConnectService {
   static async readHeartRate(): Promise<HealthData[]> {
     if (Platform.OS !== 'android') return [];
     try {
+      await this.ensurePermission('HeartRate');
       const result = await readRecords('HeartRate', { timeRangeFilter: this.getTimeRange() });
       return result.records.flatMap(record =>
         record.samples.map(sample => ({
@@ -131,11 +169,14 @@ export class HealthConnectService {
           value: sample.beatsPerMinute,
           unit: 'bpm',
           startTime: sample.time,
-          endTime: sample.time, // samples are point-in-time
-          metadata: record.metadata
+          endTime: sample.time,
+          recordId: record.metadata?.id,
+          dataOrigin: record.metadata?.dataOrigin,
+          metadata: record.metadata as any
         }))
       );
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading heart rate:', error);
       return [];
     }
@@ -144,6 +185,7 @@ export class HealthConnectService {
   static async readBloodPressure(): Promise<HealthData[]> {
     if (Platform.OS !== 'android') return [];
     try {
+      await this.ensurePermission('BloodPressure');
       const result = await readRecords('BloodPressure', { timeRangeFilter: this.getTimeRange() });
       return result.records.map(record => ({
         source: 'health_connect',
@@ -152,9 +194,12 @@ export class HealthConnectService {
         unit: 'mmHg',
         startTime: record.time,
         endTime: record.time,
-        metadata: record.metadata
+        recordId: record.metadata?.id,
+        dataOrigin: record.metadata?.dataOrigin,
+        metadata: record.metadata as any
       }));
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading blood pressure:', error);
       return [];
     }
@@ -163,6 +208,7 @@ export class HealthConnectService {
   static async readHydration(): Promise<HealthData[]> {
     if (Platform.OS !== 'android') return [];
     try {
+      await this.ensurePermission('Hydration');
       const result = await readRecords('Hydration', { timeRangeFilter: this.getTimeRange() });
       return result.records.map(record => ({
         source: 'health_connect',
@@ -171,9 +217,12 @@ export class HealthConnectService {
         unit: 'L',
         startTime: record.startTime,
         endTime: record.endTime,
-        metadata: record.metadata
+        recordId: record.metadata?.id,
+        dataOrigin: record.metadata?.dataOrigin,
+        metadata: record.metadata as any
       }));
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading hydration:', error);
       return [];
     }
@@ -182,16 +231,20 @@ export class HealthConnectService {
   static async readSleep(): Promise<HealthData[]> {
     if (Platform.OS !== 'android') return [];
     try {
+      await this.ensurePermission('SleepSession');
       const result = await readRecords('SleepSession', { timeRangeFilter: this.getTimeRange() });
       return result.records.map(record => ({
         source: 'health_connect',
         type: 'Sleep',
-        value: record.stages ? 'Detailed Sleep' : 'Sleep Session',
+        value: record.stages && record.stages.length > 0 ? 'Detailed Sleep' : 'Sleep Session',
         startTime: record.startTime,
         endTime: record.endTime,
-        metadata: record.metadata
+        recordId: record.metadata?.id,
+        dataOrigin: record.metadata?.dataOrigin,
+        metadata: record.metadata as any
       }));
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading sleep:', error);
       return [];
     }
@@ -200,6 +253,7 @@ export class HealthConnectService {
   static async readOxygenSaturation(): Promise<HealthData[]> {
     if (Platform.OS !== 'android') return [];
     try {
+      await this.ensurePermission('OxygenSaturation');
       const result = await readRecords('OxygenSaturation', { timeRangeFilter: this.getTimeRange() });
       return result.records.map(record => ({
         source: 'health_connect',
@@ -208,9 +262,12 @@ export class HealthConnectService {
         unit: '%',
         startTime: record.time,
         endTime: record.time,
-        metadata: record.metadata
+        recordId: record.metadata?.id,
+        dataOrigin: record.metadata?.dataOrigin,
+        metadata: record.metadata as any
       }));
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading oxygen saturation:', error);
       return [];
     }
@@ -219,6 +276,7 @@ export class HealthConnectService {
   static async readWeight(): Promise<HealthData[]> {
     if (Platform.OS !== 'android') return [];
     try {
+      await this.ensurePermission('Weight');
       const result = await readRecords('Weight', { timeRangeFilter: this.getTimeRange() });
       return result.records.map(record => ({
         source: 'health_connect',
@@ -227,9 +285,12 @@ export class HealthConnectService {
         unit: 'kg',
         startTime: record.time,
         endTime: record.time,
-        metadata: record.metadata
+        recordId: record.metadata?.id,
+        dataOrigin: record.metadata?.dataOrigin,
+        metadata: record.metadata as any
       }));
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Permission not granted')) throw error;
       console.error('Error reading weight:', error);
       return [];
     }
@@ -238,17 +299,53 @@ export class HealthConnectService {
   static async readAllData(): Promise<HealthData[]> {
     if (Platform.OS !== 'android') return [];
 
-    // Attempt reading concurrently, filter out any errors
+    // Execute calls, catching and filtering out permission errors for ungranted types
     const results = await Promise.all([
-      this.readSteps(),
-      this.readHeartRate(),
-      this.readBloodPressure(),
-      this.readHydration(),
-      this.readSleep(),
-      this.readOxygenSaturation(),
-      this.readWeight()
+      this.readSteps().catch(() => []),
+      this.readHeartRate().catch(() => []),
+      this.readBloodPressure().catch(() => []),
+      this.readHydration().catch(() => []),
+      this.readSleep().catch(() => []),
+      this.readOxygenSaturation().catch(() => []),
+      this.readWeight().catch(() => [])
     ]);
 
     return results.flat().sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  }
+
+  // FHIR Mapping Preparation
+  // [NÃO enviar para Medplum nesta fase]
+  static mapToFHIRObservation(data: HealthData): any {
+    // Basic structural map representing how it will map to FHIR in the future
+    return {
+      resourceType: 'Observation',
+      status: 'final',
+      category: [{
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/observation-category',
+          code: 'vital-signs',
+          display: 'Vital Signs'
+        }]
+      }],
+      effectiveDateTime: data.startTime,
+      valueQuantity: {
+        value: data.type === 'BloodPressure' || data.type === 'Sleep' ? undefined : data.value,
+        unit: data.unit
+      },
+      meta: {
+        source: data.source,
+        extension: [
+          {
+            url: 'http://delchan.site/health-connect-origin',
+            valueString: data.dataOrigin
+          },
+          {
+            url: 'http://delchan.site/health-connect-record-id',
+            valueString: data.recordId
+          }
+        ]
+      }
+      // Specific LOINC/SNOMED encodings per data.type would be applied here
+    };
   }
 }

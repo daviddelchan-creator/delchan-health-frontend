@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Button, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { SdkAvailabilityStatus } from 'react-native-health-connect';
-import { HealthConnectService, HealthData } from '../../../services/HealthConnectService';
+import { HealthConnectService, HealthData, PermissionStatus } from '../../../services/HealthConnectService';
 
 export default function HealthConnectScreen() {
   const [isAvailable, setIsAvailable] = useState<boolean>(false);
   const [availabilityStatus, setAvailabilityStatus] = useState<SdkAvailabilityStatus | undefined>();
-  const [hasPermissions, setHasPermissions] = useState<boolean>(false);
+  const [permissionStatus, setPermissionStatus] = useState<PermissionStatus | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [data, setData] = useState<HealthData[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     checkStatus();
@@ -16,6 +17,7 @@ export default function HealthConnectScreen() {
 
   const checkStatus = async () => {
     setIsLoading(true);
+    setErrorMsg(null);
     try {
       const { available, status } = await HealthConnectService.isAvailable();
       setIsAvailable(available);
@@ -23,14 +25,16 @@ export default function HealthConnectScreen() {
 
       if (available) {
         await HealthConnectService.initialize();
-        const permitted = await HealthConnectService.hasRequiredPermissions();
-        setHasPermissions(permitted);
-        if (permitted) {
+        const pStatus = await HealthConnectService.hasRequiredPermissions();
+        setPermissionStatus(pStatus);
+
+        if (pStatus.hasSome) {
           await loadData();
         }
       }
     } catch (error) {
       console.error('Failed to check Health Connect status', error);
+      setErrorMsg('Ocorreu um erro ao verificar o status.');
     } finally {
       setIsLoading(false);
     }
@@ -39,23 +43,26 @@ export default function HealthConnectScreen() {
   const requestPermissions = async () => {
     try {
       await HealthConnectService.requestPermissions();
-      const permitted = await HealthConnectService.hasRequiredPermissions();
-      setHasPermissions(permitted);
-      if (permitted) {
+      const pStatus = await HealthConnectService.hasRequiredPermissions();
+      setPermissionStatus(pStatus);
+      if (pStatus.hasSome) {
         await loadData();
       }
     } catch (error) {
       console.error('Failed to request permissions', error);
+      setErrorMsg('Não foi possível solicitar as permissões.');
     }
   };
 
   const loadData = async () => {
     setIsLoading(true);
+    setErrorMsg(null);
     try {
       const healthData = await HealthConnectService.readAllData();
       setData(healthData);
     } catch (error) {
       console.error('Failed to load data', error);
+      setErrorMsg('Houve um problema ao buscar os dados do Health Connect.');
     } finally {
       setIsLoading(false);
     }
@@ -96,37 +103,48 @@ export default function HealthConnectScreen() {
     );
   }
 
-  // State 2: Permissions not granted
-  if (!hasPermissions) {
+  // State 2: No permissions granted at all
+  if (permissionStatus && !permissionStatus.hasSome) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>Acesso ao Health Connect</Text>
         <Text style={styles.text}>
           Precisamos de permissão para ler seus dados de passos, frequência cardíaca, pressão arterial, hidratação, sono, oxigenação e peso (somente leitura).
         </Text>
+        {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
         <Button title="Conceder Permissões" onPress={requestPermissions} color="#0FB5A0" />
       </View>
     );
   }
 
-  // State 4: No data
-  if (data.length === 0) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Dados de Saúde</Text>
-        <Text style={styles.text}>Nenhum dado encontrado no Health Connect para os últimos 30 dias.</Text>
-        <Button title="Atualizar" onPress={loadData} color="#0FB5A0" />
-      </View>
-    );
-  }
-
-  // State 5: Data available
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Meus Dados de Saúde</Text>
         <Button title="Atualizar" onPress={loadData} color="#0FB5A0" />
       </View>
+
+      {/* Partial Permissions Banner */}
+      {permissionStatus && !permissionStatus.hasAll && (
+        <View style={styles.warningBox}>
+          <Text style={styles.warningTitle}>Permissões Parciais</Text>
+          <Text style={styles.warningText}>
+            Não temos acesso a alguns dados: {permissionStatus.missing.map(p => p.recordType).join(', ')}.
+          </Text>
+          <Button title="Conceder Permissões" onPress={requestPermissions} color="#0FB5A0" />
+        </View>
+      )}
+
+      {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+
+      {/* State 4: No data */}
+      {data.length === 0 && !errorMsg ? (
+        <View style={styles.emptyBox}>
+          <Text style={styles.text}>Nenhum dado encontrado no Health Connect para os últimos 30 dias para as permissões concedidas.</Text>
+        </View>
+      ) : null}
+
+      {/* State 5: Data available */}
       {data.map((item, index) => (
         <View key={index} style={styles.card}>
           <Text style={styles.cardType}>{item.type}</Text>
@@ -136,7 +154,7 @@ export default function HealthConnectScreen() {
           <Text style={styles.cardDate}>
             {new Date(item.startTime).toLocaleString()}
           </Text>
-          <Text style={styles.cardSource}>Origem: {item.source}</Text>
+          <Text style={styles.cardSource}>Origem: {item.source} {item.dataOrigin ? `(${item.dataOrigin})` : ''}</Text>
         </View>
       ))}
     </ScrollView>
@@ -204,5 +222,34 @@ const styles = StyleSheet.create({
     color: '#AAA',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  warningBox: {
+    backgroundColor: '#FFF3CD',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFEEBA',
+  },
+  warningTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#856404',
+    marginBottom: 4,
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#856404',
+    marginBottom: 8,
+  },
+  emptyBox: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   }
 });

@@ -47,7 +47,7 @@ describe('HealthConnectScreen', () => {
 
   it('2. should show permission request button if not granted', async () => {
     (HealthConnectService.isAvailable as jest.Mock).mockResolvedValue({ available: true, status: SdkAvailabilityStatus.SDK_AVAILABLE });
-    (HealthConnectService.hasRequiredPermissions as jest.Mock).mockResolvedValue(false);
+    (HealthConnectService.hasRequiredPermissions as jest.Mock).mockResolvedValue({ hasSome: false, hasAll: false, granted: [], missing: [] });
 
     render(<HealthConnectScreen />);
 
@@ -60,8 +60,8 @@ describe('HealthConnectScreen', () => {
   it('3. should request permissions when button is clicked', async () => {
     (HealthConnectService.isAvailable as jest.Mock).mockResolvedValue({ available: true, status: SdkAvailabilityStatus.SDK_AVAILABLE });
     (HealthConnectService.hasRequiredPermissions as jest.Mock)
-      .mockResolvedValueOnce(false) // initial check
-      .mockResolvedValueOnce(true); // after request
+      .mockResolvedValueOnce({ hasSome: false, hasAll: false, granted: [], missing: [] }) // initial check
+      .mockResolvedValueOnce({ hasSome: true, hasAll: true, granted: [], missing: [] }); // after request
 
     (HealthConnectService.requestPermissions as jest.Mock).mockResolvedValue([]);
     (HealthConnectService.readAllData as jest.Mock).mockResolvedValue([]);
@@ -76,25 +76,25 @@ describe('HealthConnectScreen', () => {
 
     await waitFor(() => {
       expect(HealthConnectService.requestPermissions).toHaveBeenCalled();
-      expect(screen.getByText('Dados de Saúde')).toBeTruthy(); // Navigates to no data or data screen
+      expect(screen.getByText('Meus Dados de Saúde')).toBeTruthy(); // Navigates to data screen
     });
   });
 
   it('4. should show empty state when reading returns no data', async () => {
     (HealthConnectService.isAvailable as jest.Mock).mockResolvedValue({ available: true, status: SdkAvailabilityStatus.SDK_AVAILABLE });
-    (HealthConnectService.hasRequiredPermissions as jest.Mock).mockResolvedValue(true);
+    (HealthConnectService.hasRequiredPermissions as jest.Mock).mockResolvedValue({ hasSome: true, hasAll: true, granted: [], missing: [] });
     (HealthConnectService.readAllData as jest.Mock).mockResolvedValue([]);
 
     render(<HealthConnectScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('Nenhum dado encontrado no Health Connect para os últimos 30 dias.')).toBeTruthy();
+      expect(screen.getByText(/Nenhum dado encontrado/)).toBeTruthy();
     });
   });
 
   it('5. should read and render all 7 types of data correctly', async () => {
     (HealthConnectService.isAvailable as jest.Mock).mockResolvedValue({ available: true, status: SdkAvailabilityStatus.SDK_AVAILABLE });
-    (HealthConnectService.hasRequiredPermissions as jest.Mock).mockResolvedValue(true);
+    (HealthConnectService.hasRequiredPermissions as jest.Mock).mockResolvedValue({ hasSome: true, hasAll: true, granted: [], missing: [] });
 
     const mockData = [
       { source: 'health_connect', type: 'Steps', value: 5000, unit: 'count', startTime: '2023-10-01T10:00:00Z' },
@@ -135,14 +135,14 @@ describe('HealthConnectScreen', () => {
 
   it('13, 14. unexpected error reading should result in empty state, not a crash', async () => {
     (HealthConnectService.isAvailable as jest.Mock).mockResolvedValue({ available: true, status: SdkAvailabilityStatus.SDK_AVAILABLE });
-    (HealthConnectService.hasRequiredPermissions as jest.Mock).mockResolvedValue(true);
+    (HealthConnectService.hasRequiredPermissions as jest.Mock).mockResolvedValue({ hasSome: true, hasAll: true, granted: [], missing: [] });
     (HealthConnectService.readAllData as jest.Mock).mockRejectedValue(new Error('Unexpected API error'));
 
     render(<HealthConnectScreen />);
 
     await waitFor(() => {
-      // Because it rejected, setData wasn't called with items, so it remains empty array
-      expect(screen.getByText('Nenhum dado encontrado no Health Connect para os últimos 30 dias.')).toBeTruthy();
+      // Because it rejected, setData wasn't called with items, so it shows error
+      expect(screen.getByText(/Houve um problema ao buscar os dados/)).toBeTruthy();
     });
   });
 });
