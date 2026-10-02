@@ -4,14 +4,12 @@ import { MedplumProvider as ReactMedplumProvider } from '@medplum/react-hooks';
 
 const baseUrl = process.env.EXPO_PUBLIC_API_URL;
 
-if (!baseUrl && process.env.NODE_ENV !== 'test') {
+if (!baseUrl) {
     throw new Error('API URL obrigatória. Configure a variável EXPO_PUBLIC_API_URL no ambiente mobile antes de compilar.');
 }
 
-const finalUrl = process.env.NODE_ENV === 'test' && !baseUrl ? 'http://test-env.local' : baseUrl;
-
 const medplum = new MedplumClient({
-  baseUrl: finalUrl as string,
+  baseUrl: baseUrl as string,
 });
 
 export default function RootLayout() {
