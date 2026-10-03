@@ -39,7 +39,13 @@ export function OCRReviewModal({ opened, onClose, documentReferenceId, token }: 
          });
          const extData = await extRes.json();
          if (extData.fields) {
-             setFields(extData.fields);
+             if (extData.HUMAN_REVIEW && extData.HUMAN_REVIEW.fields) {
+                 setFields(extData.HUMAN_REVIEW.fields);
+             } else if (extData.AUTOMATED_EXTRACTION && extData.AUTOMATED_EXTRACTION.fields) {
+                 setFields(extData.AUTOMATED_EXTRACTION.fields);
+             } else if (extData.fields) {
+                 setFields(extData.fields);
+             }
          }
       } else {
          setError('Este documento ainda não possui dados extraídos ou falhou no processamento.');

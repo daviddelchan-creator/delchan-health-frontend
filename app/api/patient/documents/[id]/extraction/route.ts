@@ -13,6 +13,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const medplum = new MedplumClient({ baseUrl: process.env.MEDPLUM_BASE_URL });
     medplum.setAccessToken(token);
 
+    const meResponse = await medplum.get('auth/me');
+    const profile = meResponse.profile;
+
+    if (!profile) {
+        return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
+    if (profile.resourceType !== 'Patient' && profile.resourceType !== 'Practitioner') {
+        return NextResponse.json({ error: 'Tipo de perfil não suportado' }, { status: 403 });
+    }
+
+    const docRef = await medplum.readResource('DocumentReference', id);
+    if (!docRef) {
+        return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
+    }
+
+    if (profile.resourceType === 'Patient') {
+        if (docRef.subject?.reference !== `Patient/${profile.id}`) {
+             return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+        }
+    }
+
     const existingTasks = await medplum.searchResources('Task', { focus: `DocumentReference/${id}` });
     const task = existingTasks.find(t => t.status !== 'rejected');
 
@@ -35,6 +57,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
 
   } catch (error: any) {
+    if (error.message === 'Unauthorized' || error.message?.includes('401') || error.message?.includes('Not found')) {
+         return NextResponse.json({ error: 'Documento não encontrado ou acesso negado' }, { status: 404 });
+    }
     return NextResponse.json({ error: error.message || 'Falha ao buscar extração' }, { status: 500 });
   }
 }

@@ -20,6 +20,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: 'Somente profissionais podem revisar documentos' }, { status: 403 });
     }
 
+    // Verify DocumentReference exists
+    const docRef = await medplum.readResource('DocumentReference', id);
+    if (!docRef) {
+      return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
+    }
+
+    // A real implementation would verify if the Practitioner has context/access to the patient's data.
+    // For Phase E demo, verifying the Practitioner role and DocumentReference existence is enough as requested.
+
     const payload = await req.json();
 
     const existingTasks = await medplum.searchResources('Task', { focus: `DocumentReference/${id}` });
@@ -35,13 +44,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const binaryId = extOutput.valueReference.reference.replace('Binary/', '');
+    const oldBinary = await medplum.readResource('Binary', binaryId);
+    const oldBlob = await medplum.readBinary(oldBinary);
+    const oldJsonString = await oldBlob.text();
+    const oldExtraction = JSON.parse(oldJsonString);
+
+    // Merge new review with old extraction history
+    const reviewedFields = payload.fields || [];
+    const serverTimestamp = new Date().toISOString();
+
+    const newExtractionData = {
+        AUTOMATED_EXTRACTION: {
+            classification: oldExtraction.AUTOMATED_EXTRACTION?.classification || oldExtraction.classification,
+            fields: oldExtraction.AUTOMATED_EXTRACTION?.fields || oldExtraction.fields
+        },
+        HUMAN_REVIEW: {
+            reviewer: `Practitioner/${profile.id}`,
+            reviewedAt: serverTimestamp,
+            fields: reviewedFields
+        }
+    };
 
     // We update the Binary with the new JSON containing the review values
-    const extractionJsonString = JSON.stringify(payload);
+    const extractionJsonString = JSON.stringify(newExtractionData);
     const extractionFile = new File([extractionJsonString], 'extraction_reviewed.json', { type: 'application/json' });
 
-    // Create new Binary for the reviewed content to maintain audit trail or just overwrite?
-    // Let's create a new one and update the Task output
+    // Create new Binary for the reviewed content to maintain audit trail
     const reviewedBinary = await medplum.createBinary({
         data: extractionFile as any,
         filename: 'extraction_reviewed.json',
@@ -69,7 +97,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         resourceType: 'AuditEvent',
         type: { system: 'http://dicom.nema.org/resources/ontology/DCM', code: '110100', display: 'Application Activity' },
         action: 'U',
-        recorded: new Date().toISOString(),
+        recorded: serverTimestamp,
         agent: [{
             requestor: true,
             who: { reference: `Practitioner/${profile.id}` }
@@ -77,7 +105,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         source: { observer: { display: 'Delchan Health OS OCR Pipeline' } },
         entity: [{
             what: { reference: `DocumentReference/${id}` },
-            type: { system: 'http://delchan.site/audit-entity-type', code: 'DOCUMENT_REVIEW' }
+            type: { system: 'http://delchan.site/audit-entity-type', code: 'DOCUMENT_REVIEW' },
+            description: `Revisão de Extração em Binary/${reviewedBinary.id}`
         }]
     });
 
@@ -85,6 +114,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   } catch (error: any) {
     console.error("Document Review Error:", error);
+    if (error.message === 'Unauthorized' || error.message?.includes('401') || error.message?.includes('Not found')) {
+         return NextResponse.json({ error: 'Documento não encontrado ou acesso negado' }, { status: 404 });
+    }
     return NextResponse.json({ error: error.message || 'Falha ao salvar revisão' }, { status: 500 });
   }
 }

@@ -7,7 +7,7 @@ export class PaddleOCRProvider implements OCRProvider {
     return new Promise((resolve, reject) => {
       const scriptPath = path.join(process.cwd(), 'scripts', 'paddle_ocr_worker.py');
 
-      const pyProcess = spawn('python3', [scriptPath], { timeout: 60000 }); // 60 seconds timeout
+      const pyProcess = spawn('python3', [scriptPath], { timeout: 60000 });
 
       let dataString = '';
       let errorString = '';
@@ -21,6 +21,10 @@ export class PaddleOCRProvider implements OCRProvider {
         console.warn(`PaddleOCR Warning/Error: ${data.toString()}`);
       });
 
+      pyProcess.on('error', (err) => {
+         reject(new Error(`Failed to start subprocess: ${err.message}`));
+      });
+
       pyProcess.on('close', (code) => {
         if (code !== 0) {
           reject(new Error(`PaddleOCR process exited with code ${code}: ${errorString}`));
@@ -28,12 +32,11 @@ export class PaddleOCRProvider implements OCRProvider {
         }
 
         try {
-          // Find the JSON output from the script (ignoring paddlex downloading logs)
           const lines = dataString.split('\n');
           let jsonStr = '';
           for (let i = lines.length - 1; i >= 0; i--) {
-             if (lines[i].startsWith('{')) {
-                jsonStr = lines[i];
+             if (lines[i].trim().startsWith('{')) {
+                jsonStr = lines[i].trim();
                 break;
              }
           }
@@ -49,6 +52,10 @@ export class PaddleOCRProvider implements OCRProvider {
             return;
           }
 
+          if (!result.pages || !Array.isArray(result.pages)) {
+              throw new Error('Invalid JSON structure returned by PaddleOCR: missing pages array');
+          }
+
           const pages = result.pages.map((p: any) => ({
             page: p.page,
             lines: p.lines.map((l: any) => ({
@@ -62,9 +69,9 @@ export class PaddleOCRProvider implements OCRProvider {
           resolve({
             pages,
             provider: 'PaddleOCRProvider',
-            providerVersion: '3.7.0',
-            model: 'PP-OCRv4', // Assuming PP-OCRv4
-            modelVersion: 'v4',
+            providerVersion: null as unknown as string,
+            model: null as unknown as string,
+            modelVersion: null as unknown as string,
             processedAt: new Date().toISOString(),
             pageCount: pages.length,
             language: input.language || 'pt'
@@ -74,7 +81,6 @@ export class PaddleOCRProvider implements OCRProvider {
         }
       });
 
-      // Send input data
       pyProcess.stdin.write(JSON.stringify({
         file_path: input.filePath,
         mime_type: input.mimeType,

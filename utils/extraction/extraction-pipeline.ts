@@ -10,8 +10,6 @@ export interface ExtractedField {
     text: string;
   };
   humanReviewedValue?: string;
-  reviewedBy?: string;
-  reviewedAt?: string;
   reviewAction?: 'approve' | 'reject' | 'correction';
 }
 
@@ -29,31 +27,24 @@ export interface ExtractionResult {
 export function classifyDocumentType(ocrText: string): ClassificationResult {
   const textLower = ocrText.toLowerCase();
   let documentType = 'UNKNOWN';
-  let confidence = 0.5;
 
   if (textLower.includes('laboratório') || textLower.includes('exame de sangue') || textLower.includes('hemograma')) {
     documentType = 'LAB_RESULT';
-    confidence = 0.8;
   } else if (textLower.includes('receituário') || textLower.includes('prescrição') || textLower.includes('uso oral')) {
     documentType = 'PRESCRIPTION';
-    confidence = 0.8;
   } else if (textLower.includes('atestado') || textLower.includes('relatório médico')) {
     documentType = 'MEDICAL_REPORT';
-    confidence = 0.8;
   } else if (textLower.includes('alta') && textLower.includes('hospital')) {
     documentType = 'DISCHARGE_SUMMARY';
-    confidence = 0.7;
   } else if (textLower.includes('encaminhamento')) {
     documentType = 'REFERRAL';
-    confidence = 0.7;
   } else if (textLower.includes('laudo') || textLower.includes('ressonância') || textLower.includes('tomografia') || textLower.includes('raio-x')) {
     documentType = 'IMAGING_REPORT';
-    confidence = 0.8;
   }
 
   return {
     documentType,
-    confidence,
+    confidence: null, // Deterministic rules do not output confidence
     source: 'RULE_BASED_HEURISTIC'
   };
 }

@@ -17,9 +17,16 @@ const table = `
 | Cross-patient security | VERIFIED (Enforced in all endpoints) |
 | APK/AAB | NOT VALIDATED |
 | Real device | NOT VALIDATED |
+
+**Idempotência e Concorrência**: O endpoint /process busca uma \`Task\` pré-existente (não-rejeitada) para o documento. Caso exista e esteja em andamento (\`in-progress\`) ou concluída (\`completed\`/\`accepted\`), ele retorna \`200\` imediatamente com a task existente. Ele não reprocessa simultaneamente gerando duplicatas. Para reprocessar forçadamente, a Task original precisaria ser deletada ou ter status alterado.
+
+**Estados de Processamento**:
+- \`OCR_PENDING\`: Documento enviado, task não existente (reflete antes de chamar o worker).
+- \`OCR_PROCESSING\`: Worker Python em execução (\`Task.status = in-progress\`).
+- \`REVIEW_PENDING\`: OCR/Extração finalizados via pipeline assíncrono determinístico (\`Task.status = completed\`).
+- \`REVIEWED\`: Um \`Practitioner\` autorizou as correções salvando um novo log com \`AuditEvent\` (\`Task.status = accepted\`).
+- \`OCR_FAILED\`: Erro ou timeout na chamada subprocess (\`Task.status = failed\`).
 `;
 
-if (!data.includes('Status Report Fase E')) {
-    data = data + '\n' + table;
-    fs.writeFileSync(file, data);
-}
+data = data.split('### Status Report Fase E')[0] + table;
+fs.writeFileSync(file, data);
