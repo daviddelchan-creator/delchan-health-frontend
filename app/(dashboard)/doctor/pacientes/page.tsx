@@ -12,6 +12,7 @@ import { PatientWorkspace } from '@/components/patient/PatientWorkspace';
 import { DynamicIntakeForm } from '@/components/DynamicIntakeForm';
 import { ClinicalEditor } from '@/components/clinical/ClinicalEditor';
 import { MasterSignature } from '@/components/shared/MasterSignature';
+import { OCRReviewModal } from '@/components/review/OCRReviewModal';
 import { PrintableFicha } from '@/components/patient/PrintableFicha';
 import { useTenant } from '@/contexts/TenantContext';
 import { getMothersName } from '@/utils/patientUtils';
@@ -36,6 +37,17 @@ export default function PacientesPage() {
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [signingTCLE, setSigningTCLE] = useState<Patient | null>(null);
   const [printingPatient, setPrintingPatient] = useState<Patient | null>(null);
+  const [reviewingPatient, setReviewingPatient] = useState<Patient | null>(null);
+  const [reviewingDocumentId, setReviewingDocumentId] = useState<string | null>(null);
+  const [patientDocuments, setPatientDocuments] = useState<any[]>([]);
+
+  useEffect(() => {
+     if (reviewingPatient && medplum) {
+         medplum.searchResources('DocumentReference', { subject: `Patient/${reviewingPatient.id}` })
+            .then((res) => { if(res.entry) setPatientDocuments(res.entry.map(e => e.resource)); })
+            .catch(console.error);
+     }
+  }, [reviewingPatient, medplum]);
   const [evolutionPatient, setEvolutionPatient] = useState<Patient | null>(null);
   const [isSavingEvolution, setIsSavingEvolution] = useState(false);
 
@@ -397,6 +409,16 @@ export default function PacientesPage() {
                         >
                           Imprimir Ficha (Barcode)
                         </Button>
+                        <Button
+                          size="xs"
+                          color="orange"
+                          variant="light"
+                          radius="xl"
+                          leftSection={<IconFileText size={14} />}
+                          onClick={() => setReviewingPatient(p)}
+                        >
+                          Revisar Documentos (OCR)
+                        </Button>
                       </Group>
                     </Grid.Col>
 
@@ -532,6 +554,30 @@ export default function PacientesPage() {
         )}
       </div>
 
+
+      {/* 7. MODAL DE SELEÇÃO DE DOCUMENTO PARA REVISÃO OCR */}
+      <Modal opened={!!reviewingPatient && !reviewingDocumentId} onClose={() => setReviewingPatient(null)} title="Selecionar Documento para Revisão">
+         {patientDocuments.length === 0 ? (
+             <Text c="dimmed">Nenhum documento encontrado.</Text>
+         ) : (
+             <Stack>
+                 {patientDocuments.map(doc => (
+                     <Group justify="space-between" key={doc.id} p="sm" style={{ border: '1px solid #eee', borderRadius: 8 }}>
+                         <Text size="sm">{doc.content?.[0]?.attachment?.title || 'Sem título'}</Text>
+                         <Button size="xs" variant="light" onClick={() => setReviewingDocumentId(doc.id || null)}>Revisar</Button>
+                     </Group>
+                 ))}
+             </Stack>
+         )}
+      </Modal>
+
+      {/* 8. MODAL DE REVISÃO DE FATO */}
+      <OCRReviewModal
+          opened={!!reviewingDocumentId}
+          onClose={() => setReviewingDocumentId(null)}
+          documentReferenceId={reviewingDocumentId}
+          token={medplum?.getAccessToken() || ''}
+      />
     </div>
   );
 }
