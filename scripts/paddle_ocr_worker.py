@@ -4,7 +4,6 @@ import base64
 import tempfile
 import os
 import pypdfium2 as pdfium
-from paddleocr import PaddleOCR
 
 def print_error(msg):
     # Logs and debugs must go to stderr

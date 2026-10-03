@@ -64,7 +64,7 @@ describe('PaddleOCRProvider Node<->Python Protocol Tests', () => {
         await expect(promise).rejects.toThrow('PaddleOCR process returned empty output');
     });
 
-    it('should reject on non-zero exit code', async () => {
+    it('should reject on non-zero exit code and produce sanitized error', async () => {
         const mockProcess = new EventEmitter() as any;
         mockProcess.stdout = new EventEmitter();
         mockProcess.stderr = new EventEmitter();
@@ -74,10 +74,53 @@ describe('PaddleOCRProvider Node<->Python Protocol Tests', () => {
 
         const promise = provider.processDocument({ filePath: 'dummy.pdf', mimeType: 'application/pdf' });
 
-        mockProcess.stderr.emit('data', 'Fatal error occurred.');
+        // Worker emits raw errors
+        mockProcess.stderr.emit('data', 'Traceback /temp/path/doc.pdf Fatal error occurred.');
         mockProcess.emit('close', 1);
 
-        await expect(promise).rejects.toThrow('PaddleOCR process exited with code 1');
+        // Expect the sanitized message, not the raw stderr
+        await expect(promise).rejects.toThrow('Worker falhou com código 1. Consulte os logs de diagnóstico internos seguros.');
+    });
+
+    it('should parse valid JSON even if stderr has data', async () => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+        mockProcess.stdin = { write: jest.fn(), end: jest.fn() };
+
+        (child_process.spawn as jest.Mock).mockReturnValue(mockProcess);
+
+        const promise = provider.processDocument({ filePath: 'dummy.pdf', mimeType: 'application/pdf' });
+
+        // Paddle logging something to stderr internally
+        mockProcess.stderr.emit('data', 'Model loaded successfully.');
+
+        // Outputting clean JSON to stdout
+        mockProcess.stdout.emit('data', JSON.stringify({
+            pages: [ { page: 1, lines: [] } ]
+        }));
+        mockProcess.emit('close', 0);
+
+        const result = await promise;
+        expect(result.pages).toBeDefined();
+    });
+
+    it('should handle stdout with whitespace', async () => {
+        const mockProcess = new EventEmitter() as any;
+        mockProcess.stdout = new EventEmitter();
+        mockProcess.stderr = new EventEmitter();
+        mockProcess.stdin = { write: jest.fn(), end: jest.fn() };
+
+        (child_process.spawn as jest.Mock).mockReturnValue(mockProcess);
+
+        const promise = provider.processDocument({ filePath: 'dummy.pdf', mimeType: 'application/pdf' });
+
+        const json = JSON.stringify({ pages: [] });
+        mockProcess.stdout.emit('data', `\n\n  ${json}  \n`);
+        mockProcess.emit('close', 0);
+
+        const result = await promise;
+        expect(result.pages).toBeDefined();
     });
 
     it('should reject if JSON does not contain pages array', async () => {

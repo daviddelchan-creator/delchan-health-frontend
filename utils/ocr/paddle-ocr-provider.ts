@@ -18,8 +18,7 @@ export class PaddleOCRProvider implements OCRProvider {
 
       pyProcess.stderr.on('data', (data) => {
         errorString += data.toString();
-        // Log diagnostic/internal paddle messages to the node console
-        console.warn(`PaddleOCR Worker Log: ${data.toString().trim()}`);
+        // Do not leak raw stderr (which may contain PHI/metadata) to application logs
       });
 
       pyProcess.on('error', (err) => {
@@ -28,7 +27,8 @@ export class PaddleOCRProvider implements OCRProvider {
 
       pyProcess.on('close', (code) => {
         if (code !== 0) {
-          reject(new Error(`PaddleOCR process exited with code ${code}: ${errorString}`));
+          // Do not expose raw errorString to the caller to prevent PHI/temp path leaks
+          reject(new Error(`Worker falhou com código ${code}. Consulte os logs de diagnóstico internos seguros.`));
           return;
         }
 

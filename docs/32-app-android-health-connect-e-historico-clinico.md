@@ -83,7 +83,7 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 ## 7. FASE E — OCR + EXTRAÇÃO + REVISÃO
 
 - **Status:** IMPLEMENTED
-- **Arquitetura:** O processamento ocorre em um Worker Python assíncrono (`scripts/paddle_ocr_worker.py`) consumido pelo adapter Next.js `PaddleOCRProvider`.
+- **Arquitetura:** O processamento ocorre via Worker Python SÍNCRONO dentro da requisição HTTP (`scripts/paddle_ocr_worker.py`) consumido pelo adapter Next.js `PaddleOCRProvider`. Não existe fila/worker assíncrono distribuído nesta fase.
 - **Provider:** PaddleOCR open-source
 - **Versão:** 3.7.0 (CPU para desenvolvimento, executando localmente via Python)
 - **Instalação:** Foi instalado via `pip install paddlepaddle paddleocr pypdfium2 numpy Pillow` no worker. Em um ambiente limpo, requer a biblioteca Python correspondente.
@@ -114,9 +114,9 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 | Mock OCR tests | YES (Jest tests mocked for API speed) |
 | Extraction | IMPLEMENTED |
 | Human review | IMPLEMENTED |
-| Medplum real integration | NO (Mocked in tests, but code uses real `medplum.createBinary` etc) |
-| Original preservation | VERIFIED (Original Binary is untouched) |
-| Cross-patient security | VERIFIED (Enforced in all endpoints) |
+| Medplum real integration | NÃO VALIDADO (Testes estritamente MOCKADOS) |
+| Original preservation | VERIFIED (Original Binary is untouched via mocks) |
+| Cross-patient security | LÓGICA E TESTES MOCKADOS (Não validação de produção real) |
 | APK/AAB | NOT VALIDATED |
 | Real device | NOT VALIDATED |
 
