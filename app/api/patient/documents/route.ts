@@ -89,6 +89,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Tipo de arquivo não permitido. Apenas PDF, JPEG e PNG são aceitos.' }, { status: 400 });
     }
 
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+
+    // Magic Bytes Validation
+    let isValidSignature = false;
+
+    if (file.type === 'application/pdf') {
+        // PDF magic bytes: %PDF- (25 50 44 46 2D)
+        if (bytes.length >= 5 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2D) {
+            isValidSignature = true;
+        }
+    } else if (file.type === 'image/jpeg') {
+        // JPEG magic bytes: FF D8 FF
+        if (bytes.length >= 3 && bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+            isValidSignature = true;
+        }
+    } else if (file.type === 'image/png') {
+        // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
+        if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47 &&
+            bytes[4] === 0x0D && bytes[5] === 0x0A && bytes[6] === 0x1A && bytes[7] === 0x0A) {
+            isValidSignature = true;
+        }
+    }
+
+    if (!isValidSignature) {
+        return NextResponse.json({ error: 'Conteúdo do arquivo inválido ou não corresponde ao tipo declarado' }, { status: 400 });
+    }
+
     const binary = await medplum.createBinary({
       data: file,
       filename: (file as any).name || 'document',
@@ -99,28 +127,38 @@ export async function POST(req: Request) {
        return NextResponse.json({ error: 'Falha ao criar o recurso Binary' }, { status: 500 });
     }
 
-    const documentReference = await medplum.createResource({
-      resourceType: 'DocumentReference',
-      status: 'current',
-      subject: {
-        reference: `Patient/${patientId}`
-      },
-      date: new Date().toISOString(),
-      content: [
-        {
-          attachment: {
-            url: `Binary/${binary.id}`,
-            contentType: file.type,
-            title: title || file.name || 'Documento Paciente'
-          }
-        }
-      ]
-    });
+    try {
+        const documentReference = await medplum.createResource({
+          resourceType: 'DocumentReference',
+          status: 'current',
+          subject: {
+            reference: `Patient/${patientId}`
+          },
+          date: new Date().toISOString(),
+          content: [
+            {
+              attachment: {
+                url: `Binary/${binary.id}`,
+                contentType: file.type,
+                title: title || file.name || 'Documento Paciente'
+              }
+            }
+          ]
+        });
 
-    return NextResponse.json({
-      document: documentReference,
-      binaryId: binary.id
-    }, { status: 201 });
+        return NextResponse.json({
+          document: documentReference,
+          binaryId: binary.id
+        }, { status: 201 });
+    } catch (docError: any) {
+        // Rollback: try to delete the created Binary
+        try {
+            await medplum.deleteResource('Binary', binary.id);
+        } catch (cleanupError) {
+            console.error("Patient Documents POST Rollback Error (Failed to delete Binary):", cleanupError);
+        }
+        throw new Error('Falha ao registrar DocumentReference no prontuário. O arquivo não foi salvo.');
+    }
 
   } catch (error: any) {
     console.error("Patient Documents POST Error:", error);
