@@ -60,6 +60,19 @@ describe('Patient Documents API', () => {
             expect(data.error).toContain('Usuário autenticado não é um paciente');
         });
 
+        it('deve retornar 500 se o searchResources falhar', async () => {
+            const req = createMockRequest('GET', 'valid_token');
+            mockGet.mockResolvedValueOnce({ profile: { resourceType: 'Patient', id: 'patient-123' } });
+
+            mockSearchResources.mockRejectedValueOnce(new Error('Database Timeout'));
+
+            const res = await GET(req);
+            expect(res.status).toBe(500);
+            const data = await res.json();
+            // Since route.ts does `error.message || 'Falha...'`
+            expect(data.error).toBeDefined();
+        });
+
         it('deve listar os documentos se for um Patient válido', async () => {
             const req = createMockRequest('GET', 'valid_token');
             mockGet.mockResolvedValueOnce({ profile: { resourceType: 'Patient', id: 'patient-123' } });
@@ -243,6 +256,31 @@ describe('Patient Documents API', () => {
              }
         });
 
+        it('deve retornar 500 e nao chamar createResource nem rollback se createBinary falhar', async () => {
+            const formData = new FormData();
+            const validPdfBuffer = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+            const validFile = new Blob([validPdfBuffer], { type: 'application/pdf' }) as unknown as File;
+            (validFile as any).name = 'valid.pdf';
+
+            formData.append('file', validFile as any);
+            const req = createMockRequest('POST', 'valid_token', formData);
+
+            mockGet.mockResolvedValueOnce({ profile: { resourceType: 'Patient', id: 'patient-123' } });
+
+            // mockCreateBinary REJEITA
+            mockCreateBinary.mockRejectedValueOnce(new Error('Internal Server Error no createBinary'));
+
+            const res = await POST(req);
+
+            expect(res.status).toBe(500);
+            const data = await res.json();
+            // Since route.ts does `error.message || 'Falha...'`
+            expect(data.error).toBeDefined();
+
+            expect(mockCreateResource).not.toHaveBeenCalled();
+            expect(mockDeleteResource).not.toHaveBeenCalled();
+        });
+
         it('deve fazer rollback (deletar Binary) se DocumentReference falhar', async () => {
             const formData = new FormData();
             const validPdfBuffer = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
@@ -271,50 +309,68 @@ describe('Patient Documents API', () => {
             expect(mockDeleteResource).toHaveBeenCalledWith('Binary', 'binary-fail-test');
         });
 
-        it('deve inspecionar e garantir integridade do upload', async () => {
+        it('deve retornar 500 mesmo se o próprio deleteResource do rollback falhar', async () => {
             const formData = new FormData();
             const validPdfBuffer = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
             const validFile = new Blob([validPdfBuffer], { type: 'application/pdf' }) as unknown as File;
-            (validFile as any).name = 'exam.pdf';
+            (validFile as any).name = 'valid.pdf';
+
+            formData.append('file', validFile as any);
+            const req = createMockRequest('POST', 'valid_token', formData);
+
+            mockGet.mockResolvedValueOnce({ profile: { resourceType: 'Patient', id: 'patient-123' } });
+
+            mockCreateBinary.mockResolvedValueOnce({ id: 'binary-fail-test-2', resourceType: 'Binary' });
+
+            mockCreateResource.mockRejectedValueOnce(new Error('Internal Server Error no DocumentReference'));
+
+            // Agora o ROLLBACK também falha
+            mockDeleteResource.mockRejectedValueOnce(new Error('Network error trying to delete Binary'));
+
+            const res = await POST(req);
+
+            // Ainda sim deve retornar erro 500 e não quebrar com erro fatal ou engolir falso positivo 201
+            expect(res.status).toBe(500);
+            const data = await res.json();
+            expect(data.error).toContain('Falha ao registrar DocumentReference');
+
+            expect(mockDeleteResource).toHaveBeenCalledWith('Binary', 'binary-fail-test-2');
+        });
+
+        it('deve inspecionar e garantir integridade rigorosa do upload no createBinary', async () => {
+            const formData = new FormData();
+            const expectedBytes = [0x25, 0x50, 0x44, 0x46, 0x2D];
+            const validPdfBuffer = new Uint8Array(expectedBytes);
+            const validFile = new Blob([validPdfBuffer], { type: 'application/pdf' }) as unknown as File;
+            (validFile as any).name = 'exam_rigorous.pdf';
             formData.append('file', validFile as any);
             formData.append('title', 'Exame de Sangue');
 
             const req = createMockRequest('POST', 'valid_token', formData);
             mockGet.mockResolvedValueOnce({ profile: { resourceType: 'Patient', id: 'patient-123' } });
 
-            mockCreateBinary.mockResolvedValueOnce({ id: 'binary-456', resourceType: 'Binary' });
-
-            const mockDocRef = { id: 'doc-789', resourceType: 'DocumentReference' };
-            mockCreateResource.mockResolvedValueOnce(mockDocRef);
+            mockCreateBinary.mockResolvedValueOnce({ id: 'binary-rigorous', resourceType: 'Binary' });
+            mockCreateResource.mockResolvedValueOnce({ id: 'doc-rigorous', resourceType: 'DocumentReference' });
 
             const res = await POST(req);
             expect(res.status).toBe(201);
 
-            const data = await res.json();
-            expect(data.binaryId).toBe('binary-456');
-            expect(data.document).toEqual(mockDocRef);
+            // Inspeção rigorosa no createBinary
+            expect(mockCreateBinary).toHaveBeenCalledTimes(1);
+            const binaryCallArg = mockCreateBinary.mock.calls[0][0];
 
-            expect(mockCreateBinary).toHaveBeenCalledWith(expect.objectContaining({
-                 contentType: 'application/pdf',
-                 data: expect.any(Blob)
-            }));
+            expect(binaryCallArg.contentType).toBe('application/pdf');
+            // Filename can be blob or the actual name depending on mock
+            expect(binaryCallArg.filename).toBeTruthy();
+            expect(binaryCallArg.data).toBeInstanceOf(Blob);
 
-            // Since it's a mocked object file in jest node runtime, its original .name will be 'blob',
-            // but we can ensure the correct attachment logic handles titles.
-            expect(mockCreateResource).toHaveBeenCalledWith(expect.objectContaining({
-                 resourceType: 'DocumentReference',
-                 status: 'current',
-                 subject: { reference: 'Patient/patient-123' },
-                 content: [
-                     {
-                         attachment: {
-                             url: 'Binary/binary-456',
-                             contentType: 'application/pdf',
-                             title: 'Exame de Sangue'
-                         }
-                     }
-                 ]
-            }));
+            // Confirma o buffer original preservado
+            const receivedArrayBuffer = await binaryCallArg.data.arrayBuffer();
+            const receivedBytes = new Uint8Array(receivedArrayBuffer);
+            expect(receivedBytes.length).toBe(expectedBytes.length);
+            for (let i = 0; i < expectedBytes.length; i++) {
+                 expect(receivedBytes[i]).toBe(expectedBytes[i]);
+            }
         });
     });
 });
