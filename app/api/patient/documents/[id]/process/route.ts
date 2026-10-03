@@ -34,23 +34,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    const patientId = profile.id;
-
     // Verify ownership of the document
     const docRef = await medplum.readResource('DocumentReference', id);
     if (!docRef) {
       return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
     }
 
+    let patientId = '';
+
     if (profile.resourceType === 'Patient') {
-        if (docRef.subject?.reference !== `Patient/${patientId}`) {
+        if (docRef.subject?.reference !== `Patient/${profile.id}`) {
             return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
         }
+        patientId = profile.id;
     } else if (profile.resourceType === 'Practitioner') {
         const isAuth = await isPractitionerAuthorizedForDocument(medplum, profile, docRef);
         if (!isAuth) {
              return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
         }
+        patientId = docRef.subject?.reference?.replace('Patient/', '') || '';
     } else {
         return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
