@@ -25,7 +25,29 @@
     },
     "plugins": [
       "expo-router",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "react-native-health-connect",
+        {
+          "permissions": [
+            "READ_STEPS",
+            "READ_HEART_RATE",
+            "READ_BLOOD_PRESSURE",
+            "READ_HYDRATION",
+            "READ_SLEEP",
+            "READ_OXYGEN_SATURATION",
+            "READ_WEIGHT"
+          ]
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ]
   }
 }
