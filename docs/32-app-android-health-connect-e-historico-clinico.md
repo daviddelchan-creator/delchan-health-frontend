@@ -78,7 +78,7 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 
 - **Apple HealthKit:** Fora de escopo.
 - **Samsung Health Direto:** Fora de escopo.
-- **OCR e Processamento IA:** A extração clínica por inteligência artificial é intencionalmente omitida nesta fase. O sistema mantem exclusividade total do documento original para a revisão presencial de médicos no portal clinico.
+- **IA e Resumos Clínicos Avançados:** IA preditiva paga, sumarização inteligente ou diagnóstico autônomo (criação automática de Condition/DiagnosticReport) estão fora de escopo. O sistema mantém exclusividade total da decisão clínica para o médico no portal.
 
 ## 7. FASE E — OCR + EXTRAÇÃO + REVISÃO
 

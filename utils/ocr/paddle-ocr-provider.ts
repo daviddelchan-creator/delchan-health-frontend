@@ -49,7 +49,7 @@ export class PaddleOCRProvider implements OCRProvider {
         }
 
         if (result.error) {
-          reject(new Error(`PaddleOCR Error: ${result.error}`));
+          reject(new Error('PaddleOCR Worker Error'));
           return;
         }
 

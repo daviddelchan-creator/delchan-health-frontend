@@ -77,7 +77,9 @@ def main():
         original_stdout = sys.stdout
         sys.stdout = sys.stderr
 
-        ocr = PaddleOCR(use_textline_orientation=True, lang='pt')
+        from paddleocr import PaddleOCR
+        # Just generic PaddleOCR init
+        ocr = PaddleOCR(use_angle_cls=False, lang='pt')
 
         images_to_process = []
         if mime_type == 'application/pdf':
@@ -90,7 +92,8 @@ def main():
         page_num = 1
 
         for img_path in images_to_process:
-            result = ocr.ocr(img_path, cls=True)
+            # We use predict directly to avoid the kwarg issue on .ocr in v3.7+ if using paddlex underneath
+            result = ocr.ocr(img_path, cls=False)
 
             page_text = []
             if result and result[0]:
