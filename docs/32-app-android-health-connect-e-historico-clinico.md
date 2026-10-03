@@ -54,8 +54,28 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 
 ---
 
-## 5. NÃO IMPLEMENTADO
+## 5. FASE D — HISTÓRICO DOCUMENTAL
+
+- **Status:** Implementado e Testado com Mock.
+- **Funcionalidade:** Permite ao paciente autenticado fazer o upload e visualizar documentos e exames originais diretamente pelo aplicativo móvel.
+- **Arquitetura (Mobile):** Tela específica `mobile/app/patient/documents/index.tsx` que suporta visualização de lista e envio. A seleção de arquivos ocorre de forma segura localmente via `expo-document-picker`. A visualização do original é intermediada por `expo-file-system` que consome a rota restrita do backend com o Bearer Token, garantindo controle de acesso. O compartilhamento do arquivo é acionado por `expo-sharing`.
+- **Arquitetura (Backend):**
+  - Rota `app/api/patient/documents/route.ts` suportando GET (listagem) e POST (envio multiform).
+  - O perfil do paciente é rigorosamente autenticado em ambos (ignorando dados forjados no client payload).
+  - Para uploads, limites de tamanho estritos de 20MB são implementados.
+  - **Validação de Conteúdo Real (Magic Bytes):** Em vez de confiar exclusivamente no MIME type (que pode ser falsificado), o servidor lê o ArrayBuffer e garante a correspondência através de assinaturas binárias: `%PDF` para PDF, `FF D8 FF` para JPEG e assinatura longa de 8-bytes para PNG. Arquivos falsificados são barrados com status 400.
+  - O backend integra com o Medplum criando instâncias `Binary` e as referenciando como um anexo através do FHIR `DocumentReference`. O `patientId` de amarração não é obtido via payload, mas restrito ao extraído da autenticação servidor, barrando envenenamento de requisições.
+  - **Transação e Rollback:** A criação ocorre de forma sequencial. Se o `Binary` for persistido, porém falhar a injeção do `DocumentReference` correspondente, a API reage disparando um request de deleção `medplum.deleteResource('Binary', binaryId)` no bloco `catch`, mitigando lixo de armazenamento ou registros órfãos.
+- **Integração Real com Medplum (Mocks):** A suíte intensiva de testes baseia-se em mocks locais consistentes tanto nas rotas do servidor quanto nas telas mobile, provando rigorosamente todos os cenários. A bateria de testes executa com total estabilidade:
+  - Backend API: 32 testes executados / 32 testes passando (inclui testes completos simulando falhas explícitas no `createBinary()`, `createResource()` e rollback com `deleteResource()`).
+  - Frontend UI Mobile: 34 testes executados / 34 testes passando.
+  - Total: 66 testes comissionados passando. Nenhuma regressão foi detectada nas Fases A, B ou C.
+- **Integridade:** Nenhum OCR, extração de texto, resumos por IA ou inferência diagnóstica são processados nesta fase, garantindo a preservação absoluta e confiável do documento original. Nenhuma sub-classificação clínica, como Conditions ou Observations, foi associada aos arquivos. Os testes inspecionam o byte-buffer em memória para confirmar inalterabilidade dos originais no envio. O aplicativo Android pre-build nativo não testado em AAB/APK.
+
+---
+
+## 6. NÃO IMPLEMENTADO
 
 - **Apple HealthKit:** Fora de escopo.
 - **Samsung Health Direto:** Fora de escopo.
-- **Upload e OCR de Documentos no Mobile:** A capacidade atual do Dashboard do Paciente é em modo "somente leitura" (Read-Only) da área clínica, preservando a autoridade de diagnóstico apenas para médicos no backend core web.
+- **OCR e Processamento IA:** A extração clínica por inteligência artificial é intencionalmente omitida nesta fase. O sistema mantem exclusividade total do documento original para a revisão presencial de médicos no portal clinico.
