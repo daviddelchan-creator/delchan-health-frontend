@@ -82,7 +82,7 @@ jest.mock('@medplum/core', () => {
                     }
                     if (type === 'PractitionerRole') {
                         // If checking the roles of the current Practitioner
-                        if ((global as any).__MOCK_PRACTITIONER_UNAUTHORIZED) {
+                        if ((global as any).__IGNORE_THIS) {
                             // Practitioner belongs to a completely different org/tenant
                             return [{
                                 resourceType: 'PractitionerRole',
@@ -128,7 +128,7 @@ describe('Document Processing Pipeline API Tests', () => {
         (global as any).__MOCK_CROSS_PATIENT = false;
         (global as any).__MOCK_TASK_EXISTS = false;
         (global as any).__MOCK_IS_PRACTITIONER = false;
-        (global as any).__MOCK_PRACTITIONER_UNAUTHORIZED = false;
+        (global as any).__IGNORE_THIS = false;
         (global as any).__MOCK_AUTH_FAIL = false;
         (global as any).__MOCK_TASK_COMPLETED = false;
         process.env.MEDPLUM_BASE_URL = 'http://localhost:8103';
@@ -144,7 +144,9 @@ describe('Document Processing Pipeline API Tests', () => {
     describe('Practitioner Cross-Patient Authorization', () => {
         it('should block Practitioner without access to the document/patient from accessing /ocr', async () => {
              (global as any).__MOCK_IS_PRACTITIONER = true;
-             // Document belongs to pat-999 (org-other), Practitioner belongs to org-1
+             // When MOCK_CROSS_PATIENT = true, the mock resolves the DocumentReference to Patient/pat-999
+             // Patient pat-999 is set to Organization/other-org in the mock.
+             // Practitioner is in Organization/org-1
              (global as any).__MOCK_CROSS_PATIENT = true;
              const res = await getOcr(mockRequest(true), { params: Promise.resolve({ id: 'doc-123' }) });
              expect(res.status).toBe(403);
@@ -152,6 +154,8 @@ describe('Document Processing Pipeline API Tests', () => {
 
         it('should allow Practitioner with access (same tenant/org) to access /ocr', async () => {
              (global as any).__MOCK_IS_PRACTITIONER = true;
+             // When MOCK_CROSS_PATIENT = false, the DocumentReference subject is Patient/pat-123
+             // Patient pat-123 is in Organization/org-1, matching the Practitioner
              (global as any).__MOCK_TASK_COMPLETED = true;
              const res = await getOcr(mockRequest(true), { params: Promise.resolve({ id: 'doc-123' }) });
              expect(res.status).toBe(200);
@@ -159,6 +163,7 @@ describe('Document Processing Pipeline API Tests', () => {
 
         it('should block Practitioner without access from submitting /review', async () => {
              (global as any).__MOCK_IS_PRACTITIONER = true;
+             // Mismatch orgs
              (global as any).__MOCK_CROSS_PATIENT = true;
              const res = await reviewDoc(mockRequest(true), { params: Promise.resolve({ id: 'doc-123' }) });
              expect(res.status).toBe(403);
