@@ -82,14 +82,9 @@ jest.mock('@medplum/core', () => {
                     }
                     if (type === 'PractitionerRole') {
                         // If checking the roles of the current Practitioner
-                        if ((global as any).__IGNORE_THIS) {
-                            // Practitioner belongs to a completely different org/tenant
-                            return [{
-                                resourceType: 'PractitionerRole',
-                                organization: { reference: 'Organization/some-other-org' }
-                            }];
-                        }
-                        // Authorized practitioner shares the same managing org or tenant tag
+                        // For the authorized test, we want to return a role with org-1.
+                        // For the unauthorized test, we are requesting a cross patient (pat-999) which is in 'other-org'.
+                        // Returning 'org-1' here is fine, the mismatch with 'other-org' will cause the block.
                         return [{
                             resourceType: 'PractitionerRole',
                             organization: { reference: 'Organization/org-1' },
@@ -128,8 +123,7 @@ describe('Document Processing Pipeline API Tests', () => {
         (global as any).__MOCK_CROSS_PATIENT = false;
         (global as any).__MOCK_TASK_EXISTS = false;
         (global as any).__MOCK_IS_PRACTITIONER = false;
-        (global as any).__IGNORE_THIS = false;
-        (global as any).__MOCK_AUTH_FAIL = false;
+                (global as any).__MOCK_AUTH_FAIL = false;
         (global as any).__MOCK_TASK_COMPLETED = false;
         process.env.MEDPLUM_BASE_URL = 'http://localhost:8103';
     });
