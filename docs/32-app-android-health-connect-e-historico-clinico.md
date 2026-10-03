@@ -120,7 +120,7 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 | APK/AAB | NOT VALIDATED |
 | Real device | NOT VALIDATED |
 
-**Idempotência e Concorrência**: O endpoint /process busca uma `Task` pré-existente (não-rejeitada) para o documento. Caso exista e esteja em andamento (`in-progress`) ou concluída (`completed`/`accepted`), ele retorna `200` imediatamente com a task existente. Ele não reprocessa simultaneamente gerando duplicatas. Para reprocessar forçadamente, a Task original precisaria ser deletada ou ter status alterado.
+**Idempotência e Concorrência (LIMITE ESTRUTURAL V5)**: O endpoint /process busca uma `Task` pré-existente via `medplum.searchResources`. Caso exista, tenta evitar o reprocessamento retornando `200`. **Nota Técnica Importante:** Essa abordagem é estritamente síncrona e condicional (`Check-Then-Act`). Em um ambiente HTTP Serverless distribuído e sem lock externo (ex: Redis) ou garantias de atomicidade de banco, ainda pode existir a possibilidade teórica de *race conditions* caso duas threads simultâneas completem a query de busca antes do registro da nova Task. Não estamos resolvendo problemas complexos de lock distribuído nesta fase. Adicionalmente, o processamento de OCR segue como processo síncrono atrelado ao tempo de requisição Node, sujeito a limites de timeout HTTP.
 
 **Estados de Processamento**:
 - `OCR_PENDING`: Documento enviado, task não existente (reflete antes de chamar o worker).

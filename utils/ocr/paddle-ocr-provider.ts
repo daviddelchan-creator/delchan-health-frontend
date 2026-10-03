@@ -18,7 +18,8 @@ export class PaddleOCRProvider implements OCRProvider {
 
       pyProcess.stderr.on('data', (data) => {
         errorString += data.toString();
-        console.warn(`PaddleOCR Warning/Error: ${data.toString()}`);
+        // Log diagnostic/internal paddle messages to the node console
+        console.warn(`PaddleOCR Worker Log: ${data.toString().trim()}`);
       });
 
       pyProcess.on('error', (err) => {
@@ -31,54 +32,52 @@ export class PaddleOCRProvider implements OCRProvider {
           return;
         }
 
-        try {
-          const lines = dataString.split('\n');
-          let jsonStr = '';
-          for (let i = lines.length - 1; i >= 0; i--) {
-             if (lines[i].trim().startsWith('{')) {
-                jsonStr = lines[i].trim();
-                break;
-             }
-          }
+        const trimmedData = dataString.trim();
 
-          if (!jsonStr) {
-             throw new Error('Failed to parse PaddleOCR output, no JSON found. Output was: ' + dataString);
-          }
-
-          const result = JSON.parse(jsonStr);
-
-          if (result.error) {
-            reject(new Error(`PaddleOCR Error: ${result.error}`));
+        if (!trimmedData) {
+            reject(new Error('PaddleOCR process returned empty output'));
             return;
-          }
-
-          if (!result.pages || !Array.isArray(result.pages)) {
-              throw new Error('Invalid JSON structure returned by PaddleOCR: missing pages array');
-          }
-
-          const pages = result.pages.map((p: any) => ({
-            page: p.page,
-            lines: p.lines.map((l: any) => ({
-              text: l.text,
-              confidence: l.confidence,
-              box: l.box
-            })),
-            text: p.lines.map((l: any) => l.text).join('\n')
-          }));
-
-          resolve({
-            pages,
-            provider: 'PaddleOCRProvider',
-            providerVersion: null,
-            model: null,
-            modelVersion: null,
-            processedAt: new Date().toISOString(),
-            pageCount: pages.length,
-            language: input.language || 'pt'
-          });
-        } catch (e) {
-          reject(new Error(`Failed to parse PaddleOCR output: ${e}`));
         }
+
+        let result;
+        try {
+          // Strictly parse the entire stdout block
+          result = JSON.parse(trimmedData);
+        } catch (e) {
+          reject(new Error(`Failed to parse PaddleOCR output as JSON. Output was: ${trimmedData}`));
+          return;
+        }
+
+        if (result.error) {
+          reject(new Error(`PaddleOCR Error: ${result.error}`));
+          return;
+        }
+
+        if (!result.pages || !Array.isArray(result.pages)) {
+            reject(new Error('Invalid JSON structure returned by PaddleOCR: missing pages array'));
+            return;
+        }
+
+        const pages = result.pages.map((p: any) => ({
+          page: p.page,
+          lines: p.lines.map((l: any) => ({
+            text: l.text,
+            confidence: l.confidence,
+            box: l.box
+          })),
+          text: p.lines.map((l: any) => l.text).join('\n')
+        }));
+
+        resolve({
+          pages,
+          provider: 'PaddleOCRProvider',
+          providerVersion: null,
+          model: null,
+          modelVersion: null,
+          processedAt: new Date().toISOString(),
+          pageCount: pages.length,
+          language: input.language || 'pt'
+        });
       });
 
       pyProcess.stdin.write(JSON.stringify({
