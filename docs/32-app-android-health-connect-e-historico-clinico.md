@@ -125,6 +125,6 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 **Estados de Processamento**:
 - `OCR_PENDING`: Documento enviado, task não existente (reflete antes de chamar o worker).
 - `OCR_PROCESSING`: Worker Python em execução (`Task.status = in-progress`).
-- `REVIEW_PENDING`: OCR/Extração finalizados via pipeline assíncrono determinístico (`Task.status = completed`).
+- `REVIEW_PENDING`: OCR/Extração finalizados via pipeline síncrono determinístico (`Task.status = completed`).
 - `REVIEWED`: Um `Practitioner` autorizou as correções salvando um novo log com `AuditEvent` (`Task.status = accepted`).
 - `OCR_FAILED`: Erro ou timeout na chamada subprocess (`Task.status = failed`).

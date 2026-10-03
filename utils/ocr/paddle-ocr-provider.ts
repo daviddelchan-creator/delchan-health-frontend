@@ -44,7 +44,7 @@ export class PaddleOCRProvider implements OCRProvider {
           // Strictly parse the entire stdout block
           result = JSON.parse(trimmedData);
         } catch (e) {
-          reject(new Error(`Failed to parse PaddleOCR output as JSON. Output was: ${trimmedData}`));
+          reject(new Error('Failed to parse PaddleOCR output as JSON'));
           return;
         }
 
