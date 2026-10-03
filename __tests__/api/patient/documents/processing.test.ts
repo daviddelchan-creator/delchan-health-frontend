@@ -39,6 +39,9 @@ jest.mock('@medplum/core', () => {
                     if (type === 'Binary') {
                         return { id: 'bin-123', contentType: 'image/png' };
                     }
+                    if (type === 'Patient') {
+                        return { id: id, resourceType: 'Patient' };
+                    }
                     return null;
                 }),
                 readBinary: jest.fn().mockResolvedValue(new Blob(['{"AUTOMATED_EXTRACTION":{"fields":[]}}'])),
@@ -85,6 +88,30 @@ jest.mock('../../../../utils/ocr/paddle-ocr-provider', () => {
 });
 
 describe('Document Processing Pipeline API Tests', () => {
+
+    describe('Practitioner Cross-Patient Authorization', () => {
+        it('should block Practitioner without access to the document/patient from accessing /ocr', async () => {
+             (global as any).__MOCK_IS_PRACTITIONER = true;
+             (global as any).__MOCK_PRACTITIONER_UNAUTHORIZED = true;
+             const res = await getOcr(mockRequest(true), { params: Promise.resolve({ id: 'doc-123' }) });
+             expect(res.status).toBe(403);
+        });
+
+        it('should allow Practitioner with access to access /ocr', async () => {
+             (global as any).__MOCK_IS_PRACTITIONER = true;
+             (global as any).__MOCK_PRACTITIONER_UNAUTHORIZED = false;
+             (global as any).__MOCK_TASK_COMPLETED = true;
+             const res = await getOcr(mockRequest(true), { params: Promise.resolve({ id: 'doc-123' }) });
+             expect(res.status).toBe(200);
+        });
+
+        it('should block Practitioner without access from submitting /review', async () => {
+             (global as any).__MOCK_IS_PRACTITIONER = true;
+             (global as any).__MOCK_PRACTITIONER_UNAUTHORIZED = true;
+             const res = await reviewDoc(mockRequest(true), { params: Promise.resolve({ id: 'doc-123' }) });
+             expect(res.status).toBe(403);
+        });
+    });
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -155,6 +182,7 @@ describe('Document Processing Pipeline API Tests', () => {
 
         it('should allow Practitioner to review and generate proper AuditEvent', async () => {
             (global as any).__MOCK_IS_PRACTITIONER = true;
+            (global as any).__MOCK_PRACTITIONER_UNAUTHORIZED = false;
             (global as any).__MOCK_TASK_COMPLETED = true;
             const req = mockRequest(true);
             const res = await reviewDoc(req, { params: Promise.resolve({ id: 'doc-123' }) });

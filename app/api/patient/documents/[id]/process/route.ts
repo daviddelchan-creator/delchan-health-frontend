@@ -5,6 +5,7 @@ import { classifyDocumentType, extractFields } from '../../../../../../utils/ext
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { isPractitionerAuthorizedForDocument } from '../../../../../../utils/security/practitioner-auth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -29,8 +30,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const meResponse = await medplum.get('auth/me');
     const profile = meResponse.profile;
 
-    if (!profile || profile.resourceType !== 'Patient') {
-      return NextResponse.json({ error: 'Usuário não é um paciente' }, { status: 403 });
+    if (!profile) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
     const patientId = profile.id;
@@ -41,8 +42,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
     }
 
-    if (docRef.subject?.reference !== `Patient/${patientId}`) {
-      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    if (profile.resourceType === 'Patient') {
+        if (docRef.subject?.reference !== `Patient/${patientId}`) {
+            return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+        }
+    } else if (profile.resourceType === 'Practitioner') {
+        const isAuth = await isPractitionerAuthorizedForDocument(medplum, profile, docRef);
+        if (!isAuth) {
+             return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+        }
+    } else {
+        return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
     // Check if task already exists to make it idempotent

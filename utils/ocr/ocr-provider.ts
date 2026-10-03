@@ -18,9 +18,9 @@ export interface OCRPage {
 export interface OCRResult {
   pages: OCRPage[];
   provider: string;
-  providerVersion: string;
-  model: string;
-  modelVersion: string;
+  providerVersion: string | null;
+  model: string | null;
+  modelVersion: string | null;
   processedAt: string;
   pageCount: number;
   language: string;

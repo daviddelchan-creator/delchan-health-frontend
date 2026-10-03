@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MedplumClient } from '@medplum/core';
+import { isPractitionerAuthorizedForDocument } from '../../../../../../utils/security/practitioner-auth';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -30,9 +31,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
+    const docRef = await medplum.readResource('DocumentReference', id);
+    if (!docRef) {
+        return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
+    }
+
     if (profile.resourceType === 'Patient') {
-        const docRef = await medplum.readResource('DocumentReference', id);
         if (docRef.subject?.reference !== `Patient/${profile.id}`) {
+             return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+        }
+    } else if (profile.resourceType === 'Practitioner') {
+        const isAuth = await isPractitionerAuthorizedForDocument(medplum, profile, docRef);
+        if (!isAuth) {
              return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
         }
     }

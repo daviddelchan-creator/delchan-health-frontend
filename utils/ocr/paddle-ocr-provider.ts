@@ -69,9 +69,9 @@ export class PaddleOCRProvider implements OCRProvider {
           resolve({
             pages,
             provider: 'PaddleOCRProvider',
-            providerVersion: null as unknown as string,
-            model: null as unknown as string,
-            modelVersion: null as unknown as string,
+            providerVersion: null,
+            model: null,
+            modelVersion: null,
             processedAt: new Date().toISOString(),
             pageCount: pages.length,
             language: input.language || 'pt'

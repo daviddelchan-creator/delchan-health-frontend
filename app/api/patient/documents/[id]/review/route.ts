@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MedplumClient } from '@medplum/core';
+import { isPractitionerAuthorizedForDocument } from '../../../../../../utils/security/practitioner-auth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -26,8 +27,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 });
     }
 
-    // A real implementation would verify if the Practitioner has context/access to the patient's data.
-    // For Phase E demo, verifying the Practitioner role and DocumentReference existence is enough as requested.
+    const isAuth = await isPractitionerAuthorizedForDocument(medplum, profile, docRef);
+    if (!isAuth) {
+         return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
 
     const payload = await req.json();
 
