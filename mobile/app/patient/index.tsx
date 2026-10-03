@@ -154,6 +154,8 @@ export default function PatientScreen() {
         )}
 
         <View style={styles.buttonContainer}>
+            <Button title="Meus Documentos" onPress={() => router.push('/patient/documents')} color="#0d9488" />
+            <View style={{ height: 12 }} />
             <Button title="Integrar Health Connect" onPress={() => router.push('/patient/health-connect')} color="#0FB5A0" />
             <View style={{ height: 12 }} />
             <Button title="Sair do Portal" onPress={handleLogout} color="#d9534f" />

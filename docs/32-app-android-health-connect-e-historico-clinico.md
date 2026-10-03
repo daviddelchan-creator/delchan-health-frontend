@@ -54,8 +54,23 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 
 ---
 
-## 5. NÃO IMPLEMENTADO
+## 5. FASE D — HISTÓRICO DOCUMENTAL
+
+- **Status:** Implementado e Testado com Mock.
+- **Funcionalidade:** Permite ao paciente autenticado fazer o upload e visualizar documentos e exames originais diretamente pelo aplicativo móvel.
+- **Arquitetura (Mobile):** Tela específica `mobile/app/patient/documents/index.tsx` que suporta visualização de lista e envio. A seleção de arquivos ocorre de forma segura localmente via `expo-document-picker`. A visualização do original é intermediada por `expo-file-system` que consome a rota restrita do backend com o Bearer Token, garantindo controle de acesso. O compartilhamento do arquivo é acionado por `expo-sharing`.
+- **Arquitetura (Backend):**
+  - Rota `app/api/patient/documents/route.ts` suportando GET (listagem) e POST (envio multiform).
+  - O perfil do paciente é rigorosamente autenticado em ambos.
+  - Para uploads, limites de tamanho estritos de 20MB são implementados. Tipos restritos a PDF, JPEG e PNG.
+  - O backend integra com o Medplum criando instâncias `Binary` e as referenciando como um anexo através do FHIR `DocumentReference`. O `patientId` de amarração não é obtido via payload, mas restrito ao extraído da autenticação servidor, barrando envenenamento de requisições.
+- **Integração Real com Medplum (Mocks):** A suíte intensiva de testes baseia-se em mocks locais consistentes tanto nas rotas do servidor quanto nas telas mobile, provando rigorosamente todos os cenários sem uso real do banco ou instâncias ativas durante CI local.
+- **Integridade:** Nenhum OCR, extração de texto, resumos por IA ou inferência diagnóstica são processados nesta fase, garantindo a preservação absoluta e confiável do documento original. Nenhuma sub-classificação clínica, como Conditions ou Observations, foi associada aos arquivos.
+
+---
+
+## 6. NÃO IMPLEMENTADO
 
 - **Apple HealthKit:** Fora de escopo.
 - **Samsung Health Direto:** Fora de escopo.
-- **Upload e OCR de Documentos no Mobile:** A capacidade atual do Dashboard do Paciente é em modo "somente leitura" (Read-Only) da área clínica, preservando a autoridade de diagnóstico apenas para médicos no backend core web.
+- **OCR e Processamento IA:** A extração clínica por inteligência artificial é intencionalmente omitida nesta fase. O sistema mantem exclusividade total do documento original para a revisão presencial de médicos no portal clinico.
