@@ -79,15 +79,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         contentType: 'application/json'
     });
 
-    const newOutputs = task.output.map((o: any) => {
-        if (o.type?.text === 'EXTRACTION_RESULT') {
-             return {
-                 type: { text: 'EXTRACTION_RESULT' },
-                 valueReference: { reference: `Binary/${reviewedBinary.id}` }
-             };
+    // Keep the original outputs intact, just append the HUMAN_REVIEW.
+    const newOutputs = [
+        ...task.output,
+        {
+            type: { text: 'HUMAN_REVIEW' },
+            valueReference: { reference: `Binary/${reviewedBinary.id}` }
         }
-        return o;
-    });
+    ];
 
     await medplum.updateResource({
         ...task,

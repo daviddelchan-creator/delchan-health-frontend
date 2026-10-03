@@ -94,7 +94,10 @@ jest.mock('@medplum/core', () => {
                     return [];
                 }),
                 createResource: createResourceMock.mockImplementation(async (r) => ({ ...r, id: 'new-res-123' })),
-                updateResource: updateResourceMock.mockImplementation(async (r) => ({ ...r })),
+                updateResource: updateResourceMock.mockImplementation(async (r) => {
+                    // For the test "should allow Practitioner to review", task output length should increase
+                    return { ...r };
+                }),
                 createBinary: createBinaryMock.mockImplementation(async () => ({ id: 'new-bin-123' }))
             };
         })
@@ -232,6 +235,16 @@ describe('Document Processing Pipeline API Tests', () => {
             expect(auditEvent.entity[0].type.code).toBe('DOCUMENT_REVIEW');
 
             expect(JSON.stringify(auditEvent)).not.toContain('Nome: Paciente Teste');
+
+            // Verify Task output was appended, not replaced
+            // Find the task update call in reverse, or just the last update call
+            // In the mock, Medplum searchResources ('Task') returns { id: 'task-1', ... } without resourceType explicitly set in the mock object sometimes, or it just updates it. Let's find the call that sets status to 'accepted'.
+            const updateTaskCall = updateResourceMock.mock.calls.find(call => call[0].status === 'accepted');
+            expect(updateTaskCall).toBeDefined();
+            const updatedTask = updateTaskCall[0];
+            expect(updatedTask.output.length).toBe(3); // OCR_RESULT, EXTRACTION_RESULT, HUMAN_REVIEW
+            expect(updatedTask.output[2].type.text).toBe('HUMAN_REVIEW');
+            expect(updatedTask.output[1].type.text).toBe('EXTRACTION_RESULT');
         });
     });
 });

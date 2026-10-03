@@ -48,12 +48,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({ error: 'Nenhuma extração encontrada' }, { status: 404 });
     }
 
+    const reviewOutput = task.output.find((o: any) => o.type?.text === 'HUMAN_REVIEW');
     const extOutput = task.output.find((o: any) => o.type?.text === 'EXTRACTION_RESULT');
-    if (!extOutput || !extOutput.valueReference?.reference) {
+
+    const activeOutput = reviewOutput || extOutput;
+
+    if (!activeOutput || !activeOutput.valueReference?.reference) {
          return NextResponse.json({ error: 'Nenhuma extração encontrada' }, { status: 404 });
     }
 
-    const binaryId = extOutput.valueReference.reference.replace('Binary/', '');
+    const binaryId = activeOutput.valueReference.reference.replace('Binary/', '');
     const binary = await medplum.readResource('Binary', binaryId);
     const blob = await medplum.readBinary(binary);
 
