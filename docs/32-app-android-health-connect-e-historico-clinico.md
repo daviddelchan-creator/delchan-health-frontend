@@ -78,4 +78,53 @@ Este documento descreve a evolução funcional do aplicativo móvel Android inte
 
 - **Apple HealthKit:** Fora de escopo.
 - **Samsung Health Direto:** Fora de escopo.
-- **OCR e Processamento IA:** A extração clínica por inteligência artificial é intencionalmente omitida nesta fase. O sistema mantem exclusividade total do documento original para a revisão presencial de médicos no portal clinico.
+- **IA e Resumos Clínicos Avançados:** IA preditiva paga, sumarização inteligente ou diagnóstico autônomo (criação automática de Condition/DiagnosticReport) estão fora de escopo. O sistema mantém exclusividade total da decisão clínica para o médico no portal.
+
+## 7. FASE E — OCR + EXTRAÇÃO + REVISÃO
+
+- **Status:** IMPLEMENTED
+- **Arquitetura:** O processamento ocorre via Worker Python SÍNCRONO dentro da requisição HTTP (`scripts/paddle_ocr_worker.py`) consumido pelo adapter Next.js `PaddleOCRProvider`. Não existe fila/worker assíncrono distribuído nesta fase.
+- **Provider:** PaddleOCR open-source
+- **Versão:** 3.7.0 (CPU para desenvolvimento, executando localmente via Python)
+- **Instalação:** Foi instalado via `pip install paddlepaddle paddleocr pypdfium2 numpy Pillow` no worker. Em um ambiente limpo, requer a biblioteca Python correspondente.
+- **Como executar localmente:** `python3 scripts/paddle_ocr_worker.py` processando json via STDIN. A API Next.js `/api/patient/documents/[id]/process` consome o script enviando um path.
+- **Estados:** `OCR_PENDING`, `OCR_PROCESSING`, `REVIEW_PENDING`, `REVIEWED`, `OCR_FAILED`.
+- **APIs:**
+  - `POST /api/patient/documents/[id]/process`
+  - `GET /api/patient/documents/[id]/processing`
+  - `GET /api/patient/documents/[id]/ocr`
+  - `GET /api/patient/documents/[id]/extraction`
+  - `POST /api/patient/documents/[id]/review`
+- **Modelo de Dados:** Utiliza Medplum `Task` com ligações para o `DocumentReference` via `focus`. Resultados são armazenados em `Binary` e associados como `output` da task, garantindo que o documento original NUNCA seja alterado.
+- **Segurança:** O acesso a todos os endpoints valida o Patient do token contra o subject do `DocumentReference`. O endpoint de revisão exige o resourceType `Practitioner`. A proteção cross-patient é integral. Nenhum secret é exposto.
+- **Testes:** Unitários garantem restrição de auth, validações cross-patient, e geração idempotente de `Task`.
+- **Limitações:** A extração determinística funciona por regras simples (ex: nome, data, hemoglobina) na `ExtractionPipeline`. OCR com Paddle depende da imagem exportada, que está mapeada em 300DPI via pypdfium2 no provider local.
+- **O que é real:** Integração completa do backend, worker script local testável, workflow UI web e UI React Native, e integração com instâncias FHIR via testes local.
+- **O que é mock:** Nos testes automatizados (Jest), o `PaddleOCRProvider` e requisições externas ao banco Medplum são inteiramente mockados para isolamento e velocidade, de acordo com o padrão do projeto. Nenhum diagnóstico inferido dinamicamente por IA, apenas parse manual regex na Fase E.
+- **O que ainda não está implementado:** IA pago e resumos clínicos preditivos, diagnósticos ou sub-modelos avançados (`Condition`, `MedicationRequest`).
+
+
+
+### Status Report Fase E
+
+| Item | Status |
+|---|---|
+| PaddleOCR provider | IMPLEMENTED |
+| Real OCR execution | YES (Local CPU Python Worker) |
+| Mock OCR tests | YES (Jest tests mocked for API speed) |
+| Extraction | IMPLEMENTED |
+| Human review | IMPLEMENTED |
+| Medplum real integration | NÃO VALIDADO (Testes estritamente MOCKADOS) |
+| Original preservation | VERIFIED (Original Binary is untouched via mocks) |
+| Cross-patient security | LÓGICA E TESTES MOCKADOS (Não validação de produção real) |
+| APK/AAB | NOT VALIDATED |
+| Real device | NOT VALIDATED |
+
+**Idempotência e Concorrência (LIMITE ESTRUTURAL V5)**: O endpoint /process busca uma `Task` pré-existente via `medplum.searchResources`. Caso exista, tenta evitar o reprocessamento retornando `200`. **Nota Técnica Importante:** Essa abordagem é estritamente síncrona e condicional (`Check-Then-Act`). Em um ambiente HTTP Serverless distribuído e sem lock externo (ex: Redis) ou garantias de atomicidade de banco, ainda pode existir a possibilidade teórica de *race conditions* caso duas threads simultâneas completem a query de busca antes do registro da nova Task. Não estamos resolvendo problemas complexos de lock distribuído nesta fase. Adicionalmente, o processamento de OCR segue como processo síncrono atrelado ao tempo de requisição Node, sujeito a limites de timeout HTTP.
+
+**Estados de Processamento**:
+- `OCR_PENDING`: Documento enviado, task não existente (reflete antes de chamar o worker).
+- `OCR_PROCESSING`: Worker Python em execução (`Task.status = in-progress`).
+- `REVIEW_PENDING`: OCR/Extração finalizados via pipeline síncrono determinístico (`Task.status = completed`).
+- `REVIEWED`: Um `Practitioner` autorizou as correções salvando um novo log com `AuditEvent` (`Task.status = accepted`).
+- `OCR_FAILED`: Erro ou timeout na chamada subprocess (`Task.status = failed`).

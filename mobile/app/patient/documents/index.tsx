@@ -9,6 +9,7 @@ import * as Sharing from 'expo-sharing';
 
 export default function PatientDocumentsScreen() {
   const [documents, setDocuments] = useState<any[]>([]);
+  const [processingStates, setProcessingStates] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +37,22 @@ export default function PatientDocumentsScreen() {
           }
       });
 
-      setDocuments(response.data.documents || []);
+      const docs = response.data.documents || [];
+      setDocuments(docs);
+
+      // Fetch processing status for each document
+      const states: Record<string, string> = {};
+      for (const doc of docs) {
+         try {
+             const statRes = await axios.get(`${baseUrl}/api/patient/documents/${doc.id}/processing`, {
+                  headers: { Authorization: `Bearer ${token}` }
+             });
+             states[doc.id] = statRes.data.status;
+         } catch(e) {
+             console.log('Failed to fetch status for doc', doc.id);
+         }
+      }
+      setProcessingStates(states);
     } catch (err) {
       console.error('Falha ao buscar documentos', err);
       setError('Não foi possível carregar o histórico documental.');
@@ -197,12 +213,20 @@ export default function PatientDocumentsScreen() {
             const attachment = doc.content?.[0]?.attachment;
             const title = attachment?.title || 'Documento sem título';
             const date = new Date(doc.date).toLocaleDateString();
+            const status = processingStates[doc.id];
+            let statusLabel = '';
+            if (status === 'OCR_PENDING') statusLabel = 'Documento enviado';
+            else if (status === 'OCR_PROCESSING') statusLabel = 'Processando documento...';
+            else if (status === 'REVIEW_PENDING') statusLabel = 'Revisão pendente';
+            else if (status === 'REVIEWED') statusLabel = 'Revisado';
+            else if (status === 'OCR_FAILED') statusLabel = 'Falha no OCR';
 
             return (
                 <View key={doc.id} style={styles.card}>
                     <View>
                         <Text style={styles.docTitle}>{title}</Text>
                         <Text style={styles.docDate}>Enviado em {date}</Text>
+                        {statusLabel ? <Text style={styles.docStatus}>{statusLabel}</Text> : null}
                     </View>
                     <Button title="Abrir Original" onPress={() => handleOpenDocument(doc)} color="#0d9488" />
                 </View>
@@ -275,6 +299,7 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
       color: '#333',
   },
+  docStatus: { fontSize: 12, fontWeight: 'bold', marginTop: 4, color: '#0d9488' },
   docDate: {
       fontSize: 12,
       color: '#666',
