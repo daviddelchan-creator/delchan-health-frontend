@@ -317,6 +317,15 @@ export const theme = createTheme({
         padding: 'md',
         size: 'md',
       },
+      styles: () => ({
+        root: {
+          '--drawer-size-xs': '100%',
+          '--drawer-size-sm': '400px',
+          '--drawer-size-md': '500px',
+          '--drawer-size-lg': '600px',
+          '--drawer-size-xl': '800px',
+        }
+      }),
       classNames: {
         content: 'delchan-drawer-content',
         header: 'delchan-drawer-header',

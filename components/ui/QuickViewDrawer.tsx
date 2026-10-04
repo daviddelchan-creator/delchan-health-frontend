@@ -49,6 +49,10 @@ export function QuickViewDrawer({
         onClose={handleCloseAttempt}
         title={title}
         data-testid="quick-view-drawer"
+        closeOnEscape={true}
+        closeOnClickOutside={true}
+        trapFocus={true}
+        aria-label={title}
         styles={{
           body: { display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)' }
         }}

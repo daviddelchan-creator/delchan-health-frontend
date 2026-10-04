@@ -88,6 +88,19 @@ Os botões seguem rigidamente os tamanhos injetados: small (32px), default (40px
 - `tertiary`
 - `danger`
 
+## Navegação e AppShell (UI-2.3)
+
+O layout global de operação do Delchan usa uma abstração oficial `<DelchanAppShell>` estruturada para suportar as complexidades de módulos médicos e administrativos simultaneamente.
+
+**Arquitetura de Navegação:**
+O fluxo de links da aplicação e permissões é configurado estritamente em `lib/navigation.tsx`. Ele dita a organização semântica do Sidebar baseada em dois escopos ativos mapeados atualmente na plataforma:
+- A árvore **Clínica/Operação** (`/doctor/*`): Início, Pacientes, Agenda, CRM.
+- A árvore **Plataforma/SaaS** (`/admin/*`): Dashboard, Tenants, Módulos, White-Label, e configurações avançadas de layout/engenharia.
+
+**Responsividade da Sidebar:**
+- **Desktop:** Navbar persistente ocupando 260px na esquerda (expansível e com estado `collapsed` retrátil para 80px a fim de maximizar espaço).
+- **Tablet/Mobile:** A barra da esquerda cede espaço e se comporta responsivamente, ocultando os textos e adaptando-se. No mobile, a navegação se recolhe sob o `<Burger>` do header principal (`/doctor` possui o header clínico unificado).
+
 ## Limitações Conhecidas (Fase UI-2.x)
 
 Nosso foco é estabelecer o uso correto do **Mantine 8** e abstrações cirúrgicas sem realizar redesign das telas antigas (Admin, Clínico e Paciente).

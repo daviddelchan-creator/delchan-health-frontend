@@ -25,8 +25,18 @@ export function ConfirmationDialog({
   loading = false,
 }: ConfirmationDialogProps) {
   return (
-    <Modal opened={opened} onClose={onClose} title={title} data-testid="confirmation-dialog">
-      <Text size="sm" mb="lg">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={title}
+      data-testid="confirmation-dialog"
+      trapFocus={true}
+      closeOnEscape={!loading}
+      closeOnClickOutside={!loading}
+      aria-label={title}
+      aria-describedby="confirmation-dialog-description"
+    >
+      <Text size="sm" mb="lg" id="confirmation-dialog-description">
         {description}
       </Text>
       <Group justify="flex-end">
