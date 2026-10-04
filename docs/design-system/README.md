@@ -93,9 +93,25 @@ Os botões seguem rigidamente os tamanhos injetados: small (32px), default (40px
 O layout global de operação do Delchan usa uma abstração oficial `<DelchanAppShell>` estruturada para suportar as complexidades de módulos médicos e administrativos simultaneamente.
 
 **Arquitetura de Navegação:**
-O fluxo de links da aplicação e permissões é configurado estritamente em `lib/navigation.tsx`. Ele dita a organização semântica do Sidebar baseada em dois escopos ativos mapeados atualmente na plataforma:
-- A árvore **Clínica/Operação** (`/doctor/*`): Início, Pacientes, Agenda, CRM.
-- A árvore **Plataforma/SaaS** (`/admin/*`): Dashboard, Tenants, Módulos, White-Label, e configurações avançadas de layout/engenharia.
+O fluxo de links da aplicação e permissões é configurado estritamente em `lib/navigation.tsx`. O inventário das rotas reais foi classificado para não injetar páginas inexistentes. O estado das rotas é rastreado ativamente por Next.js Hooks prevendo path boundaries rigorosas para evitar colisões (ex: `/doctor/pacientes/` não colide com `/doctor/pacientes-old`).
+
+*Classificação do Mapa de Navegação Atual:*
+- **Clínico/Operação (`/doctor`):**
+  - Início (`/doctor`) — *EXISTENTE (rota independente)*
+  - Pacientes (`/doctor/pacientes`) — *EXISTENTE (rota independente)*
+  - Agenda (`/doctor/agenda`) — *EXISTENTE (rota independente)*
+  - CRM (`/doctor/crm`) — *EXISTENTE (rota independente)*
+- **Plataforma/SaaS (`/admin`):**
+  - Dashboard (`/admin?tab=overview`) — *EXISTENTE (tab dentro de rota existente)*
+  - Clínicas / Tenants (`/admin?tab=tenants`) — *EXISTENTE (tab dentro de rota existente)*
+  - Módulos SaaS (`/admin?tab=modules`) — *EXISTENTE (tab dentro de rota existente)*
+  - White-Label (`/admin?tab=whitelabel`) — *EXISTENTE (tab dentro de rota existente)*
+  - CRM & Leads (`/admin/crm`) — *EXISTENTE (rota independente)*
+  - Dados da Clínica (`/admin?tab=clinic`) — *EXISTENTE (tab dentro de rota existente)*
+  - Segurança & Acesso (`/admin?tab=security`) — *EXISTENTE (tab dentro de rota existente)*
+  - Layout Prontuário (`/admin?tab=layout`) — *EXISTENTE (tab dentro de rota existente)*
+  - Construtor de Módulos (`/admin?tab=builder`) — *EXISTENTE (tab dentro de rota existente)*
+  - Modelos de Evolução (`/admin?tab=templates`) — *EXISTENTE (tab dentro de rota existente)*
 
 **Responsividade da Sidebar:**
 - **Desktop:** Navbar persistente ocupando 260px na esquerda (expansível e com estado `collapsed` retrátil para 80px a fim de maximizar espaço).
@@ -105,7 +121,9 @@ O fluxo de links da aplicação e permissões é configurado estritamente em `li
 
 Nosso foco é estabelecer o uso correto do **Mantine 8** e abstrações cirúrgicas sem realizar redesign das telas antigas (Admin, Clínico e Paciente).
 
-- A migração progressiva das telas baseadas em hardcoded values (`app/patient/page.tsx`) ocorrerá gradativamente nas próximas ondas (UI-2.3+).
+- **Organization/Tenant Context:** Organization/Tenant context real ainda não está conectado à identidade autenticada no Header. O valor atual ("Delchan OS") é apenas branding/placeholder visual. Não representa tenant real e não acopla novo sistema de Tenant.
+- **Patient Portal:** Patient Portal permanece isolado nesta fase (`app/patient/page.tsx`) para evitar redesign fora do escopo. A integração/experiência visual será tratada na futura onda UI-2.4 Patient Experience.
+- A migração progressiva das telas baseadas em hardcoded values ocorrerá gradativamente nas próximas ondas.
 - O playground de UI não faz parte do escopo inicial e será adicionado futuramente ao admin.
 
 **Sempre siga as regras baseadas neste Design System para todas as novas construções e atualizações!**
