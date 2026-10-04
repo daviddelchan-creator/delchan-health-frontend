@@ -60,14 +60,26 @@ export function Example() {
 }
 ```
 
-## Evolução e Componentes Customizados (UI-2.2.1)
+## Evolução e Componentes Customizados (UI-2.2.1 e UI-2.2.2)
 
-Para cenários onde o Mantine não provê componentes nativos com semânticas exatas exigidas pela aplicação (ex: placeholders de vazio e badges de status mapeados para enums específicos), foram criados wrappers estritos no diretório `components/ui`:
+Para cenários onde o Mantine não provê componentes nativos com semânticas exatas exigidas pela aplicação, foram criados wrappers estritos no diretório `components/ui`:
 
-- `<EmptyState>`
-- `<ErrorState>`
-- `<StatusBadge>`
-- `<SearchInput>`
+- `<EmptyState>`: Espaço vazio com ícone e ação opcional.
+- `<ErrorState>`: Erro com ícone de alerta e botão de retry.
+- `<StatusBadge>`: Badges semânticos baseados no tipo do recurso.
+- `<SearchInput>`: Input padronizado para pesquisas.
+
+### Interaction Grammar (UI-2.2.2 - Overlays)
+
+A plataforma utiliza um fluxo oficial e consolidado para interações pesadas:
+**Lista -> Quick View (Drawer) -> Ação (Modal) -> Full Workspace (Página)**
+
+Para assegurar essa gramática de overlays, adicionamos dois padrões:
+- `<QuickViewDrawer>`: O Drawer oficial para leitura/contexto. Ele contém Header, Body scrollável, Actions no Footer e captura automaticamente fechamentos acidentais caso a prop `isDirty={true}`.
+- `<ConfirmationDialog>`: Componente padrão para exibir modais decisivos e alertas rápidos destrutivos (dispensando a re-construção local de `<Modal>` com actions todas as vezes).
+
+**Regras de Overlays Primitivos:**
+A aplicação deve usar nativamente `<Popover>`, `<Tooltip>` e `<Menu>` para micro-interações sem wraps customizados. Seus estados visuais já foram formatados globalmente no `app/theme.ts`.
 
 ### Configuração Estrita de Botões (Button / ActionIcon)
 Os botões seguem rigidamente os tamanhos injetados: small (32px), default (40px) e large (48px), e expõe as seguintes variantes customizadas na prop `variant`:
@@ -76,7 +88,7 @@ Os botões seguem rigidamente os tamanhos injetados: small (32px), default (40px
 - `tertiary`
 - `danger`
 
-## Limitações Conhecidas (Fase UI-2.2.1)
+## Limitações Conhecidas (Fase UI-2.x)
 
 Nosso foco é estabelecer o uso correto do **Mantine 8** e abstrações cirúrgicas sem realizar redesign das telas antigas (Admin, Clínico e Paciente).
 

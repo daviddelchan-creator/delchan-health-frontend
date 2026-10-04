@@ -231,7 +231,7 @@ export const theme = createTheme({
           styles = {
             root: {
               backgroundColor: theme.colors.error[8],
-              color: theme.colors.neutral[0],
+              color: theme.colors.delchanNeutral[0],
               '&:hover': { backgroundColor: theme.colors.error[9] }
             }
           }
@@ -309,6 +309,44 @@ export const theme = createTheme({
     Alert: {
       defaultProps: {
         radius: 'md',
+      },
+    },
+    Drawer: {
+      defaultProps: {
+        position: 'right',
+        padding: 'md',
+        size: 'md',
+      },
+      classNames: {
+        content: 'delchan-drawer-content',
+        header: 'delchan-drawer-header',
+        body: 'delchan-drawer-body',
+      },
+    },
+    Modal: {
+      defaultProps: {
+        padding: 'md',
+        radius: 'md',
+        centered: true,
+      },
+    },
+    Tooltip: {
+      defaultProps: {
+        radius: 'sm',
+        withArrow: true,
+        openDelay: 300,
+      },
+    },
+    Popover: {
+      defaultProps: {
+        radius: 'md',
+        shadow: 'sm',
+      },
+    },
+    Menu: {
+      defaultProps: {
+        radius: 'md',
+        shadow: 'sm',
       },
     },
   },
