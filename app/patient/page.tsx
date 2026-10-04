@@ -2,10 +2,9 @@
 
 import { useState } from 'react';
 import { 
-  MantineProvider, mergeMantineTheme, AppShell, Group, Title, Text, Avatar, Card, ActionIcon, Stack, Button, Badge, ThemeIcon, Progress, Divider, Grid, Modal, Notification
+  AppShell, Group, Title, Text, Avatar, Card, ActionIcon, Stack, Button, Badge, ThemeIcon, Progress, Divider, Grid, Modal, Notification
 } from '@mantine/core';
 import { MasterSignature } from '@/components/shared/MasterSignature';
-import { theme as baseTheme } from '../theme';
 
 const tenantConfig = {
   brandColor: 'teal', 
@@ -16,13 +15,6 @@ const tenantConfig = {
     healthSync: true, 
   }
 };
-
-const patientThemeOverride = {
-  primaryColor: 'delchanPrimary',
-  defaultRadius: 'xl',
-};
-
-const patientTheme = mergeMantineTheme(baseTheme, patientThemeOverride);
 
 export default function PatientMobileApp() {
   const [activeTab, setActiveTab] = useState('home');
@@ -40,7 +32,7 @@ export default function PatientMobileApp() {
   };
 
   return (
-    <MantineProvider theme={patientTheme}>
+    <>
       <div style={{ backgroundColor: '#e2e8f0', minHeight: '100vh', display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: '100%', maxWidth: '480px', backgroundColor: '#f8fafc', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
           
@@ -181,6 +173,6 @@ export default function PatientMobileApp() {
         />
       </Modal>
 
-    </MantineProvider>
+    </>
   );
 }

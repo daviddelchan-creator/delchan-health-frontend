@@ -33,11 +33,31 @@ export const designTokens = {
       950: '#17201F',
     },
     semantic: {
-      success: '#12A594', // Mapped to primary 500 as per design standard
-      error: '#E03131', // Using Mantine red as placeholder
-      warning: '#F08C00', // Using Mantine yellow as placeholder
-      info: '#1971C2', // Using Mantine blue as placeholder
-    }
+      success: {
+        background: '#E6FCF5', // teal.0
+        border: '#63E6BE', // teal.4
+        text: '#099268', // teal.8
+        icon: '#099268',
+      },
+      error: {
+        background: '#FFF5F5', // red.0
+        border: '#FF8787', // red.4
+        text: '#E03131', // red.8
+        icon: '#E03131',
+      },
+      warning: {
+        background: '#FFF9DB', // yellow.0
+        border: '#FFE066', // yellow.4
+        text: '#F08C00', // yellow.8
+        icon: '#F08C00',
+      },
+      info: {
+        background: '#E7F5FF', // blue.0
+        border: '#74C0FC', // blue.4
+        text: '#1971C2', // blue.8
+        icon: '#1971C2',
+      },
+    },
   },
   backgrounds: {
     application: '#F7F9F8',
@@ -141,10 +161,21 @@ const neutralColors: MantineColorsTuple = [
   designTokens.colors.neutral[900],
 ];
 
+// Mapping Mantine default color palettes for semantic usage to satisfy MantineColorsTuple
+const successColors: MantineColorsTuple = ['#E6FCF5', '#C3FAE8', '#96F2D7', '#63E6BE', '#38D9A9', '#20C997', '#12B886', '#099268', '#087F5B', '#099268'];
+const errorColors: MantineColorsTuple = ['#FFF5F5', '#FFE3E3', '#FFC9C9', '#FFA8A8', '#FF8787', '#FF6B6B', '#FA5252', '#F03E3E', '#E03131', '#C92A2A'];
+const warningColors: MantineColorsTuple = ['#FFF9DB', '#FFF3BF', '#FFEC99', '#FFE066', '#FFD43B', '#FCC419', '#FAB005', '#F59F00', '#F08C00', '#E67700'];
+const infoColors: MantineColorsTuple = ['#E7F5FF', '#D0EBFF', '#A5D8FF', '#74C0FC', '#4DABF7', '#339AF0', '#228BE6', '#1C7ED6', '#1971C2', '#1864AB'];
+
+
 export const theme = createTheme({
   colors: {
     delchanPrimary: primaryColors,
     delchanNeutral: neutralColors,
+    success: successColors,
+    error: errorColors,
+    warning: warningColors,
+    info: infoColors,
   },
   primaryColor: 'delchanPrimary',
   primaryShade: 5,
@@ -176,13 +207,108 @@ export const theme = createTheme({
   components: {
     Button: {
       defaultProps: {
-        size: 'md',
+        size: 'default',
         radius: 'md',
       },
+      vars: (theme: any, props: any) => {
+        if (props.size === 'small') {
+          return { root: { '--button-height': rem(32), '--button-padding-x': rem(16) } };
+        }
+        if (props.size === 'default' || props.size === undefined) {
+          return { root: { '--button-height': rem(40), '--button-padding-x': rem(20) } };
+        }
+        if (props.size === 'large') {
+          return { root: { '--button-height': rem(48), '--button-padding-x': rem(24) } };
+        }
+        return { root: {} };
+      },
+      classNames: {
+        root: 'delchan-btn',
+      },
+      styles: (theme: any, props: any) => {
+        let styles: any = {};
+        if (props.variant === 'danger') {
+          styles = {
+            root: {
+              backgroundColor: theme.colors.error[8],
+              color: theme.colors.neutral[0],
+              '&:hover': { backgroundColor: theme.colors.error[9] }
+            }
+          }
+        } else if (props.variant === 'secondary') {
+           styles = {
+             root: {
+               backgroundColor: theme.colors.delchanPrimary[0],
+               color: theme.colors.delchanPrimary[8],
+               '&:hover': { backgroundColor: theme.colors.delchanPrimary[1] }
+             }
+           }
+        } else if (props.variant === 'tertiary') {
+            styles = {
+              root: {
+                backgroundColor: 'transparent',
+                color: theme.colors.delchanNeutral[6],
+                '&:hover': { backgroundColor: theme.colors.delchanNeutral[1] }
+              }
+            }
+        }
+        return styles;
+      }
+    },
+    ActionIcon: {
+      defaultProps: {
+        size: 'default',
+        radius: 'md',
+      },
+      vars: (theme: any, props: any) => {
+        if (props.size === 'small') return { root: { '--ai-size': rem(32) } };
+        if (props.size === 'default' || props.size === undefined) return { root: { '--ai-size': rem(40) } };
+        if (props.size === 'large') return { root: { '--ai-size': rem(48) } };
+        return { root: {} };
+      }
+    },
+    TextInput: {
+      defaultProps: { size: 'md', radius: 'md' },
+    },
+    Select: {
+      defaultProps: { size: 'md', radius: 'md' },
+    },
+    Textarea: {
+      defaultProps: { size: 'md', radius: 'md' },
+    },
+    Checkbox: {
+      defaultProps: { size: 'sm', radius: 'sm' },
+    },
+    Radio: {
+      defaultProps: { size: 'sm' },
+    },
+    Switch: {
+      defaultProps: { size: 'sm', radius: 'xl' },
     },
     Card: {
       defaultProps: {
         radius: 'lg',
+        shadow: 'sm',
+        p: 'lg',
+        withBorder: true,
+      },
+    },
+    Badge: {
+      defaultProps: {
+        radius: 'xl',
+        size: 'md',
+        fw: 600,
+      },
+    },
+    Avatar: {
+      defaultProps: {
+        radius: 'xl',
+        size: 'md',
+      },
+    },
+    Alert: {
+      defaultProps: {
+        radius: 'md',
       },
     },
   },
