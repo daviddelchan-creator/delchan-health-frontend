@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { 
-  MantineProvider, AppShell, Group, Title, Text, Avatar, Card, ActionIcon, Stack, Button, Badge, ThemeIcon, Progress, Divider, Grid, Modal, Notification
+  MantineProvider, mergeMantineTheme, AppShell, Group, Title, Text, Avatar, Card, ActionIcon, Stack, Button, Badge, ThemeIcon, Progress, Divider, Grid, Modal, Notification
 } from '@mantine/core';
 import { MasterSignature } from '@/components/shared/MasterSignature';
+import { theme as baseTheme } from '../theme';
 
 const tenantConfig = {
   brandColor: 'teal', 
@@ -16,11 +17,12 @@ const tenantConfig = {
   }
 };
 
-const patientTheme = {
-  primaryColor: tenantConfig.brandColor,
+const patientThemeOverride = {
+  primaryColor: 'delchanPrimary',
   defaultRadius: 'xl',
-  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
 };
+
+const patientTheme = mergeMantineTheme(baseTheme, patientThemeOverride);
 
 export default function PatientMobileApp() {
   const [activeTab, setActiveTab] = useState('home');
