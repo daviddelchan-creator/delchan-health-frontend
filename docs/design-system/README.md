@@ -126,4 +126,47 @@ Nosso foco é estabelecer o uso correto do **Mantine 8** e abstrações cirúrgi
 - A migração progressiva das telas baseadas em hardcoded values ocorrerá gradativamente nas próximas ondas.
 - O playground de UI não faz parte do escopo inicial e será adicionado futuramente ao admin.
 
+## UI-2.4.1 — Patient Experience Audit
+
+A auditoria completa da experiência do paciente (`/patient`) identificou a estrutura atual sem implementar redesenhos.
+
+**1. Routes**
+- `/patient`: Portal autônomo (standalone). Usa um AppShell local (Mantine) isolado do layout global de administradores e médicos.
+- `/patient/[id]/anamnese`: Rota protegida por token JWT (na query `?token=`) responsável pelo fluxo público de onboarding/anamnese antes da consulta.
+
+**2. Layouts & AppShell**
+- Não usa o `DelchanAppShell`. Implementa seu próprio `AppShell` inline no `app/patient/page.tsx` com uma navbar inferior mockada (Início, Agenda, Fichas).
+
+**3. Components**
+- **CORE:** Uso de `<AppShell>`, `<Card>`, `<Badge>`, `<ThemeIcon>`, `<Modal>`.
+- **PATIENT/CLINICAL:** Não reutiliza `PatientHeader` ou `PatientTimeline`. A página principal apenas mocka interações. A página de anamnese (`app/patient/[id]/anamnese/page.tsx`) tem um formulário real funcional.
+
+**4. Data flow & 5. Authentication**
+- A página `/patient` **não possui** lógica real de autenticação conectada (não há consumo de `auth/me` nem leitura de cookies). Exibe `tenantConfig` estático.
+- A página `/patient/[id]/anamnese` depende do token criptografado (`verifyIntakeToken`) recebido via URL. Ele desempacota o `patientId` de forma segura. O paciente não digita ID; a autoridade vem do token gerado pela clínica.
+
+**6. Tenant isolation**
+- O `app/patient/page.tsx` possui a configuração de tenant local e fixa (hardcoded) num object `tenantConfig`. Não obtém do backend.
+
+**7. UI States & Appointments & Clinical History**
+- MOCK/SIMULATED: A tela `/patient` possui um state simulado `[pendingTCLE]` para abrir o modal de assinatura. Tem uma consulta mockada em card (`Hoje, 14:30`) e botões mockados (`alert()`) para exames, receitas e reagendamento. Não se comunica com recursos FHIR (`Appointment`, `Observation`, etc).
+
+**8. Documents & OCR & Health Connect & Telemedicine**
+- NOT IMPLEMENTED na view do paciente, exceto por botões falsos. A estrutura pesada de OCR e Review existe apenas no contexto do Clínico (`/api/patient/documents`).
+
+**9. Responsive & Design System Compliance**
+- A tela do paciente tem max-width travado (`maxWidth: '480px'`) para emular um app nativo no centro de uma tela desktop. Possui hardcoded shadows e cores fora dos tokens do UI-2.2 (`#f1f5f9`, `bg="teal.0"`). O modal de assinatura usa a arquitetura legada (sem os novos `<ConfirmationDialog>`).
+
+**10. Security**
+- RISCO (Apenas na view mockada): `/patient/page.tsx` não valida JWT ou sessão.
+- SEGURO (`/patient/[id]/anamnese`): A anamnese só processa submissão com token validado na API `/api/crm/intake/submit` pelo lado do servidor com checagem rigorosa de Magic Link HMAC-SHA256 (`lib/crm/patient-intake-link.ts`).
+
+**11. FHIR/Medplum map**
+- **Write:** A submissão de anamnese (`/api/crm/intake/submit`) gera: `DocumentReference` (Termo assinado), `Consent` (LGPD), `Observation` (Queixas, Alergias), `Condition` (Doenças Crônicas).
+
+**12. Proposed future IA**
+- `Patient Dashboard` -> Precisa evoluir o atual `page.tsx` para consumir dados reais do Medplum ou Health Connect.
+- `Patient Telemedicine Room` -> Rota dedicada pendente.
+- `Patient Documents List` -> Rota para download de receitas e atestados.
+
 **Sempre siga as regras baseadas neste Design System para todas as novas construções e atualizações!**

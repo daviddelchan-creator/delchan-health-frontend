@@ -9,7 +9,7 @@
     "dev": "npm run clean && next dev",
     "start": "next start",
     "test:backend": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest app/api/patient",
-    "test:theme": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest --config jest.theme.config.mjs __tests__/theme __tests__/navigation"
+    "test:theme": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest --config jest.theme.config.mjs __tests__/theme __tests__/navigation __tests__/patient"
   },
   "prettier": {
     "printWidth": 120,
