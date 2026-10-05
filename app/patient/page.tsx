@@ -41,7 +41,7 @@ export default function PatientDashboardPage() {
       ) : (
          <>
             {nextAppointment ? (
-              <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder style={{ borderColor: 'var(--mantine-color-gray-1)' }}>
+              <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder>
                 <Group justify="space-between" mb="sm">
                   <Badge color="blue" variant="light" size="sm" fw={700}>Consulta Confirmada</Badge>
                   <Text size="xs" c="dimmed" fw={600}>
@@ -59,7 +59,7 @@ export default function PatientDashboardPage() {
                 </Group>
               </Card>
             ) : (
-               <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder style={{ borderColor: 'var(--mantine-color-gray-1)' }}>
+               <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder>
                   <Group wrap="nowrap">
                     <ThemeIcon size="lg" radius="xl" color="teal.6">✅</ThemeIcon>
                     <div>
@@ -79,7 +79,7 @@ export default function PatientDashboardPage() {
               ].map((item, i) => (
                 <Grid.Col span={3} key={i}>
                   <Stack gap="xs" align="center" style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => alert('Funcionalidade em breve')}>
-                    <ActionIcon size="xl" radius="xl" variant="light" color="teal" style={{ width: '60px', height: '60px' }}>
+                    <ActionIcon size="xl" radius="xl" variant="light" color="teal" style={{ width: 'var(--mantine-spacing-xl)', height: 'var(--mantine-spacing-xl)' }}>
                       <Text size="xl">{item.icon}</Text>
                     </ActionIcon>
                     <Text size="xs" fw={600} c="dark.8">{item.label}</Text>

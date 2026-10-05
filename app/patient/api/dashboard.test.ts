@@ -68,4 +68,29 @@ describe('fetchPatientDashboard (Data Access Layer)', () => {
     await expect(fetchPatientDashboard('fake-token')).rejects.toThrow(DashboardApiError);
     await expect(fetchPatientDashboard('fake-token')).rejects.toThrow("Não foi possível carregar seus dados. Tente novamente.");
   });
+
+  it('PREVENTS PATIENT ID SPOOFING: verifies URL strictly calls the authorized endpoint without injecting explicit query strings, bodies, or custom client patient IDs', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ profile: { id: 'patient-123' }, appointments: [] })
+    });
+
+    await fetchPatientDashboard('fake-token');
+
+    // Explicitly assert the exact endpoint URL.
+    // If a query parameter like ?patientId= was added, this test will explicitly fail.
+    expect(global.fetch).toHaveBeenCalledWith('/api/patient/dashboard', expect.any(Object));
+
+    const fetchArgs = (global.fetch as jest.Mock).mock.calls[0];
+    const url = fetchArgs[0];
+    const options = fetchArgs[1];
+
+    // Assert absolute absence of client-supplied spoofing identifiers
+    expect(url).toBe('/api/patient/dashboard'); // Strict exact match. No querystrings.
+    expect(options.body).toBeUndefined(); // No body payload containing IDs
+    expect(options.headers).not.toHaveProperty('X-Patient-Id'); // No custom headers for IDs
+
+    // Assert the ONLY authentication provided is the existing session mechanism
+    expect(options.headers).toHaveProperty('Authorization', 'Bearer fake-token');
+  });
 });

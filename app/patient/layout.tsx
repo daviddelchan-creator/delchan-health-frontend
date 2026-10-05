@@ -5,7 +5,6 @@ import React, { ReactNode } from 'react';
 import { usePatientDashboardContext, PatientDashboardProvider } from './state/PatientDashboardContext';
 import { usePathname, useRouter } from 'next/navigation';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { Loading } from '@/components/ui/Loading';
 
 function PatientAppShellInner({ children }: { children: ReactNode }) {
   const { state, data } = usePatientDashboardContext();
@@ -15,15 +14,15 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
   // Wait for initialization or loading
   if (state === 'INITIALIZING' || state === 'LOADING') {
     return (
-      <div style={{ backgroundColor: 'var(--mantine-color-gray-2)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-         <Loading message="Carregando portal do paciente..." />
+      <div style={{ backgroundColor: 'var(--mantine-color-gray-1)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+         <Text c="dimmed">Carregando portal do paciente...</Text>
       </div>
     );
   }
 
   if (state === 'UNAUTHORIZED') {
     return (
-       <div style={{ backgroundColor: 'var(--mantine-color-gray-2)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+       <div style={{ backgroundColor: 'var(--mantine-color-gray-1)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <ErrorState
              title="Sessão Expirada"
              message="Por favor, faça login novamente para acessar o portal."
@@ -36,7 +35,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
 
   if (state === 'FORBIDDEN') {
     return (
-      <div style={{ backgroundColor: 'var(--mantine-color-gray-2)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ backgroundColor: 'var(--mantine-color-gray-1)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
          <ErrorState
             title="Acesso Negado"
             message="Este portal é exclusivo para pacientes. Sua conta não tem permissão para acessá-lo."
@@ -65,11 +64,11 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
         <AppShell
            header={{ height: 70 }}
            navbar={{ width: 250, breakpoint: 'sm', collapsed: { mobile: true } }}
-           footer={{ height: 80, collapsed: { desktop: true } }}
+           footer={{ height: 80, collapsed: { desktop: true } as any }}
            padding="md"
         >
 
-          <AppShell.Header bg="white" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+          <AppShell.Header bg="white" withBorder>
             <Group h="100%" px="md" justify="space-between">
               <Group gap="sm">
                 <ThemeIcon size="lg" radius="md" color="teal" variant="light">
@@ -81,7 +80,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             </Group>
           </AppShell.Header>
 
-          <AppShell.Navbar p="md" bg="white" style={{ borderRight: '1px solid var(--mantine-color-gray-2)' }}>
+          <AppShell.Navbar p="md" bg="white" withBorder>
             <NavLink
                label="Início"
                leftSection="🏠"
@@ -89,7 +88,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
                onClick={() => router.push('/patient')}
                color="teal"
                variant="filled"
-               style={{ borderRadius: '8px', marginBottom: '8px' }}
+               style={{ borderRadius: 'var(--mantine-radius-md)', marginBottom: 'var(--mantine-spacing-xs)' }}
             />
             <NavLink
                label="Consultas"
@@ -98,7 +97,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
                onClick={() => router.push('/patient/consultas')}
                color="teal"
                variant="filled"
-               style={{ borderRadius: '8px', marginBottom: '8px' }}
+               style={{ borderRadius: 'var(--mantine-radius-md)', marginBottom: 'var(--mantine-spacing-xs)' }}
             />
             <NavLink
                label="Histórico"
@@ -107,7 +106,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
                onClick={() => router.push('/patient/historico')}
                color="teal"
                variant="filled"
-               style={{ borderRadius: '8px', marginBottom: '8px' }}
+               style={{ borderRadius: 'var(--mantine-radius-md)', marginBottom: 'var(--mantine-spacing-xs)' }}
             />
             <NavLink
                label="Documentos"
@@ -116,7 +115,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
                onClick={() => router.push('/patient/documentos')}
                color="teal"
                variant="filled"
-               style={{ borderRadius: '8px', marginBottom: '8px' }}
+               style={{ borderRadius: 'var(--mantine-radius-md)', marginBottom: 'var(--mantine-spacing-xs)' }}
             />
             <NavLink
                label="Saúde"
@@ -125,7 +124,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
                onClick={() => router.push('/patient/saude')}
                color="teal"
                variant="filled"
-               style={{ borderRadius: '8px', marginBottom: '8px' }}
+               style={{ borderRadius: 'var(--mantine-radius-md)', marginBottom: 'var(--mantine-spacing-xs)' }}
             />
             <NavLink
                label="Perfil"
@@ -134,7 +133,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
                onClick={() => router.push('/patient/perfil')}
                color="teal"
                variant="filled"
-               style={{ borderRadius: '8px', marginBottom: '8px' }}
+               style={{ borderRadius: 'var(--mantine-radius-md)' }}
             />
           </AppShell.Navbar>
 
@@ -142,33 +141,33 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             {children}
           </AppShell.Main>
 
-          <AppShell.Footer bg="white" style={{ borderTop: '1px solid var(--mantine-color-gray-2)', padding: '10px 10px' }} zIndex={100}>
+          <AppShell.Footer bg="white" withBorder px="xs" py="xs" zIndex={100}>
             <Group justify="space-between" align="center" h="100%" wrap="nowrap">
               <Stack gap={4} align="center" onClick={() => router.push('/patient')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'inicio' ? 'teal' : 'gray.4'}>🏠</Text>
-                <Text size="xs" fw={700} c={activeTab === 'inicio' ? 'teal' : 'gray.5'}>Início</Text>
+                <Text size="xl" c={activeTab === 'inicio' ? 'teal' : 'dimmed'}>🏠</Text>
+                <Text size="xs" fw={700} c={activeTab === 'inicio' ? 'teal' : 'dimmed'}>Início</Text>
               </Stack>
               <Stack gap={4} align="center" onClick={() => router.push('/patient/consultas')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'consultas' ? 'teal' : 'gray.4'}>🗓️</Text>
-                <Text size="xs" fw={700} c={activeTab === 'consultas' ? 'teal' : 'gray.5'}>Agenda</Text>
+                <Text size="xl" c={activeTab === 'consultas' ? 'teal' : 'dimmed'}>🗓️</Text>
+                <Text size="xs" fw={700} c={activeTab === 'consultas' ? 'teal' : 'dimmed'}>Agenda</Text>
               </Stack>
               <Stack gap={4} align="center" onClick={() => router.push('/patient/historico')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'historico' ? 'teal' : 'gray.4'}>📋</Text>
-                <Text size="xs" fw={700} c={activeTab === 'historico' ? 'teal' : 'gray.5'}>Hist.</Text>
+                <Text size="xl" c={activeTab === 'historico' ? 'teal' : 'dimmed'}>📋</Text>
+                <Text size="xs" fw={700} c={activeTab === 'historico' ? 'teal' : 'dimmed'}>Hist.</Text>
               </Stack>
               <Stack gap={4} align="center" onClick={() => router.push('/patient/documentos')} style={{ cursor: 'pointer', flex: 1, position: 'relative', top: '-10px' }}>
-                <ActionIcon size={50} radius="xl" color="teal" variant={activeTab === 'documentos' ? 'filled' : 'light'} style={{ boxShadow: activeTab === 'documentos' ? '0 10px 15px -3px rgba(13, 148, 136, 0.4)' : 'none' }}>
+                <ActionIcon size="xl" radius="xl" color="teal" variant={activeTab === 'documentos' ? 'filled' : 'light'} style={{ boxShadow: activeTab === 'documentos' ? 'var(--mantine-shadow-md)' : 'none' }}>
                   <Text size="lg">📂</Text>
                 </ActionIcon>
-                <Text size="xs" fw={700} c={activeTab === 'documentos' ? 'teal' : 'gray.5'}>Docs</Text>
+                <Text size="xs" fw={700} c={activeTab === 'documentos' ? 'teal' : 'dimmed'}>Docs</Text>
               </Stack>
               <Stack gap={4} align="center" onClick={() => router.push('/patient/saude')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'saude' ? 'teal' : 'gray.4'}>❤️</Text>
-                <Text size="xs" fw={700} c={activeTab === 'saude' ? 'teal' : 'gray.5'}>Saúde</Text>
+                <Text size="xl" c={activeTab === 'saude' ? 'teal' : 'dimmed'}>❤️</Text>
+                <Text size="xs" fw={700} c={activeTab === 'saude' ? 'teal' : 'dimmed'}>Saúde</Text>
               </Stack>
               <Stack gap={4} align="center" onClick={() => router.push('/patient/perfil')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'perfil' ? 'teal' : 'gray.4'}>👤</Text>
-                <Text size="xs" fw={700} c={activeTab === 'perfil' ? 'teal' : 'gray.5'}>Perfil</Text>
+                <Text size="xl" c={activeTab === 'perfil' ? 'teal' : 'dimmed'}>👤</Text>
+                <Text size="xs" fw={700} c={activeTab === 'perfil' ? 'teal' : 'dimmed'}>Perfil</Text>
               </Stack>
             </Group>
           </AppShell.Footer>
