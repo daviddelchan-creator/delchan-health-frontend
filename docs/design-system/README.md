@@ -58,3 +58,15 @@ A core component library foi implementada mantendo o princípio **Mantine-first*
    - `Skeleton`: Placeholder estrutural diretamente exportado do Mantine para conveniência nas importações compostas.
 
 Todas essas alterações estão cobertas por testes na pasta `__tests__/theme/` garantindo renderização e manipulação correta de estados sem ferir a integridade do Mantine.
+
+### UI-2.2.1 Correction
+
+- **Shadows e Borders**: Foram centralizados em `designTokens.shadows` e `designTokens.borders`. Todos os `Card`s agora consomem esses tokens nativamente, eliminando o uso de strings hardcoded de `box-shadow` em cada tela.
+- **Button Variants**: O componente `Button` suporta as variantes `primary`, `secondary`, `tertiary`, `danger` e `link` nativamente via `styles` no tema (`app/theme.ts`). A variante `danger` utiliza a semântica `error`.
+- **Loading vs Skeleton**:
+  - `Loading`: Componente focado em estados transacionais (processamento, espera).
+  - `Skeleton`: Re-exportado do Mantine para placeholders visuais/estruturais no carregamento de páginas.
+- **StatusBadge vs Badge**:
+  - `StatusBadge`: Semântico, usado para (success, error, warning, info, neutral, pending). *Nota: O estado `pending` mapeia intencionalmente para a escala `warning` nesta etapa.*
+  - `Badge` (Mantine nativo): Usado para categorias informativas estáticas.
+- **Deferred Components**: O componente `DatePicker` foi adiado (deferred) e não implementado nesta task, pois o pacote `@mantine/dates` não está instalado e a regra proíbe instalar dependências desnecessárias neste momento.

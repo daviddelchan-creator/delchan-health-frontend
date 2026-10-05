@@ -1,14 +1,25 @@
 import { theme, designTokens } from '../../app/theme';
 
 describe('Delchan Theme Configuration', () => {
-  it('should export design tokens with primary and neutral colors', () => {
+  it('should export design tokens with primary and neutral colors matching UI-2.1 specs', () => {
     expect(designTokens.colors).toHaveProperty('primary');
     expect(designTokens.colors).toHaveProperty('neutral');
+    expect(designTokens.colors.primary[50]).toBe('#F0FBF9');
+    expect(designTokens.colors.primary[700]).toBe('#087F72');
+    expect(designTokens.colors.neutral[950]).toBe('#17201F');
+  });
+
+  it('should include typography, spacing, radius, and exact breakpoints', () => {
+    expect(designTokens.typography).toBeDefined();
+    expect(designTokens.spacing).toBeDefined();
+    expect(designTokens.radius).toBeDefined();
+    expect(designTokens.breakpoints.md).toBe('62em');
   });
 
   it('should create a Mantine theme with delchan color tuples', () => {
     expect(theme.colors).toHaveProperty('delchanPrimary');
     expect(theme.colors).toHaveProperty('delchanNeutral');
+    expect(theme.primaryColor).toBe('delchanPrimary');
   });
 
   it('should export design tokens with semantic colors', () => {
@@ -23,6 +34,11 @@ describe('Delchan Theme Configuration', () => {
     expect(theme.colors).toHaveProperty('delchanWarning');
     expect(theme.colors).toHaveProperty('delchanError');
     expect(theme.colors).toHaveProperty('delchanInfo');
+  });
+
+  it('should export design tokens with shadows and borders', () => {
+    expect(designTokens.shadows).toHaveProperty('sm');
+    expect(designTokens.borders).toHaveProperty('default');
   });
 
   it('should configure defaultProps for Button', () => {

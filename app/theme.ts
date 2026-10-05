@@ -145,6 +145,21 @@ export const designTokens = {
     lg: '75em',
     xl: '88em',
   },
+
+  shadows: {
+    none: 'none',
+    sm: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)',
+    md: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
+    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05)',
+  },
+  borders: {
+    subtle: '1px solid #F0F3F2',
+    default: '1px solid #E2E6E5',
+    strong: '1px solid #CBD1CF',
+    focus: '2px solid #087F72',
+    error: '1px solid #EF4444',
+  },
+
 };
 
 const primaryColors: MantineColorsTuple = [
@@ -242,11 +257,58 @@ export const theme = createTheme({
       classNames: {
         root: 'delchan-button',
       },
-      styles: (theme: any, params: any, context: any) => ({
-        root: {
-          fontWeight: 600,
+      styles: (theme: any, params: any, context: any) => {
+        const variant = context?.variant || 'primary';
+        const isDanger = variant === 'danger';
+        const isSecondary = variant === 'secondary';
+        const isTertiary = variant === 'tertiary';
+        const isLink = variant === 'link';
+
+        let bg = 'var(--mantine-primary-color-filled)';
+        let c = 'white';
+        let border = 'none';
+
+        if (isDanger) {
+          bg = designTokens.colors.error[500];
+        } else if (isSecondary) {
+          bg = 'white';
+          c = designTokens.colors.neutral[800];
+          border = designTokens.borders.default;
+        } else if (isTertiary) {
+          bg = 'transparent';
+          c = designTokens.colors.neutral[700];
+        } else if (isLink) {
+          bg = 'transparent';
+          c = 'var(--mantine-primary-color-filled)';
         }
-      })
+
+        return {
+          root: {
+            fontWeight: 600,
+            backgroundColor: bg,
+            color: c,
+            border: border,
+          }
+        };
+      }
+    },
+    Checkbox: {
+      defaultProps: { radius: 'sm' },
+    },
+    Radio: {
+      defaultProps: { size: 'sm' },
+    },
+    Switch: {
+      defaultProps: { radius: 'xl' },
+    },
+    Divider: {
+      defaultProps: { color: designTokens.colors.neutral[200] },
+    },
+    Avatar: {
+      defaultProps: { radius: 'xl' },
+    },
+    AvatarGroup: {
+      defaultProps: { spacing: 'sm' },
     },
     ActionIcon: {
       defaultProps: {
@@ -277,8 +339,8 @@ export const theme = createTheme({
       styles: {
         root: {
           backgroundColor: designTokens.backgrounds.surface,
-          border: `1px solid ${designTokens.colors.neutral[200]}`,
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)',
+          border: designTokens.borders.default,
+          boxShadow: designTokens.shadows.sm,
         }
       }
     },
