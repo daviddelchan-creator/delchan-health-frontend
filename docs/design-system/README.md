@@ -44,3 +44,33 @@ Durante a fase UI-2.1, nosso foco principal é **estabelecer a fundação e a in
 - **Auditoria de Hardcoded Hex:** A duplicação de provedores e o uso de abstrações paralelas (como `MantineProvider` locais e `mergeMantineTheme` no `app/patient/page.tsx`) foram eliminados nesta etapa para garantir a unicidade do layout root. No entanto, os componentes internos das telas (como backgrounds em hexadecimal `#f8fafc`, margin pixels fixos, etc) continuarão ostentando hardcodes visuais herdados. Estes valores foram registrados e serão limpos e migrados nas ondas subsequentes para assegurar conformidade total com o novo design sem quebrar a estabilidade estrutural atual.
 
 **Sempre siga as regras baseadas neste Design System para todas as novas construções e atualizações!**
+
+## Component Library (UI-2.2.1)
+
+A core component library foi implementada mantendo o princípio **Mantine-first**:
+
+1. **Native Components via Theme**: Componentes padrão como `Button`, `TextInput`, `Select`, `Card` e `Badge` NÃO possuem wrappers personalizados como `<Button2>`. Eles são configurados nativamente através das APIs `defaultProps` e `styles` do `createTheme` no arquivo `app/theme.ts`. Isso assegura acessibilidade, comportamentos padrão unificados e uma única fonte de verdade.
+2. **Semantic Colors**: Foram implementadas cores semânticas explícitas (`success`, `warning`, `error`, `info`) no objeto `designTokens`. Para utilizá-las no Mantine, use o prefixo `delchan` (ex: `color="delchanSuccess"`).
+3. **Core UI Patterns (`components/ui/`)**: Foram criados componentes específicos que representam padrões compostos do Delchan Health OS:
+   - `StatusBadge`: Usado para exibir estados semânticos (ex: Ativo, Pendente, Erro). Aceita a prop `status` do tipo `StatusSemanticType`. Diferente de `Badge` genérico usado para categorias e tags.
+   - `EmptyState`: Padrão centralizado com ícone, título, descrição e ação opcional, renderizado quando não há dados a exibir.
+   - `ErrorState`: Padrão centralizado seguro para falhas (sem vazar credenciais ou stack traces), com ação de tentativa (`onRetry`).
+   - `Skeleton`: Placeholder estrutural diretamente exportado do Mantine para conveniência nas importações compostas.
+
+Todas essas alterações estão cobertas por testes na pasta `__tests__/theme/` garantindo renderização e manipulação correta de estados sem ferir a integridade do Mantine.
+
+### UI-2.2.1 Correction
+
+- **Shadows e Borders**: Foram centralizados em `designTokens.shadows` e `designTokens.borders`. Todos os `Card`s agora consomem esses tokens nativamente, eliminando o uso de strings hardcoded de `box-shadow` em cada tela.
+- **Button Variants**: O componente `Button` suporta as variantes `primary`, `secondary`, `tertiary`, `danger` e `link` nativamente via `styles` no tema (`app/theme.ts`). A variante `danger` utiliza a semântica `error`.
+- **Loading vs Skeleton**:
+  - `Loading`: Componente focado em estados transacionais (processamento, espera).
+  - `Skeleton`: Re-exportado do Mantine para placeholders visuais/estruturais no carregamento de páginas.
+- **StatusBadge vs Badge**:
+  - `StatusBadge`: Semântico, usado para (success, error, warning, info, neutral, pending). *Nota: O estado `pending` mapeia intencionalmente para a escala `warning` nesta etapa.*
+  - `Badge` (Mantine nativo): Usado para categorias informativas estáticas.
+- **Deferred Components**: O componente `DatePicker` foi adiado (deferred) e não implementado nesta task, pois o pacote `@mantine/dates` não está instalado e a regra proíbe instalar dependências desnecessárias neste momento.
+
+### Limitações Conhecidas de Tipagem (Mantine 8)
+
+Ao definir componentes via a API `styles` no tema (ex. `Button`), fomos limitados pelo polimorfismo das propriedades estritas do Mantine. O parâmetro `theme` foi tipado como `MantineTheme`, mas `params` e `context` foram tipados como `any` para evitar conflitos com as interfaces não-exportadas puras ou complexidade excessiva de `ButtonFactory['stylesCtx']`. O código se mantém 100% funcional.
