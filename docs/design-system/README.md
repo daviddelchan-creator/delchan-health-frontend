@@ -70,3 +70,7 @@ Todas essas alterações estão cobertas por testes na pasta `__tests__/theme/` 
   - `StatusBadge`: Semântico, usado para (success, error, warning, info, neutral, pending). *Nota: O estado `pending` mapeia intencionalmente para a escala `warning` nesta etapa.*
   - `Badge` (Mantine nativo): Usado para categorias informativas estáticas.
 - **Deferred Components**: O componente `DatePicker` foi adiado (deferred) e não implementado nesta task, pois o pacote `@mantine/dates` não está instalado e a regra proíbe instalar dependências desnecessárias neste momento.
+
+### Limitações Conhecidas de Tipagem (Mantine 8)
+
+Ao definir componentes via a API `styles` no tema (ex. `Button`), fomos limitados pelo polimorfismo das propriedades estritas do Mantine. O parâmetro `theme` foi tipado como `MantineTheme`, mas `params` e `context` foram tipados como `any` para evitar conflitos com as interfaces não-exportadas puras ou complexidade excessiva de `ButtonFactory['stylesCtx']`. O código se mantém 100% funcional.

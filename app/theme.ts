@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 'use client';
 
-import { createTheme, MantineColorsTuple, rem } from '@mantine/core';
+import { createTheme, MantineColorsTuple, rem, ButtonFactory, MantineTheme } from '@mantine/core';
 
 export const designTokens = {
   colors: {
@@ -257,37 +257,85 @@ export const theme = createTheme({
       classNames: {
         root: 'delchan-button',
       },
-      styles: (theme: any, params: any, context: any) => {
+      styles: (theme: MantineTheme, params: any, context: any) => {
         const variant = context?.variant || 'primary';
-        const isDanger = variant === 'danger';
-        const isSecondary = variant === 'secondary';
-        const isTertiary = variant === 'tertiary';
-        const isLink = variant === 'link';
 
-        let bg = 'var(--mantine-primary-color-filled)';
-        let c = 'white';
-        let border = 'none';
-
-        if (isDanger) {
-          bg = designTokens.colors.error[500];
-        } else if (isSecondary) {
-          bg = 'white';
-          c = designTokens.colors.neutral[800];
-          border = designTokens.borders.default;
-        } else if (isTertiary) {
-          bg = 'transparent';
-          c = designTokens.colors.neutral[700];
-        } else if (isLink) {
-          bg = 'transparent';
-          c = 'var(--mantine-primary-color-filled)';
+        if (variant === 'danger') {
+          return {
+            root: {
+              fontWeight: 600,
+              backgroundColor: designTokens.colors.error[500],
+              color: 'white',
+              border: 'none',
+              '&:hover': {
+                backgroundColor: designTokens.colors.error[600],
+              },
+              '&:active': {
+                backgroundColor: designTokens.colors.error[700],
+              }
+            }
+          };
         }
 
+        if (variant === 'secondary') {
+          return {
+            root: {
+              fontWeight: 600,
+              backgroundColor: 'white',
+              color: designTokens.colors.neutral[800],
+              border: designTokens.borders.default,
+              '&:hover': {
+                backgroundColor: designTokens.colors.neutral[50],
+              },
+              '&:active': {
+                backgroundColor: designTokens.colors.neutral[100],
+              }
+            }
+          };
+        }
+
+        if (variant === 'tertiary') {
+          return {
+            root: {
+              fontWeight: 600,
+              backgroundColor: 'transparent',
+              color: designTokens.colors.neutral[700],
+              border: 'none',
+              '&:hover': {
+                backgroundColor: designTokens.colors.neutral[50],
+              },
+              '&:active': {
+                backgroundColor: designTokens.colors.neutral[100],
+              }
+            }
+          };
+        }
+
+        if (variant === 'link') {
+          return {
+            root: {
+              fontWeight: 600,
+              backgroundColor: 'transparent',
+              color: 'var(--mantine-primary-color-filled)',
+              border: 'none',
+              padding: 0,
+              height: 'auto',
+              minHeight: 'auto',
+              '&:hover': {
+                textDecoration: 'underline',
+                backgroundColor: 'transparent',
+              },
+              '&:active': {
+                color: designTokens.colors.primary[800],
+              }
+            }
+          };
+        }
+
+        // Primary (default) fallback handles its own hover/active via standard Mantine logic
         return {
           root: {
             fontWeight: 600,
-            backgroundColor: bg,
-            color: c,
-            border: border,
           }
         };
       }
