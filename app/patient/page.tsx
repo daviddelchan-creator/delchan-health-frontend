@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Title, Text, Card, Stack, Group, Badge, ThemeIcon, Grid, Button, Center, Loader } from '@mantine/core';
-import { IconCalendarEvent, IconActivity, IconFileDescription, IconDeviceAnalytics } from '@tabler/icons-react';
+import { IconCalendarEvent, IconActivity, IconFileDescription, IconDeviceAnalytics, IconAlertTriangle } from '@tabler/icons-react';
 
 // This is the new architecture for the dashboard replacing the monolithic old page.tsx
 export default function PatientDashboard() {
@@ -12,15 +12,37 @@ export default function PatientDashboard() {
 
   useEffect(() => {
     // Structural simulated fetch targeting the /api/patient/dashboard endpoint
-    // In production, this call must pass the Bearer token established during login.
-    setTimeout(() => {
-      setData({
-        appointments: [],
-        documents: [],
-        diagnostics: [],
-      });
-      setLoading(false);
-    }, 1000);
+    // We enforce an unauthorized state because the patient portal authentication logic
+    // is not fully mapped in the legacy architecture yet.
+    // Do not fabricate fake users or JWT tokens here.
+    const attemptDataFetch = async () => {
+       try {
+          const res = await fetch('/api/patient/dashboard', {
+             headers: {
+                'Authorization': 'Bearer placeholder_if_needed'
+             }
+          });
+
+          if (res.status === 401 || res.status === 403) {
+             setError('Acesso negado. Sessão inválida.');
+             setLoading(false);
+             return;
+          }
+
+          if (!res.ok) {
+             throw new Error('Falha ao sincronizar prontuário digital');
+          }
+
+          const json = await res.json();
+          setData(json);
+       } catch (err: any) {
+          setError(err.message || 'Houve um problema de conexão com o servidor.');
+       } finally {
+          setLoading(false);
+       }
+    };
+
+    attemptDataFetch();
   }, []);
 
   if (loading) {
@@ -34,12 +56,17 @@ export default function PatientDashboard() {
     );
   }
 
-  if (error) {
+  if (error || !data) {
     return (
-      <Card p="xl" radius="md" withBorder>
-         <Title order={3} c="red">Não foi possível carregar os dados</Title>
-         <Text mt="sm">{error}</Text>
-      </Card>
+      <Center h="50vh">
+         <Stack align="center" ta="center">
+            <ThemeIcon size={64} radius="xl" variant="light" color="red">
+               <IconAlertTriangle size={32} />
+            </ThemeIcon>
+            <Title order={3} c="dark.9" mt="sm">Não foi possível carregar os dados</Title>
+            <Text c="dimmed" maw={400}>{error || 'Os dados do portal requerem uma sessão autenticada real conectada ao backend clínico.'}</Text>
+         </Stack>
+      </Center>
     );
   }
 
@@ -60,7 +87,7 @@ export default function PatientDashboard() {
               <Text fw={700}>Consultas Agendadas</Text>
             </Group>
 
-            {data.appointments.length === 0 ? (
+            {(!data.appointments || data.appointments.length === 0) ? (
                <Text size="sm" c="dimmed">Você não tem consultas agendadas.</Text>
             ) : (
                <Text size="sm">Renderizando lista de consultas reais...</Text>
@@ -81,7 +108,7 @@ export default function PatientDashboard() {
               <Text fw={700}>Últimos Documentos</Text>
             </Group>
 
-            {data.documents.length === 0 ? (
+            {(!data.documents || data.documents.length === 0) ? (
                <Text size="sm" c="dimmed">Nenhum documento clínico encontrado.</Text>
             ) : (
                <Text size="sm">Renderizando documentos reais...</Text>
