@@ -12,16 +12,14 @@ export default function PatientLayout({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Structural simulated fetch targeting the /api/patient/dashboard endpoint
-    // We enforce an unauthorized state because the patient portal authentication logic
-    // is not fully mapped in the legacy architecture yet (it relies on an isolated mobile layer).
-    // Do not fabricate fake users or JWT tokens here.
+    // In a real scenario, this relies strictly on auth/me via MedplumClient wrapper hook.
+    // We attempt an authorized API fetch against the patient dashboard,
+    // enforcing an unauthorized 401/403 state fallback since the secure token is not natively piped into this layout yet.
     const attemptProfileFetch = async () => {
        try {
           const res = await fetch('/api/patient/dashboard', {
              headers: {
-                // To fetch real data, a valid Bearer token from the local SecureStore/Auth context must be supplied.
-                'Authorization': 'Bearer placeholder_if_needed'
+                'Authorization': `Bearer ${typeof localStorage !== 'undefined' ? localStorage.getItem('medplum-token') || '' : ''}`
              }
           });
 

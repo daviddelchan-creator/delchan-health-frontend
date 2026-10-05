@@ -1,6 +1,6 @@
 import React from 'react';
 import { Stack, UnstyledButton, Text, Group, Tooltip, Badge, ActionIcon, ScrollArea } from '@mantine/core';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarRightCollapse } from '@tabler/icons-react';
 import { adminNavigation, doctorNavigation } from '../../lib/navigation';
 import { Suspense } from 'react';
@@ -13,14 +13,7 @@ interface SidebarProps {
 
 function SidebarContent({ isAdmin, collapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
-  // Safe extraction without triggering Suspense boundary errors during prerender globally
-  let searchTab: string | null = null;
-  try {
-     const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-     searchTab = searchParams ? searchParams.get('tab') : null;
-  } catch (e) {
-     searchTab = null;
-  }
+  const searchParams = useSearchParams();
   const router = useRouter();
 
   const navTree = isAdmin ? adminNavigation : doctorNavigation;
@@ -42,12 +35,12 @@ function SidebarContent({ isAdmin, collapsed, onToggleCollapse }: SidebarProps) 
                 // and avoids window hydration mismatches by utilizing Next.js hooks natively.
                 let isActive = false;
                 if (item.matchTab) {
-                   isActive = searchTab === item.matchTab;
+                   isActive = searchParams.get('tab') === item.matchTab;
                 } else if (item.route === '/doctor') {
                    // Exact match for the root doctor dashboard to prevent it from swallowing all `/doctor/*` routes
                    isActive = pathname === '/doctor';
                 } else if (item.route === '/admin') {
-                   isActive = pathname === '/admin' && !searchTab;
+                   isActive = pathname === '/admin' && !searchParams.has('tab');
                 } else {
                    isActive = pathname === item.route || pathname?.startsWith(item.route + '/');
                 }

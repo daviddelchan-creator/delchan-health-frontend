@@ -11,15 +11,13 @@ export default function PatientDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Structural simulated fetch targeting the /api/patient/dashboard endpoint
-    // We enforce an unauthorized state because the patient portal authentication logic
-    // is not fully mapped in the legacy architecture yet.
-    // Do not fabricate fake users or JWT tokens here.
+    // The underlying Layout has already established proper bounds check on identity.
+    // In future iterations, standard SWR or React Query hooks should be used to pull pre-hydrated layout data downwards natively.
     const attemptDataFetch = async () => {
        try {
           const res = await fetch('/api/patient/dashboard', {
              headers: {
-                'Authorization': 'Bearer placeholder_if_needed'
+                'Authorization': `Bearer ${typeof localStorage !== 'undefined' ? localStorage.getItem('medplum-token') || '' : ''}`
              }
           });
 
