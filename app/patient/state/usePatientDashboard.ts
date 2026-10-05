@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useMedplum } from '@medplum/react-hooks';
+import { useMedplum, useMedplumProfile } from '@medplum/react-hooks';
 import { PatientDashboardResponse, PatientPortalState } from '../types/dashboard';
 import { fetchPatientDashboard, DashboardApiError } from '../api/dashboard';
 
 export function usePatientDashboard() {
   const medplum = useMedplum();
+  const profile = useMedplumProfile();
   const [state, setState] = useState<PatientPortalState>('INITIALIZING');
   const [data, setData] = useState<PatientDashboardResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -13,8 +14,8 @@ export function usePatientDashboard() {
     let mounted = true;
 
     async function load() {
-      // Small delay to allow Medplum to initialize auth state
-      if (medplum.isLoading()) {
+      // Use profile as a stable dependency for auth state initialization
+      if (profile === undefined && medplum.isLoading()) {
          return;
       }
 
@@ -67,7 +68,7 @@ export function usePatientDashboard() {
     return () => {
       mounted = false;
     };
-  }, [medplum, medplum.isLoading()]);
+  }, [medplum, profile]);
 
   return { state, data, error };
 }

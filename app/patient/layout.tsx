@@ -15,7 +15,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
   // Wait for initialization or loading
   if (state === 'INITIALIZING' || state === 'LOADING') {
     return (
-      <div style={{ backgroundColor: '#e2e8f0', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ backgroundColor: 'var(--mantine-color-gray-2)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
          <Loading message="Carregando portal do paciente..." />
       </div>
     );
@@ -23,7 +23,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
 
   if (state === 'UNAUTHORIZED') {
     return (
-       <div style={{ backgroundColor: '#e2e8f0', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+       <div style={{ backgroundColor: 'var(--mantine-color-gray-2)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <ErrorState
              title="Sessão Expirada"
              message="Por favor, faça login novamente para acessar o portal."
@@ -36,7 +36,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
 
   if (state === 'FORBIDDEN') {
     return (
-      <div style={{ backgroundColor: '#e2e8f0', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ backgroundColor: 'var(--mantine-color-gray-2)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
          <ErrorState
             title="Acesso Negado"
             message="Este portal é exclusivo para pacientes. Sua conta não tem permissão para acessá-lo."
@@ -61,7 +61,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
   const activeTab = getActiveTab();
 
   return (
-    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: 'var(--mantine-color-gray-0)', minHeight: '100vh' }}>
         <AppShell
            header={{ height: 70 }}
            navbar={{ width: 250, breakpoint: 'sm', collapsed: { mobile: true } }}
@@ -69,7 +69,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
            padding="md"
         >
 
-          <AppShell.Header bg="white" style={{ borderBottom: '1px solid #e2e8f0' }}>
+          <AppShell.Header bg="white" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
             <Group h="100%" px="md" justify="space-between">
               <Group gap="sm">
                 <ThemeIcon size="lg" radius="md" color="teal" variant="light">
@@ -81,7 +81,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             </Group>
           </AppShell.Header>
 
-          <AppShell.Navbar p="md" bg="white" style={{ borderRight: '1px solid #e2e8f0' }}>
+          <AppShell.Navbar p="md" bg="white" style={{ borderRight: '1px solid var(--mantine-color-gray-2)' }}>
             <NavLink
                label="Início"
                leftSection="🏠"
@@ -142,7 +142,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             {children}
           </AppShell.Main>
 
-          <AppShell.Footer bg="white" style={{ borderTop: '1px solid #e2e8f0', padding: '10px 10px' }} zIndex={100}>
+          <AppShell.Footer bg="white" style={{ borderTop: '1px solid var(--mantine-color-gray-2)', padding: '10px 10px' }} zIndex={100}>
             <Group justify="space-between" align="center" h="100%" wrap="nowrap">
               <Stack gap={4} align="center" onClick={() => router.push('/patient')} style={{ cursor: 'pointer', flex: 1 }}>
                 <Text size="xl" c={activeTab === 'inicio' ? 'teal' : 'gray.4'}>🏠</Text>

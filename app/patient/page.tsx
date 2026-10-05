@@ -41,7 +41,7 @@ export default function PatientDashboardPage() {
       ) : (
          <>
             {nextAppointment ? (
-              <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder style={{ borderColor: '#f1f5f9' }}>
+              <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder style={{ borderColor: 'var(--mantine-color-gray-1)' }}>
                 <Group justify="space-between" mb="sm">
                   <Badge color="blue" variant="light" size="sm" fw={700}>Consulta Confirmada</Badge>
                   <Text size="xs" c="dimmed" fw={600}>
@@ -59,7 +59,7 @@ export default function PatientDashboardPage() {
                 </Group>
               </Card>
             ) : (
-               <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder style={{ borderColor: '#f1f5f9' }}>
+               <Card p="lg" radius="xl" bg="white" shadow="sm" withBorder style={{ borderColor: 'var(--mantine-color-gray-1)' }}>
                   <Group wrap="nowrap">
                     <ThemeIcon size="lg" radius="xl" color="teal.6">✅</ThemeIcon>
                     <div>
