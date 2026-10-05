@@ -39,9 +39,8 @@ export function Example() {
 
 ## Limitações Conhecidas (Fase UI-2.1)
 
-Durante a fase UI-2.1, nosso foco principal é **estabelecer a fundação e a infraestrutura visual** sem realizar o redesign maciço das telas.
+Durante a fase UI-2.1, nosso foco principal é **estabelecer a fundação e a infraestrutura visual** definindo a central de tokens (`designTokens`) como a única fonte de verdade. A aplicação completa e migração destes tokens aos componentes e telas ocorrerá nas ondas seguintes (UI-2.2+), portanto, não realizamos um redesign maciço das telas nesta fase inicial.
 
-- **Auditoria de Hardcoded Hex:** Uma auditoria preliminar revelou que alguns componentes em `app/patient/page.tsx` ainda podem estar usando configurações via propriedades customizadas ou `mergeMantineTheme`. Os valores "hardcoded" nestes componentes foram registrados e serão iterados e limpos durante as ondas **UI-2.2+** para assegurar conformidade total sem quebrar a estabilidade atual.
-- Nenhum redesign drástico foi efetuado na tela atual.
+- **Auditoria de Hardcoded Hex:** A duplicação de provedores e o uso de abstrações paralelas (como `MantineProvider` locais e `mergeMantineTheme` no `app/patient/page.tsx`) foram eliminados nesta etapa para garantir a unicidade do layout root. No entanto, os componentes internos das telas (como backgrounds em hexadecimal `#f8fafc`, margin pixels fixos, etc) continuarão ostentando hardcodes visuais herdados. Estes valores foram registrados e serão limpos e migrados nas ondas subsequentes para assegurar conformidade total com o novo design sem quebrar a estabilidade estrutural atual.
 
 **Sempre siga as regras baseadas neste Design System para todas as novas construções e atualizações!**
