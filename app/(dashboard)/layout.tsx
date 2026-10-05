@@ -12,20 +12,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const profile = useMedplumProfile();
   const { tenantConfig } = useTenant();
-
+  
   const [profileOpen, setProfileOpen] = useState(false);
 
   const isAdmin = pathname?.startsWith('/admin');
   const isDoctor = pathname?.startsWith('/doctor') || pathname === '/';
 
   return (
-    <AppShell
-      header={isDoctor ? { height: 70 } : undefined}
-      navbar={isAdmin ? { width: 260, breakpoint: 'sm' } : undefined}
-      padding={0}
+    <AppShell 
+      header={isDoctor ? { height: 70 } : undefined} 
+      navbar={isAdmin ? { width: 260, breakpoint: 'sm' } : undefined} 
+      padding={0} 
       bg="#f8f9fa"
     >
-
+      
       {/* HEADER DO MÉDICO / DASHBOARD */}
       {isDoctor && (
         <AppShell.Header style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
@@ -72,15 +72,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <UnstyledButton onClick={() => router.push('/admin?tab=tenants')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Clínicas / Tenants</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=modules')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Módulos SaaS</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=whitelabel')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>White-Label</UnstyledButton>
-
+            
             <Text size="xs" fw={700} c="dimmed" mt="sm" mb="xs" px="xs" lts={1}>COMERCIAL & MARKETING</Text>
-            <UnstyledButton
-              onClick={() => router.push('/admin/crm')}
-              p="sm"
-              bg={pathname === '/admin/crm' ? 'teal.0' : 'transparent'}
-              c={pathname === '/admin/crm' ? 'teal.9' : 'gray.8'}
-              style={{
-                borderRadius: 8,
+            <UnstyledButton 
+              onClick={() => router.push('/admin/crm')} 
+              p="sm" 
+              bg={pathname === '/admin/crm' ? 'teal.0' : 'transparent'} 
+              c={pathname === '/admin/crm' ? 'teal.9' : 'gray.8'} 
+              style={{ 
+                borderRadius: 8, 
                 fontWeight: pathname === '/admin/crm' ? 700 : 500,
                 display: 'flex',
                 alignItems: 'center',
@@ -90,11 +90,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <span>💬 CRM & Leads</span>
               <Badge size="xs" color="teal" variant="light">Ativo</Badge>
             </UnstyledButton>
-
+            
             <Text size="xs" fw={700} c="dimmed" mt="sm" mb="xs" px="xs" lts={1}>CONFIG. CLÍNICA</Text>
             <UnstyledButton onClick={() => router.push('/admin?tab=clinic')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Dados da Clínica</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=security')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Segurança & Acesso</UnstyledButton>
-
+            
             <Text size="xs" fw={700} c="dimmed" mt="sm" mb="xs" px="xs" lts={1}>ENGENHARIA</Text>
             <UnstyledButton onClick={() => router.push('/admin?tab=layout')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Layout Prontuário</UnstyledButton>
             <UnstyledButton onClick={() => router.push('/admin?tab=builder')} p="sm" c="gray.8" style={{ borderRadius: 8, fontWeight: 500 }}>Construtor de Módulos</UnstyledButton>
