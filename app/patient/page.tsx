@@ -1,30 +1,24 @@
 "use client";
 
 import { useState } from 'react';
-import { 
-  MantineProvider, AppShell, Group, Title, Text, Avatar, Card, ActionIcon, Stack, Button, Badge, ThemeIcon, Progress, Divider, Grid, Modal, Notification
+import {
+  AppShell, Group, Title, Text, Avatar, Card, ActionIcon, Stack, Button, Badge, ThemeIcon, Progress, Divider, Grid, Modal, Notification
 } from '@mantine/core';
 import { MasterSignature } from '@/components/shared/MasterSignature';
 
 const tenantConfig = {
-  brandColor: 'teal', 
+  brandColor: 'teal',
   clinicName: 'Delchan Health',
   patientName: 'João da Silva',
   features: {
     telemedicine: true,
-    healthSync: true, 
+    healthSync: true,
   }
-};
-
-const patientTheme = {
-  primaryColor: tenantConfig.brandColor,
-  defaultRadius: 'xl',
-  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
 };
 
 export default function PatientMobileApp() {
   const [activeTab, setActiveTab] = useState('home');
-  
+
   // ESTADOS PARA RECIBIR EL "PUSH" DEL ADMIN
   const [pendingTCLE, setPendingTCLE] = useState(true);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
@@ -38,12 +32,12 @@ export default function PatientMobileApp() {
   };
 
   return (
-    <MantineProvider theme={patientTheme}>
+    <>
       <div style={{ backgroundColor: '#e2e8f0', minHeight: '100vh', display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: '100%', maxWidth: '480px', backgroundColor: '#f8fafc', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-          
+
           <AppShell header={{ height: 70 }} footer={{ height: 80 }} padding="md">
-            
+
             <AppShell.Header bg="white" style={{ borderBottom: 'none', borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
               <Group h="100%" px="md" justify="space-between">
                 <Group gap="sm">
@@ -58,7 +52,7 @@ export default function PatientMobileApp() {
 
             <AppShell.Main pt={90} pb={100}>
               <Stack gap="lg">
-                
+
                 <div>
                   <Text size="sm" c="dimmed" fw={600} tt="uppercase">Bem-vindo de volta,</Text>
                   <Title order={2} c="dark.9" fw={800} style={{ letterSpacing: '-0.5px' }}>
@@ -108,7 +102,7 @@ export default function PatientMobileApp() {
                   </Group>
                   <Title order={4} c="dark.9" fw={800}>Avaliação Clínica Geral</Title>
                   <Text size="sm" c="dimmed" mb="lg">👨‍⚕️ Dr. Alberto Silva • Unidade Jardins</Text>
-                  
+
                   <Group grow>
                     <Button variant="outline" color="dark.8" radius="xl" onClick={() => alert('Solicitação de reagendamento enviada à clínica.')}>Reagendar</Button>
                     {tenantConfig.features.telemedicine && (
@@ -171,14 +165,14 @@ export default function PatientMobileApp() {
 
       {/* MODAL DE ASSINATURA TCLE */}
       <Modal opened={showSignaturePad} onClose={() => setShowSignaturePad(false)} withCloseButton={false} centered size="md" radius="md" padding={0}>
-        <MasterSignature 
-          documentName="Termo de Consentimento Livre e Esclarecido (TCLE) - LGPD" 
-          brandColor={tenantConfig.brandColor} 
-          onSign={handleSignDocument} 
-          onCancel={() => setShowSignaturePad(false)} 
+        <MasterSignature
+          documentName="Termo de Consentimento Livre e Esclarecido (TCLE) - LGPD"
+          brandColor={tenantConfig.brandColor}
+          onSign={handleSignDocument}
+          onCancel={() => setShowSignaturePad(false)}
         />
       </Modal>
 
-    </MantineProvider>
+    </>
   );
 }
