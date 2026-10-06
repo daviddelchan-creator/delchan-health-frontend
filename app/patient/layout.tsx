@@ -1,7 +1,16 @@
 "use client";
 
-import { AppShell, Group, Title, Avatar, ThemeIcon, Stack, Text, ActionIcon, NavLink } from '@mantine/core';
+import { AppShell, Group, Title, Avatar, ThemeIcon, Stack, Text, ActionIcon, NavLink, UnstyledButton } from '@mantine/core';
 import React, { ReactNode } from 'react';
+import {
+  IconHome,
+  IconCalendarEvent,
+  IconClipboardList,
+  IconFolder,
+  IconHeartbeat,
+  IconUser,
+  IconDna
+} from '@tabler/icons-react';
 import { usePatientDashboardContext, PatientDashboardProvider } from './state/PatientDashboardContext';
 import { usePathname, useRouter } from 'next/navigation';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -14,7 +23,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
   // Wait for initialization or loading
   if (state === 'INITIALIZING' || state === 'LOADING') {
     return (
-      <div style={{ backgroundColor: 'var(--mantine-color-gray-1)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ backgroundColor: 'var(--mantine-color-gray-0)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
          <Text c="dimmed">Carregando portal do paciente...</Text>
       </div>
     );
@@ -22,7 +31,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
 
   if (state === 'UNAUTHORIZED') {
     return (
-       <div style={{ backgroundColor: 'var(--mantine-color-gray-1)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+       <div style={{ backgroundColor: 'var(--mantine-color-gray-0)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <ErrorState
              title="Sessão Expirada"
              message="Por favor, faça login novamente para acessar o portal."
@@ -35,7 +44,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
 
   if (state === 'FORBIDDEN') {
     return (
-      <div style={{ backgroundColor: 'var(--mantine-color-gray-1)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ backgroundColor: 'var(--mantine-color-gray-0)', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
          <ErrorState
             title="Acesso Negado"
             message="Este portal é exclusivo para pacientes. Sua conta não tem permissão para acessá-lo."
@@ -49,11 +58,12 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
 
   // Navigation logic
   const getActiveTab = () => {
-     if (pathname.includes('/consultas')) return 'consultas';
-     if (pathname.includes('/historico')) return 'historico';
-     if (pathname.includes('/documentos')) return 'documentos';
-     if (pathname.includes('/saude')) return 'saude';
-     if (pathname.includes('/perfil')) return 'perfil';
+     if (pathname === '/patient' || pathname === '/patient/') return 'inicio';
+     if (pathname === '/patient/consultas' || pathname.startsWith('/patient/consultas/')) return 'consultas';
+     if (pathname === '/patient/historico' || pathname.startsWith('/patient/historico/')) return 'historico';
+     if (pathname === '/patient/documentos' || pathname.startsWith('/patient/documentos/')) return 'documentos';
+     if (pathname === '/patient/saude' || pathname.startsWith('/patient/saude/')) return 'saude';
+     if (pathname === '/patient/perfil' || pathname.startsWith('/patient/perfil/')) return 'perfil';
      return 'inicio';
   };
 
@@ -72,7 +82,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             <Group h="100%" px="md" justify="space-between">
               <Group gap="sm">
                 <ThemeIcon size="lg" radius="md" color="teal" variant="light">
-                  <Text fw={800} size="lg">🧬</Text>
+                  <IconDna size={22} stroke={2.5} />
                 </ThemeIcon>
                 <Title order={4} c="dark.9" fw={800}>Portal do Paciente</Title>
               </Group>
@@ -83,7 +93,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
           <AppShell.Navbar p="md" bg="white" withBorder>
             <NavLink
                label="Início"
-               leftSection="🏠"
+               leftSection={<IconHome size={18} stroke={2} />}
                active={activeTab === 'inicio'}
                onClick={() => router.push('/patient')}
                color="teal"
@@ -92,7 +102,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             />
             <NavLink
                label="Consultas"
-               leftSection="🗓️"
+               leftSection={<IconCalendarEvent size={18} stroke={2} />}
                active={activeTab === 'consultas'}
                onClick={() => router.push('/patient/consultas')}
                color="teal"
@@ -101,7 +111,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             />
             <NavLink
                label="Histórico"
-               leftSection="📋"
+               leftSection={<IconClipboardList size={18} stroke={2} />}
                active={activeTab === 'historico'}
                onClick={() => router.push('/patient/historico')}
                color="teal"
@@ -110,7 +120,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             />
             <NavLink
                label="Documentos"
-               leftSection="📂"
+               leftSection={<IconFolder size={18} stroke={2} />}
                active={activeTab === 'documentos'}
                onClick={() => router.push('/patient/documentos')}
                color="teal"
@@ -119,7 +129,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             />
             <NavLink
                label="Saúde"
-               leftSection="❤️"
+               leftSection={<IconHeartbeat size={18} stroke={2} />}
                active={activeTab === 'saude'}
                onClick={() => router.push('/patient/saude')}
                color="teal"
@@ -128,7 +138,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
             />
             <NavLink
                label="Perfil"
-               leftSection="👤"
+               leftSection={<IconUser size={18} stroke={2} />}
                active={activeTab === 'perfil'}
                onClick={() => router.push('/patient/perfil')}
                color="teal"
@@ -143,32 +153,44 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
 
           <AppShell.Footer bg="white" withBorder px="xs" py="xs" zIndex={100}>
             <Group justify="space-between" align="center" h="100%" wrap="nowrap">
-              <Stack gap={4} align="center" onClick={() => router.push('/patient')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'inicio' ? 'teal' : 'dimmed'}>🏠</Text>
-                <Text size="xs" fw={700} c={activeTab === 'inicio' ? 'teal' : 'dimmed'}>Início</Text>
-              </Stack>
-              <Stack gap={4} align="center" onClick={() => router.push('/patient/consultas')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'consultas' ? 'teal' : 'dimmed'}>🗓️</Text>
-                <Text size="xs" fw={700} c={activeTab === 'consultas' ? 'teal' : 'dimmed'}>Agenda</Text>
-              </Stack>
-              <Stack gap={4} align="center" onClick={() => router.push('/patient/historico')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'historico' ? 'teal' : 'dimmed'}>📋</Text>
-                <Text size="xs" fw={700} c={activeTab === 'historico' ? 'teal' : 'dimmed'}>Hist.</Text>
-              </Stack>
-              <Stack gap={4} align="center" onClick={() => router.push('/patient/documentos')} style={{ cursor: 'pointer', flex: 1, position: 'relative', top: '-10px' }}>
-                <ActionIcon size="xl" radius="xl" color="teal" variant={activeTab === 'documentos' ? 'filled' : 'light'} style={{ boxShadow: activeTab === 'documentos' ? 'var(--mantine-shadow-md)' : 'none' }}>
-                  <Text size="lg">📂</Text>
-                </ActionIcon>
-                <Text size="xs" fw={700} c={activeTab === 'documentos' ? 'teal' : 'dimmed'}>Docs</Text>
-              </Stack>
-              <Stack gap={4} align="center" onClick={() => router.push('/patient/saude')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'saude' ? 'teal' : 'dimmed'}>❤️</Text>
-                <Text size="xs" fw={700} c={activeTab === 'saude' ? 'teal' : 'dimmed'}>Saúde</Text>
-              </Stack>
-              <Stack gap={4} align="center" onClick={() => router.push('/patient/perfil')} style={{ cursor: 'pointer', flex: 1 }}>
-                <Text size="xl" c={activeTab === 'perfil' ? 'teal' : 'dimmed'}>👤</Text>
-                <Text size="xs" fw={700} c={activeTab === 'perfil' ? 'teal' : 'dimmed'}>Perfil</Text>
-              </Stack>
+              <UnstyledButton onClick={() => router.push('/patient')} aria-label="Página Inicial" style={{ flex: 1, borderRadius: 'var(--mantine-radius-md)' }}>
+                <Stack gap={4} align="center">
+                  <IconHome size={24} color={activeTab === 'inicio' ? 'var(--mantine-color-teal-filled)' : 'var(--mantine-color-dimmed)'} stroke={activeTab === 'inicio' ? 2.5 : 1.5} />
+                  <Text size="xs" fw={700} c={activeTab === 'inicio' ? 'teal' : 'dimmed'}>Início</Text>
+                </Stack>
+              </UnstyledButton>
+              <UnstyledButton onClick={() => router.push('/patient/consultas')} aria-label="Agenda de Consultas" style={{ flex: 1, borderRadius: 'var(--mantine-radius-md)' }}>
+                <Stack gap={4} align="center">
+                  <IconCalendarEvent size={24} color={activeTab === 'consultas' ? 'var(--mantine-color-teal-filled)' : 'var(--mantine-color-dimmed)'} stroke={activeTab === 'consultas' ? 2.5 : 1.5} />
+                  <Text size="xs" fw={700} c={activeTab === 'consultas' ? 'teal' : 'dimmed'}>Agenda</Text>
+                </Stack>
+              </UnstyledButton>
+              <UnstyledButton onClick={() => router.push('/patient/historico')} aria-label="Histórico Clínico" style={{ flex: 1, borderRadius: 'var(--mantine-radius-md)' }}>
+                <Stack gap={4} align="center">
+                  <IconClipboardList size={24} color={activeTab === 'historico' ? 'var(--mantine-color-teal-filled)' : 'var(--mantine-color-dimmed)'} stroke={activeTab === 'historico' ? 2.5 : 1.5} />
+                  <Text size="xs" fw={700} c={activeTab === 'historico' ? 'teal' : 'dimmed'}>Hist.</Text>
+                </Stack>
+              </UnstyledButton>
+              <UnstyledButton onClick={() => router.push('/patient/documentos')} aria-label="Documentos e Resultados" style={{ flex: 1, borderRadius: 'var(--mantine-radius-md)', position: 'relative', top: '-10px' }}>
+                <Stack gap={4} align="center">
+                  <ThemeIcon size="xl" radius="xl" color="teal" variant={activeTab === 'documentos' ? 'filled' : 'light'} style={{ boxShadow: activeTab === 'documentos' ? 'var(--mantine-shadow-md)' : 'none', pointerEvents: 'none' }}>
+                    <IconFolder size={22} stroke={2.5} />
+                  </ThemeIcon>
+                  <Text size="xs" fw={700} c={activeTab === 'documentos' ? 'teal' : 'dimmed'}>Docs</Text>
+                </Stack>
+              </UnstyledButton>
+              <UnstyledButton onClick={() => router.push('/patient/saude')} aria-label="Minha Saúde" style={{ flex: 1, borderRadius: 'var(--mantine-radius-md)' }}>
+                <Stack gap={4} align="center">
+                  <IconHeartbeat size={24} color={activeTab === 'saude' ? 'var(--mantine-color-teal-filled)' : 'var(--mantine-color-dimmed)'} stroke={activeTab === 'saude' ? 2.5 : 1.5} />
+                  <Text size="xs" fw={700} c={activeTab === 'saude' ? 'teal' : 'dimmed'}>Saúde</Text>
+                </Stack>
+              </UnstyledButton>
+              <UnstyledButton onClick={() => router.push('/patient/perfil')} aria-label="Perfil e Configurações" style={{ flex: 1, borderRadius: 'var(--mantine-radius-md)' }}>
+                <Stack gap={4} align="center">
+                  <IconUser size={24} color={activeTab === 'perfil' ? 'var(--mantine-color-teal-filled)' : 'var(--mantine-color-dimmed)'} stroke={activeTab === 'perfil' ? 2.5 : 1.5} />
+                  <Text size="xs" fw={700} c={activeTab === 'perfil' ? 'teal' : 'dimmed'}>Perfil</Text>
+                </Stack>
+              </UnstyledButton>
             </Group>
           </AppShell.Footer>
 

@@ -2,6 +2,7 @@
 
 import { Stack, Title } from '@mantine/core';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { IconClipboardList } from '@tabler/icons-react';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
 
 export default function HistoricoPlaceholderPage() {
@@ -15,7 +16,7 @@ export default function HistoricoPlaceholderPage() {
         Histórico Clínico
       </Title>
       <EmptyState
-        icon={<span style={{ fontSize: '3rem' }}>📋</span>}
+        icon={<IconClipboardList size={48} stroke={1.5} color="var(--mantine-color-teal-6)" />}
         title="Em breve"
         description="O histórico clínico completo e registros médicos estarão disponíveis em breve."
       />

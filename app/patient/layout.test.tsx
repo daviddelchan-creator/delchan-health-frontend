@@ -52,8 +52,7 @@ describe('PatientAppShell Layout', () => {
   it('renders loading state when INITIALIZING', () => {
     mockUsePatientDashboardContext.mockReturnValue({ state: 'INITIALIZING', data: null, error: null });
     const { container } = renderWithProvider(<PatientAppShell><div>Conteúdo</div></PatientAppShell>);
-    // We check if the Loader component rendered with the correct prop
-    expect(container.querySelector('span[message="Carregando portal do paciente..."]')).toBeInTheDocument();
+    expect(screen.getByText('Carregando portal do paciente...')).toBeInTheDocument();
   });
 
   it('renders unauthorized state when UNAUTHORIZED', () => {
@@ -91,5 +90,73 @@ describe('PatientAppShell Layout', () => {
     // Check for the "Histórico" label which exists in both Navbar (desktop) and Footer (mobile 'Hist.')
     const navLinks = screen.getAllByText(/Histórico|Hist\./i);
     expect(navLinks.length).toBeGreaterThan(0);
+  });
+
+  describe('Active Navigation Matching', () => {
+    const setupMock = () => {
+      mockUsePatientDashboardContext.mockReturnValue({
+          state: 'READY',
+          data: { profile: { name: [{ given: ['João'] }] } },
+          error: null
+      });
+    };
+
+    it('matches /patient to inicio', () => {
+      setupMock();
+      (usePathname as jest.Mock).mockReturnValue('/patient');
+      const { container } = renderWithProvider(<PatientAppShell><div>Conteúdo</div></PatientAppShell>);
+      const activeLink = container.querySelector('[data-active="true"]');
+      expect(activeLink).toHaveTextContent('Início');
+    });
+
+    it('matches /patient/ to inicio', () => {
+      setupMock();
+      (usePathname as jest.Mock).mockReturnValue('/patient/');
+      const { container } = renderWithProvider(<PatientAppShell><div>Conteúdo</div></PatientAppShell>);
+      const activeLink = container.querySelector('[data-active="true"]');
+      expect(activeLink).toHaveTextContent('Início');
+    });
+
+    it('matches /patient/consultas to consultas', () => {
+      setupMock();
+      (usePathname as jest.Mock).mockReturnValue('/patient/consultas');
+      const { container } = renderWithProvider(<PatientAppShell><div>Conteúdo</div></PatientAppShell>);
+      const activeLink = container.querySelector('[data-active="true"]');
+      expect(activeLink).toHaveTextContent('Consultas');
+    });
+
+    it('matches nested /patient/consultas/123 to consultas', () => {
+      setupMock();
+      (usePathname as jest.Mock).mockReturnValue('/patient/consultas/123');
+      const { container } = renderWithProvider(<PatientAppShell><div>Conteúdo</div></PatientAppShell>);
+      const activeLink = container.querySelector('[data-active="true"]');
+      expect(activeLink).toHaveTextContent('Consultas');
+    });
+
+    it('does NOT match false positive /patient/consultasXYZ to consultas', () => {
+      setupMock();
+      (usePathname as jest.Mock).mockReturnValue('/patient/consultasXYZ');
+      const { container } = renderWithProvider(<PatientAppShell><div>Conteúdo</div></PatientAppShell>);
+      const activeLink = container.querySelector('[data-active="true"]');
+      // Should fallback to inicio since it is not a matched route
+      expect(activeLink).toHaveTextContent('Início');
+    });
+
+    it('matches other sections properly', () => {
+      setupMock();
+      const routes = [
+        { path: '/patient/historico', expected: 'Histórico' },
+        { path: '/patient/documentos', expected: 'Documentos' },
+        { path: '/patient/saude', expected: 'Saúde' },
+        { path: '/patient/perfil', expected: 'Perfil' },
+      ];
+
+      routes.forEach(({ path, expected }) => {
+        (usePathname as jest.Mock).mockReturnValue(path);
+        const { container } = renderWithProvider(<PatientAppShell><div>Conteúdo</div></PatientAppShell>);
+        const activeLink = container.querySelector('[data-active="true"]');
+        expect(activeLink).toHaveTextContent(expected);
+      });
+    });
   });
 });
