@@ -17,8 +17,8 @@ export default function DocumentosPage() {
   const { state, data } = usePatientDashboardContext();
   const medplum = useMedplum();
   const [selectedDocument, setSelectedDocument] = useState<DocumentReference | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [isViewing, setIsViewing] = useState(false);
+  const [viewError, setViewError] = useState<string | null>(null);
 
   if (state === 'INITIALIZING' || state === 'LOADING') {
     return <Loading />;
@@ -59,7 +59,7 @@ export default function DocumentosPage() {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       setSelectedDocument(doc);
-      setDownloadError(null);
+      setViewError(null);
     }
   };
 
@@ -91,10 +91,10 @@ export default function DocumentosPage() {
       return format.split('/')[1]?.toUpperCase() || format;
   };
 
-  const handleDownload = async (doc: DocumentReference) => {
+  const handleView = async (doc: DocumentReference) => {
       const details = parseDocumentDetails(doc);
       if (!details.url || !details.url.startsWith('Binary/')) {
-          setDownloadError("Não é possível acessar o arquivo original.");
+          setViewError("Não é possível acessar o arquivo original.");
           return;
       }
 
@@ -102,12 +102,12 @@ export default function DocumentosPage() {
       const token = medplum.getAccessToken();
 
       if (!token) {
-          setDownloadError("Sessão inválida para download.");
+          setViewError("Sessão inválida para visualização.");
           return;
       }
 
-      setIsDownloading(true);
-      setDownloadError(null);
+      setIsViewing(true);
+      setViewError(null);
 
       try {
           const response = await fetch(`/api/patient/binary/${binaryId}`, {
@@ -123,18 +123,21 @@ export default function DocumentosPage() {
 
           const blob = await response.blob();
           const objectUrl = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = objectUrl;
-          link.download = details.title ? `${details.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${details.format?.split('/')[1] || 'bin'}` : `documento_${binaryId}`;
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          window.URL.revokeObjectURL(objectUrl);
+
+          const newWindow = window.open(objectUrl, '_blank');
+          if (!newWindow) {
+              setViewError("Abertura bloqueada pelo navegador. Permita pop-ups para visualizar.");
+          }
+
+          // Clean up the URL object after some time to ensure it loads
+          setTimeout(() => {
+              window.URL.revokeObjectURL(objectUrl);
+          }, 60000);
 
       } catch (err: any) {
-          setDownloadError("Não foi possível carregar o documento no momento.");
+          setViewError("Não foi possível carregar o documento no momento.");
       } finally {
-          setIsDownloading(false);
+          setIsViewing(false);
       }
   };
 
@@ -186,14 +189,14 @@ export default function DocumentosPage() {
                             fullWidth
                             color="delchanPrimary"
                             leftSection={<IconDownload size={18} />}
-                            loading={isDownloading}
-                            onClick={() => handleDownload(selectedDocument)}
+                            loading={isViewing}
+                            onClick={() => handleView(selectedDocument)}
                         >
                             Visualizar documento
                         </Button>
-                        {downloadError && (
+                        {viewError && (
                             <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light" p="xs">
-                                <Text size="xs">{downloadError}</Text>
+                                <Text size="xs">{viewError}</Text>
                             </Alert>
                         )}
                     </Stack>
@@ -233,7 +236,7 @@ export default function DocumentosPage() {
                          p="md"
                          onClick={() => {
                              setSelectedDocument(doc);
-                             setDownloadError(null);
+                             setViewError(null);
                          }}
                          onKeyDown={(ev) => handleKeyDown(ev, doc)}
                          aria-label={details.title ? `Ver detalhes de ${details.title}` : `Ver detalhes do documento`}

@@ -26,6 +26,9 @@ beforeEach(() => {
   window.URL.createObjectURL = jest.fn(() => 'blob:mock');
   window.URL.revokeObjectURL = jest.fn();
 
+  // Mock window open
+  window.open = jest.fn();
+
   // Mock global fetch
   global.fetch = jest.fn();
 });
@@ -42,8 +45,15 @@ describe('DocumentosPage', () => {
   it('renders loading state', () => {
     (usePatientDashboardContext as jest.Mock).mockReturnValue({ state: 'LOADING', data: null });
     const { container } = renderComponent();
-    // Depends on Loading.tsx - assuming it renders something that we can find, otherwise we just assert it doesn't crash
-    expect(container).toBeInTheDocument();
+
+    // We check that the UI isn't the error or main UI.
+    expect(screen.queryByText('Documentos do Paciente')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ocorreu um erro')).not.toBeInTheDocument();
+
+    // Check for the Loader by inspecting Mantine's class format
+    // mantine-Loader-root is standard for mantine loaders
+    const loaders = container.querySelectorAll('.mantine-Loader-root');
+    expect(loaders.length).toBeGreaterThan(0);
   });
 
   it('renders unauthorized state', () => {
@@ -105,7 +115,7 @@ describe('DocumentosPage', () => {
     });
   });
 
-  it('downloads supported format document', async () => {
+  it('views supported format document via window.open', async () => {
     const documents = [
         {
           resourceType: 'DocumentReference',
@@ -125,17 +135,54 @@ describe('DocumentosPage', () => {
         blob: async () => new Blob(['dummy content'], { type: 'application/pdf' })
     });
 
+    // Simulate window.open succeeding
+    (window.open as jest.Mock).mockReturnValue({ focus: jest.fn() });
+
     renderComponent();
     fireEvent.click(screen.getByText('Receita Medica'));
 
-    const downloadBtn = await screen.findByRole('button', { name: /Visualizar documento/i });
-    fireEvent.click(downloadBtn);
+    const viewBtn = await screen.findByRole('button', { name: /Visualizar documento/i });
+    fireEvent.click(viewBtn);
 
     await waitFor(() => {
        expect(global.fetch).toHaveBeenCalledWith('/api/patient/binary/abc1234', expect.objectContaining({
            headers: { 'Authorization': 'Bearer mock-token' }
        }));
        expect(window.URL.createObjectURL).toHaveBeenCalled();
+       expect(window.open).toHaveBeenCalledWith('blob:mock', '_blank');
+    });
+  });
+
+  it('shows error when popup blocker prevents viewing', async () => {
+    const documents = [
+        {
+          resourceType: 'DocumentReference',
+          id: 'doc1',
+          status: 'current',
+          type: { text: 'Receita Medica' },
+          content: [{ attachment: { contentType: 'application/pdf', url: 'Binary/abc1234' } }]
+        }
+    ];
+
+    (usePatientDashboardContext as jest.Mock).mockReturnValue({ state: 'READY', data: { documents } });
+    mockGetAccessToken.mockReturnValue('mock-token');
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        blob: async () => new Blob(['dummy content'], { type: 'application/pdf' })
+    });
+
+    // Simulate window.open returning null (popup blocked)
+    (window.open as jest.Mock).mockReturnValue(null);
+
+    renderComponent();
+    fireEvent.click(screen.getByText('Receita Medica'));
+
+    const viewBtn = await screen.findByRole('button', { name: /Visualizar documento/i });
+    fireEvent.click(viewBtn);
+
+    await waitFor(() => {
+       expect(screen.getByText(/Abertura bloqueada pelo navegador/i)).toBeInTheDocument();
     });
   });
 
@@ -163,7 +210,7 @@ describe('DocumentosPage', () => {
     });
   });
 
-  it('handles interaction with Enter/Space', async () => {
+  it('handles interaction with Enter and Space', async () => {
     const documents = [
         {
           resourceType: 'DocumentReference',
@@ -175,19 +222,34 @@ describe('DocumentosPage', () => {
     ];
 
     (usePatientDashboardContext as jest.Mock).mockReturnValue({ state: 'READY', data: { documents } });
-    renderComponent();
+    const { unmount } = renderComponent();
 
     const button = screen.getByLabelText('Ver detalhes de Laudo');
     button.focus();
 
+    // Test Enter
     fireEvent.keyDown(button, { key: 'Enter', code: 'Enter', charCode: 13 });
+
+    await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Visualizar documento/i })).toBeInTheDocument();
+    });
+
+    unmount();
+
+    // Re-render to test Space
+    renderComponent();
+    const button2 = screen.getByLabelText('Ver detalhes de Laudo');
+    button2.focus();
+
+    // Test Space
+    fireEvent.keyDown(button2, { key: ' ', code: 'Space', charCode: 32 });
 
     await waitFor(() => {
         expect(screen.getByRole('button', { name: /Visualizar documento/i })).toBeInTheDocument();
     });
   });
 
-  it('does not read patientId from window location search', () => {
+  it('does not use client searchParams or window location for identity', () => {
     (usePatientDashboardContext as jest.Mock).mockReturnValue({ state: 'READY', data: { documents: [] } });
     renderComponent();
 
