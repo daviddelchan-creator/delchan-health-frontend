@@ -58,12 +58,13 @@ describe('ConsultasPage', () => {
     expect(screen.getByText('Você não possui histórico ou consultas agendadas no momento.')).toBeInTheDocument();
   });
 
-  it('renders correctly future and past appointments, deterministically selecting the next appointment', () => {
+  it('renders correctly future, past, and cancelled appointments, deterministically selecting the next appointment', () => {
     const mockAppointments = [
       { id: '1', status: 'fulfilled', start: '2023-12-01T10:00:00Z', description: 'Consulta Antiga' },
       { id: '2', status: 'booked', start: '2024-01-20T10:00:00Z', description: 'Consulta Futura Longe' },
       { id: '3', status: 'booked', start: '2024-01-16T10:00:00Z', description: 'Próxima Consulta Real' },
-      { id: '4', status: 'cancelled', start: '2024-01-18T10:00:00Z', description: 'Consulta Cancelada' }
+      { id: '4', status: 'cancelled', start: '2024-01-18T10:00:00Z', description: 'Consulta Cancelada Futura' },
+      { id: '5', status: 'cancelled', start: '2023-12-10T10:00:00Z', description: 'Consulta Cancelada Passada' }
     ];
 
     mockUsePatientDashboardContext.mockReturnValue({
@@ -87,11 +88,14 @@ describe('ConsultasPage', () => {
     // Future
     expect(screen.getByText('Consulta Futura Longe')).toBeInTheDocument();
 
-    // Past / Cancelled
+    // Past
     expect(screen.getByText('Consulta Antiga')).toBeInTheDocument();
-    expect(screen.getByText('Consulta Cancelada')).toBeInTheDocument();
     expect(screen.getByText('Realizada')).toBeInTheDocument();
-    expect(screen.getByText('Cancelada')).toBeInTheDocument();
+
+    // Cancelled section
+    expect(screen.getByText('Canceladas')).toBeInTheDocument();
+    expect(screen.getByText('Consulta Cancelada Futura')).toBeInTheDocument();
+    expect(screen.getByText('Consulta Cancelada Passada')).toBeInTheDocument();
   });
 
   it('handles missing fields gracefully (no description, no practitioner, no start time)', () => {
@@ -107,11 +111,10 @@ describe('ConsultasPage', () => {
 
     renderWithProvider(<ConsultasPage />);
 
-    // Since it has no start date, it won't be considered "future" deterministically
-    // and since it is not a past status or past date, it won't be past.
-    // Actually, wait, let's see how our logic handles it.
-    // `if (!app.start) return false;` for both future and past.
-    // So it won't show up in any list. Let's fix the mock to test the fallbacks in the drawer or list.
+    // Because it lacks a start date, it should not appear in future or past lists.
+    // However, it should not break the UI. We assert that Empty states are shown for the lists.
+    expect(screen.getByText('Nenhuma consulta futura agendada.')).toBeInTheDocument();
+    expect(screen.getByText('Nenhum histórico de consultas.')).toBeInTheDocument();
   });
 
   it('handles missing fields gracefully when in list (no description, no practitioner)', () => {
@@ -131,7 +134,7 @@ describe('ConsultasPage', () => {
     expect(screen.getByText('Consulta')).toBeInTheDocument();
   });
 
-  it('shows practitioner name when available and opens drawer', async () => {
+  it('shows practitioner name when available and opens drawer via keyboard interaction', async () => {
     const mockAppointments = [
       {
         id: '1',

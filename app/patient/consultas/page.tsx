@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from 'react';
-import { Stack, Title, Card, Text, Group, Badge, Grid, ThemeIcon, Box } from '@mantine/core';
-import { IconCalendarEvent, IconClock, IconUser, IconStethoscope, IconVideo, IconMapPin, IconNotes } from '@tabler/icons-react';
+import { Stack, Title, Card, Text, Group, Badge, Grid, ThemeIcon, Box, Drawer, UnstyledButton } from '@mantine/core';
+import { IconCalendarEvent, IconClock, IconStethoscope, IconVideo, IconNotes } from '@tabler/icons-react';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
-import { Appointment, Reference, Practitioner } from '@medplum/fhirtypes';
+import { Appointment } from '@medplum/fhirtypes';
 import { StatusBadge, StatusSemanticType } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { QuickViewDrawer } from '@/components/ui/QuickViewDrawer';
 
 // Helper to map FHIR Appointment status to UI Badge
 function mapStatus(status: string | undefined): { label: string; semantic: StatusSemanticType } {
@@ -67,14 +66,21 @@ export default function ConsultasPage() {
   const nextAppointment = futureAppointments.length > 0 ? futureAppointments[0] : null;
   const otherFutureAppointments = futureAppointments.slice(1);
 
-  // Past appointments: end date in past, or fulfilled/cancelled status
+  // Past appointments: end date in past, or fulfilled/noshow status
   const pastAppointments = allAppointments.filter(app => {
-     if (!app.start) return false;
+     if (!app.start || app.status === 'cancelled') return false; // Exclude cancelled from past
      const isPast = new Date(app.start) < now;
-     const isPastStatus = ['fulfilled', 'cancelled', 'noshow'].includes(app.status || '');
+     const isPastStatus = ['fulfilled', 'noshow'].includes(app.status || '');
      return isPast || isPastStatus;
   });
   pastAppointments.sort((a, b) => new Date(b.start as string).getTime() - new Date(a.start as string).getTime()); // descending
+
+  // Cancelled appointments
+  const cancelledAppointments = allAppointments.filter(app => {
+     if (!app.start) return false;
+     return app.status === 'cancelled';
+  });
+  cancelledAppointments.sort((a, b) => new Date(b.start as string).getTime() - new Date(a.start as string).getTime()); // descending
 
   const hasAnyAppointments = allAppointments.length > 0;
 
@@ -88,48 +94,51 @@ export default function ConsultasPage() {
     const endDate = app.end ? new Date(app.end) : null;
     const practitionerName = getPractitionerName(app);
 
-    const isTelemedicine = app.appointmentType?.coding?.some(c => c.code === 'telemedicine') ||
-                           app.appointmentType?.text?.toLowerCase().includes('tele');
-
     return (
-      <Card
+      <UnstyledButton
         key={app.id}
-        p="lg"
-        radius="lg"
-        bg="white"
-        shadow={isNext ? "sm" : "none"}
-        withBorder
-        style={{ cursor: 'pointer', transition: 'box-shadow 0.2s', borderColor: isNext ? 'var(--mantine-color-teal-5)' : undefined }}
+        w="100%"
         onClick={() => handleOpenDrawer(app)}
+        style={{ textAlign: 'left', borderRadius: 'var(--mantine-radius-lg)' }}
+        aria-label={`Ver detalhes da consulta ${app.description || 'Consulta'}`}
       >
-        <Group justify="space-between" mb="sm" wrap="nowrap">
-          <StatusBadge status={statusData.semantic} size="sm" fw={700}>
-            {statusData.label}
-          </StatusBadge>
-          {isNext && <Badge color="teal" variant="filled" size="sm">Próxima</Badge>}
-        </Group>
+        <Card
+          p="lg"
+          radius="lg"
+          bg="white"
+          shadow={isNext ? "sm" : "none"}
+          withBorder
+          style={{ transition: 'box-shadow 0.2s', borderColor: isNext ? 'var(--mantine-color-teal-5)' : undefined }}
+        >
+          <Group justify="space-between" mb="sm" wrap="nowrap">
+            <StatusBadge status={statusData.semantic} size="sm" fw={700}>
+              {statusData.label}
+            </StatusBadge>
+            {isNext && <Badge color="teal" variant="filled" size="sm">Próxima</Badge>}
+          </Group>
 
-        <Group wrap="nowrap" align="flex-start">
-          <ThemeIcon size={isNext ? 48 : 40} radius="md" color={isNext ? "teal.6" : "gray.2"} variant="light">
-             <IconCalendarEvent size={isNext ? 24 : 20} stroke={2} color={isNext ? undefined : "var(--mantine-color-gray-6)"} />
-          </ThemeIcon>
-          <Box flex={1}>
-            <Title order={isNext ? 4 : 5} c="dark.9" fw={700} lineClamp={1}>
-              {app.description || 'Consulta'}
-            </Title>
-            <Text size="sm" c="dimmed" fw={500} mt={2}>
-               {startDate ? startDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) : 'Data a definir'}
-            </Text>
-            <Group gap="xs" mt={4}>
-               <IconClock size={14} color="var(--mantine-color-dimmed)" />
-               <Text size="xs" c="dimmed">
-                 {startDate ? startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                 {endDate && ` - ${endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
-               </Text>
-            </Group>
-          </Box>
-        </Group>
-      </Card>
+          <Group wrap="nowrap" align="flex-start">
+            <ThemeIcon size={isNext ? 48 : 40} radius="md" color={isNext ? "teal.6" : "gray.2"} variant="light">
+               <IconCalendarEvent size={isNext ? 24 : 20} stroke={2} color={isNext ? undefined : "var(--mantine-color-gray-6)"} />
+            </ThemeIcon>
+            <Box flex={1}>
+              <Title order={isNext ? 4 : 5} c="dark.9" fw={700} lineClamp={1}>
+                {app.description || 'Consulta'}
+              </Title>
+              <Text size="sm" c="dimmed" fw={500} mt={2}>
+                 {startDate ? startDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) : 'Data a definir'}
+              </Text>
+              <Group gap="xs" mt={4}>
+                 <IconClock size={14} color="var(--mantine-color-dimmed)" />
+                 <Text size="xs" c="dimmed">
+                   {startDate ? startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                   {endDate && ` - ${endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+                 </Text>
+              </Group>
+            </Box>
+          </Group>
+        </Card>
+      </UnstyledButton>
     );
   };
 
@@ -182,23 +191,34 @@ export default function ConsultasPage() {
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, md: 5 }}>
-               <Box>
-                  <Text size="sm" fw={600} c="dimmed" mb="xs" tt="uppercase">Anteriores</Text>
-                  {pastAppointments.length > 0 ? (
-                     <Stack gap="sm">
-                        {pastAppointments.map(app => renderAppointmentCard(app))}
-                     </Stack>
-                  ) : (
-                     <Card p="md" radius="lg" withBorder bg="var(--mantine-color-gray-0)">
-                        <Text size="sm" c="dimmed" ta="center">Nenhum histórico de consultas.</Text>
-                     </Card>
-                  )}
-               </Box>
+               <Stack gap="lg">
+                 <Box>
+                    <Text size="sm" fw={600} c="dimmed" mb="xs" tt="uppercase">Anteriores</Text>
+                    {pastAppointments.length > 0 ? (
+                       <Stack gap="sm">
+                          {pastAppointments.map(app => renderAppointmentCard(app))}
+                       </Stack>
+                    ) : (
+                       <Card p="md" radius="lg" withBorder bg="var(--mantine-color-gray-0)">
+                          <Text size="sm" c="dimmed" ta="center">Nenhum histórico de consultas.</Text>
+                       </Card>
+                    )}
+                 </Box>
+
+                 {cancelledAppointments.length > 0 && (
+                    <Box>
+                       <Text size="sm" fw={600} c="dimmed" mb="xs" tt="uppercase">Canceladas</Text>
+                       <Stack gap="sm">
+                          {cancelledAppointments.map(app => renderAppointmentCard(app))}
+                       </Stack>
+                    </Box>
+                 )}
+               </Stack>
             </Grid.Col>
          </Grid>
       )}
 
-      <QuickViewDrawer
+      <Drawer
         opened={!!selectedAppointment}
         onClose={() => setSelectedAppointment(null)}
         position="right"
@@ -247,12 +267,12 @@ export default function ConsultasPage() {
                      </Box>
                   </Group>
 
-                  {selectedAppointment.appointmentType && (
+                  {selectedAppointment.appointmentType?.text && (
                      <Group wrap="nowrap" align="flex-start">
                         <ThemeIcon color="teal" variant="light" size="sm" mt={2}><IconVideo size={14} /></ThemeIcon>
                         <Box>
                            <Text size="xs" c="dimmed" fw={600} tt="uppercase">Modalidade</Text>
-                           <Text size="sm" fw={500}>{selectedAppointment.appointmentType?.text || 'Presencial'}</Text>
+                           <Text size="sm" fw={500}>{selectedAppointment.appointmentType.text}</Text>
                         </Box>
                      </Group>
                   )}
@@ -270,7 +290,7 @@ export default function ConsultasPage() {
              </Card>
           </Stack>
         )}
-      </QuickViewDrawer>
+      </Drawer>
     </Stack>
   );
 }
