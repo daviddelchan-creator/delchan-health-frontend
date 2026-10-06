@@ -1,6 +1,6 @@
 "use client";
 
-import { Title, Text, Card, Stack, Button, Badge, Group, ThemeIcon, Grid, ActionIcon } from '@mantine/core';
+import { Title, Text, Card, Stack, Button, Badge, Group, ThemeIcon, Grid, ActionIcon, UnstyledButton } from '@mantine/core';
 import { usePatientDashboardContext } from './state/PatientDashboardContext';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -22,7 +22,17 @@ export default function PatientDashboardPage() {
   const profile = data?.profile;
   const firstName = profile?.name?.[0]?.given?.[0] || 'Paciente';
 
-  const nextAppointment = data?.appointments?.find(a => a.status === 'booked' || a.status === 'arrived');
+  // Find the next appointment deterministically (closest future appointment)
+  const now = new Date();
+  const upcomingAppointments = data?.appointments?.filter(a => {
+    if (a.status !== 'booked' && a.status !== 'arrived') return false;
+    if (!a.start) return false;
+    return new Date(a.start) > now;
+  }) || [];
+
+  upcomingAppointments.sort((a, b) => new Date(a.start as string).getTime() - new Date(b.start as string).getTime());
+
+  const nextAppointment = upcomingAppointments[0];
 
   // Extract practitioner from nextAppointment participant if available
   let practitionerName = null;
@@ -58,7 +68,9 @@ export default function PatientDashboardPage() {
                 {nextAppointment.start ? new Date(nextAppointment.start).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data a definir'}
             </Text>
           </Group>
-          <Title order={4} c="dark.9" fw={800}>{nextAppointment.description || 'Avaliação Clínica'}</Title>
+          <Title order={4} c="dark.9" fw={800}>
+            {nextAppointment.description || 'Consulta'}
+          </Title>
           {practitionerName && (
             <Text size="sm" c="dimmed" mb="lg">
                 {practitionerName}
@@ -93,12 +105,14 @@ export default function PatientDashboardPage() {
         <Grid gutter="sm">
           {quickActions.map((item, i) => (
             <Grid.Col span={{ base: 4, xs: 3, sm: 2 }} key={i}>
-              <Stack gap="xs" align="center" style={{ cursor: 'pointer' }} onClick={() => router.push(item.path)}>
-                <ActionIcon size="xl" radius="xl" variant="light" color="teal" style={{ width: 56, height: 56 }}>
-                  {item.icon}
-                </ActionIcon>
-                <Text size="xs" fw={600} c="dark.8" ta="center">{item.label}</Text>
-              </Stack>
+              <UnstyledButton onClick={() => router.push(item.path)} style={{ width: '100%', borderRadius: 'var(--mantine-radius-md)' }} aria-label={item.label}>
+                <Stack gap="xs" align="center">
+                  <ThemeIcon size="xl" radius="xl" variant="light" color="teal">
+                    {item.icon}
+                  </ThemeIcon>
+                  <Text size="xs" fw={600} c="dark.8" ta="center">{item.label}</Text>
+                </Stack>
+              </UnstyledButton>
             </Grid.Col>
           ))}
         </Grid>
@@ -114,67 +128,75 @@ export default function PatientDashboardPage() {
             <Text size="sm" fw={700} c="dark.9" mb="md">Resumo de Saúde</Text>
             <Grid gutter="md">
               <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Card p="md" radius="lg" withBorder shadow="none" onClick={() => router.push('/patient/documentos')} style={{ cursor: 'pointer' }}>
-                  <Group wrap="nowrap">
-                    <ThemeIcon size="lg" radius="md" color="blue" variant="light">
-                      <IconFolder size={20} />
-                    </ThemeIcon>
-                    <div>
-                      <Text fw={700} size="sm">Documentos</Text>
-                      <Text size="xs" c="dimmed">
-                        {data?.documents?.length ? `${data.documents.length} documento${data.documents.length > 1 ? 's' : ''} disponíve${data.documents.length > 1 ? 'is' : 'l'}` : 'Nenhum documento'}
-                      </Text>
-                    </div>
-                  </Group>
-                </Card>
+                <UnstyledButton onClick={() => router.push('/patient/documentos')} style={{ width: '100%' }}>
+                  <Card p="md" radius="lg" withBorder shadow="sm">
+                    <Group wrap="nowrap">
+                      <ThemeIcon size="lg" radius="md" color="blue" variant="light">
+                        <IconFolder size={20} />
+                      </ThemeIcon>
+                      <div>
+                        <Text fw={700} size="sm">Documentos</Text>
+                        <Text size="xs" c="dimmed">
+                          {data?.documents?.length ? `${data.documents.length} documento${data.documents.length > 1 ? 's' : ''} disponíve${data.documents.length > 1 ? 'is' : 'l'}` : 'Nenhum documento'}
+                        </Text>
+                      </div>
+                    </Group>
+                  </Card>
+                </UnstyledButton>
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Card p="md" radius="lg" withBorder shadow="none" onClick={() => router.push('/patient/saude')} style={{ cursor: 'pointer' }}>
-                  <Group wrap="nowrap">
-                    <ThemeIcon size="lg" radius="md" color="teal" variant="light">
-                      <IconPill size={20} />
-                    </ThemeIcon>
-                    <div>
-                      <Text fw={700} size="sm">Medicamentos</Text>
-                      <Text size="xs" c="dimmed">
-                        {data?.medications?.length ? `${data.medications.length} medicamento${data.medications.length > 1 ? 's' : ''}` : 'Nenhum medicamento'}
-                      </Text>
-                    </div>
-                  </Group>
-                </Card>
+                <UnstyledButton onClick={() => router.push('/patient/saude')} style={{ width: '100%' }}>
+                  <Card p="md" radius="lg" withBorder shadow="sm">
+                    <Group wrap="nowrap">
+                      <ThemeIcon size="lg" radius="md" color="teal" variant="light">
+                        <IconPill size={20} />
+                      </ThemeIcon>
+                      <div>
+                        <Text fw={700} size="sm">Medicamentos</Text>
+                        <Text size="xs" c="dimmed">
+                          {data?.medications?.length ? `${data.medications.length} medicamento${data.medications.length > 1 ? 's' : ''}` : 'Nenhum medicamento'}
+                        </Text>
+                      </div>
+                    </Group>
+                  </Card>
+                </UnstyledButton>
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Card p="md" radius="lg" withBorder shadow="none" onClick={() => router.push('/patient/historico')} style={{ cursor: 'pointer' }}>
-                  <Group wrap="nowrap">
-                    <ThemeIcon size="lg" radius="md" color="violet" variant="light">
-                      <IconFileDescription size={20} />
-                    </ThemeIcon>
-                    <div>
-                      <Text fw={700} size="sm">Resultados</Text>
-                      <Text size="xs" c="dimmed">
-                        {data?.diagnostics?.length ? `${data.diagnostics.length} resultado${data.diagnostics.length > 1 ? 's' : ''}` : 'Nenhum resultado'}
-                      </Text>
-                    </div>
-                  </Group>
-                </Card>
+                <UnstyledButton onClick={() => router.push('/patient/historico')} style={{ width: '100%' }}>
+                  <Card p="md" radius="lg" withBorder shadow="sm">
+                    <Group wrap="nowrap">
+                      <ThemeIcon size="lg" radius="md" color="violet" variant="light">
+                        <IconFileDescription size={20} />
+                      </ThemeIcon>
+                      <div>
+                        <Text fw={700} size="sm">Resultados</Text>
+                        <Text size="xs" c="dimmed">
+                          {data?.diagnostics?.length ? `${data.diagnostics.length} resultado${data.diagnostics.length > 1 ? 's' : ''}` : 'Nenhum resultado'}
+                        </Text>
+                      </div>
+                    </Group>
+                  </Card>
+                </UnstyledButton>
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Card p="md" radius="lg" withBorder shadow="none" onClick={() => router.push('/patient/saude')} style={{ cursor: 'pointer' }}>
-                  <Group wrap="nowrap">
-                    <ThemeIcon size="lg" radius="md" color="orange" variant="light">
-                      <IconActivity size={20} />
-                    </ThemeIcon>
-                    <div>
-                      <Text fw={700} size="sm">Observações</Text>
-                      <Text size="xs" c="dimmed">
-                        {data?.observations?.length ? `${data.observations.length} registro${data.observations.length > 1 ? 's' : ''}` : 'Nenhum registro'}
-                      </Text>
-                    </div>
-                  </Group>
-                </Card>
+                <UnstyledButton onClick={() => router.push('/patient/saude')} style={{ width: '100%' }}>
+                  <Card p="md" radius="lg" withBorder shadow="sm">
+                    <Group wrap="nowrap">
+                      <ThemeIcon size="lg" radius="md" color="orange" variant="light">
+                        <IconActivity size={20} />
+                      </ThemeIcon>
+                      <div>
+                        <Text fw={700} size="sm">Observações</Text>
+                        <Text size="xs" c="dimmed">
+                          {data?.observations?.length ? `${data.observations.length} registro${data.observations.length > 1 ? 's' : ''}` : 'Nenhum registro'}
+                        </Text>
+                      </div>
+                    </Group>
+                  </Card>
+                </UnstyledButton>
               </Grid.Col>
             </Grid>
          </div>
