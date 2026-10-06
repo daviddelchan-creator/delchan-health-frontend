@@ -1,0 +1,20 @@
+
+> medplum-nextjs-demo@5.0.4 dev
+> npm run clean && next dev
+
+
+> medplum-nextjs-demo@5.0.4 clean
+> node -e "const fs = require('fs'); if (fs.existsSync('.next')) fs.rmSync('.next', { recursive: true, force: true });"
+
+   ▲ Next.js 15.5.6
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+
+ ✓ Starting...
+ ✓ Ready in 1978ms
+ ○ Compiling /patient ...
+ ✓ Compiled /patient in 16s (2515 modules)
+ GET /patient 200 in 17006ms
+ ✓ Compiled in 8.1s (2475 modules)
+ GET /patient 200 in 432ms
+ GET /patient 200 in 75ms
