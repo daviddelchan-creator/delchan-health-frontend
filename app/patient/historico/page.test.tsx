@@ -4,9 +4,14 @@ import HistoricoClinicoPage from './page';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
 import { MantineProvider } from '@mantine/core';
 import React from 'react';
+import * as navigation from 'next/navigation';
 
 jest.mock('../state/PatientDashboardContext', () => ({
   usePatientDashboardContext: jest.fn(),
+}));
+
+jest.mock('next/navigation', () => ({
+    useSearchParams: jest.fn(),
 }));
 
 // We must also mock matchMedia for SegmentedControl
@@ -46,7 +51,6 @@ describe('HistoricoClinicoPage', () => {
   it('renders LOADING state', () => {
       mockContext.mockReturnValue({ state: 'LOADING', data: null });
       renderWithMantine(<HistoricoClinicoPage />);
-      // We assume Loader is rendering an svg or something visible, let's just check it doesn't render page title
       expect(screen.queryByText('Histórico Clínico')).not.toBeInTheDocument();
   });
 
@@ -55,6 +59,16 @@ describe('HistoricoClinicoPage', () => {
     renderWithMantine(<HistoricoClinicoPage />);
     expect(screen.getByText('Erro ao carregar histórico')).toBeInTheDocument();
     expect(screen.getByText('Não foi possível carregar os registros clínicos do paciente.')).toBeInTheDocument();
+  });
+
+  it('returns null for UNAUTHORIZED or FORBIDDEN states (relying on layout to handle this)', () => {
+    mockContext.mockReturnValue({ state: 'UNAUTHORIZED', data: null });
+    renderWithMantine(<HistoricoClinicoPage />);
+    expect(screen.queryByText('Histórico Clínico')).not.toBeInTheDocument();
+
+    mockContext.mockReturnValue({ state: 'FORBIDDEN', data: null });
+    renderWithMantine(<HistoricoClinicoPage />);
+    expect(screen.queryByText('Histórico Clínico')).not.toBeInTheDocument();
   });
 
   it('filters items correctly', async () => {
@@ -119,8 +133,7 @@ describe('HistoricoClinicoPage', () => {
   });
 
   it('proves no direct fetch is made and no patientId is used', () => {
-    // In node/jsdom environments global.fetch might not exist out of the box unless polyfilled.
-    // We check if it exists before spying on it.
+    // Check if fetch exists before spying
     let globalFetch;
     if (typeof global.fetch === 'function') {
         globalFetch = jest.spyOn(global, 'fetch');
@@ -135,14 +148,64 @@ describe('HistoricoClinicoPage', () => {
 
     renderWithMantine(<HistoricoClinicoPage />);
 
+    // Assert that we did not make a fetch call directly
     if (globalFetch) {
         expect(globalFetch).not.toHaveBeenCalled();
     }
 
-    // In our component, we don't use 'useSearchParams' or anything to read '?patientId='.
-    // The data purely comes from the context mock.
-    // The test naturally passes because rendering succeeds purely off the mocked context without external deps.
+    // Assert that we did not use Next.js useSearchParams (e.g. to get '?patientId=123')
+    expect(navigation.useSearchParams).not.toHaveBeenCalled();
+
+    // The data purely comes from the context mock, verifying the expected architecture.
     expect(screen.getByText('Histórico Clínico')).toBeInTheDocument();
+  });
+
+  it('opens drawer on Enter and Space key presses explicitly', async () => {
+    mockContext.mockReturnValue({
+      state: 'READY',
+      data: {
+        documents: {
+          entry: [
+            {
+              resource: {
+                resourceType: 'DocumentReference',
+                id: 'doc-1',
+                date: '2023-10-26T10:00:00Z',
+                type: { text: 'Atestado Médico' },
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    renderWithMantine(<HistoricoClinicoPage />);
+
+    const button = screen.getByRole('button', { name: /Ver detalhes de Atestado Médico/i });
+    button.focus();
+
+    // 1. Execute keyDown with Enter
+    fireEvent.keyDown(button, { key: 'Enter', code: 'Enter', charCode: 13 });
+
+    // 2. Verify Drawer appears
+    await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Fechar detalhes/i })).toBeInTheDocument();
+    });
+
+    // 3. Close the Drawer
+    fireEvent.click(screen.getByRole('button', { name: /Fechar detalhes/i }));
+
+    await waitFor(() => {
+        expect(screen.queryByRole('button', { name: /Fechar detalhes/i })).not.toBeInTheDocument();
+    });
+
+    // 4. Execute keyDown with Space
+    fireEvent.keyDown(button, { key: ' ', code: 'Space', charCode: 32 });
+
+    // 5. Verify Drawer appears again
+    await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Fechar detalhes/i })).toBeInTheDocument();
+    });
   });
 
   it('renders mixed resources in descending chronological order, with null dates at the end', () => {

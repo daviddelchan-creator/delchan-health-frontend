@@ -49,7 +49,7 @@ export default function HistoricoClinicoPage() {
     data.observations.entry.forEach((entry: any, index: number) => {
       if (entry.resource) {
         const obs = entry.resource as Observation;
-        const dStr = obs.effectiveDateTime || obs.issued;
+        const dStr = obs.effectiveDateTime || obs.effectivePeriod?.start || obs.issued;
         let title = obs.code?.text || obs.code?.coding?.[0]?.display || 'Observação';
         let summary = undefined;
         if (obs.valueQuantity) {
@@ -76,7 +76,7 @@ export default function HistoricoClinicoPage() {
     data.diagnostics.entry.forEach((entry: any, index: number) => {
       if (entry.resource) {
         const dr = entry.resource as DiagnosticReport;
-        const dStr = dr.effectiveDateTime || dr.issued;
+        const dStr = dr.effectiveDateTime || dr.effectivePeriod?.start || dr.issued;
         events.push({
           id: dr.id || `DiagnosticReport-${index}`,
           type: 'DiagnosticReport',
