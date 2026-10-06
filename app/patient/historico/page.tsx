@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from 'react';
-import { Stack, Title, Card, Text, Group, Badge, Drawer, UnstyledButton, Box, ActionIcon } from '@mantine/core';
+import { Stack, Title, Card, Text, Group, Badge, Drawer, UnstyledButton, Box, ActionIcon, SegmentedControl } from '@mantine/core';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Loading } from '@/components/ui/Loading';
 import { IconClipboardList, IconChevronRight, IconX } from '@tabler/icons-react';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
 import { Observation, DiagnosticReport, MedicationRequest, DocumentReference } from '@medplum/fhirtypes';
@@ -26,8 +28,17 @@ function parseDate(dateString?: string): Date | null {
 export default function HistoricoClinicoPage() {
   const { state, data } = usePatientDashboardContext();
   const [selectedEvent, setSelectedEvent] = useState<ClinicalEvent | null>(null);
+  const [filter, setFilter] = useState('Todos');
 
-  if (state === 'INITIALIZING' || state === 'LOADING' || state === 'UNAUTHORIZED' || state === 'FORBIDDEN' || state === 'ERROR') {
+  if (state === 'INITIALIZING' || state === 'LOADING') {
+      return <Loading centered minHeight="50vh" />;
+  }
+  if (state === 'ERROR') {
+      return <ErrorState title="Erro ao carregar histórico" message="Não foi possível carregar os registros clínicos do paciente." />;
+  }
+  if (state === 'UNAUTHORIZED' || state === 'FORBIDDEN') {
+      // The PatientAppShell is responsible for redirecting/handling root UNAUTHORIZED/FORBIDDEN,
+      // but in case it cascades down, we fail gracefully.
       return null;
   }
 
@@ -35,7 +46,7 @@ export default function HistoricoClinicoPage() {
 
   // Observation
   if (data?.observations?.entry) {
-    data.observations.entry.forEach((entry: any) => {
+    data.observations.entry.forEach((entry: any, index: number) => {
       if (entry.resource) {
         const obs = entry.resource as Observation;
         const dStr = obs.effectiveDateTime || obs.issued;
@@ -48,7 +59,7 @@ export default function HistoricoClinicoPage() {
         }
 
         events.push({
-          id: obs.id || Math.random().toString(),
+          id: obs.id || `Observation-${index}`,
           type: 'Observation',
           title,
           dateStr: dStr,
@@ -62,12 +73,12 @@ export default function HistoricoClinicoPage() {
 
   // DiagnosticReport
   if (data?.diagnostics?.entry) {
-    data.diagnostics.entry.forEach((entry: any) => {
+    data.diagnostics.entry.forEach((entry: any, index: number) => {
       if (entry.resource) {
         const dr = entry.resource as DiagnosticReport;
         const dStr = dr.effectiveDateTime || dr.issued;
         events.push({
-          id: dr.id || Math.random().toString(),
+          id: dr.id || `DiagnosticReport-${index}`,
           type: 'DiagnosticReport',
           title: dr.code?.text || dr.code?.coding?.[0]?.display || 'Relatório de Diagnóstico',
           dateStr: dStr,
@@ -81,7 +92,7 @@ export default function HistoricoClinicoPage() {
 
   // MedicationRequest
   if (data?.medications?.entry) {
-    data.medications.entry.forEach((entry: any) => {
+    data.medications.entry.forEach((entry: any, index: number) => {
       if (entry.resource) {
         const mr = entry.resource as MedicationRequest;
         const dStr = mr.authoredOn;
@@ -91,7 +102,7 @@ export default function HistoricoClinicoPage() {
         else if (mr.medicationReference?.display) title = mr.medicationReference.display;
 
         events.push({
-          id: mr.id || Math.random().toString(),
+          id: mr.id || `MedicationRequest-${index}`,
           type: 'MedicationRequest',
           title,
           dateStr: dStr,
@@ -105,7 +116,7 @@ export default function HistoricoClinicoPage() {
 
   // DocumentReference
   if (data?.documents?.entry) {
-    data.documents.entry.forEach((entry: any) => {
+    data.documents.entry.forEach((entry: any, index: number) => {
       if (entry.resource) {
         const doc = entry.resource as DocumentReference;
         const dStr = doc.date;
@@ -115,7 +126,7 @@ export default function HistoricoClinicoPage() {
         else if (doc.description) title = doc.description;
 
         events.push({
-          id: doc.id || Math.random().toString(),
+          id: doc.id || `DocumentReference-${index}`,
           type: 'DocumentReference',
           title,
           dateStr: dStr,
@@ -127,13 +138,31 @@ export default function HistoricoClinicoPage() {
     });
   }
 
+  // Deterministic Sort
   events.sort((a, b) => {
     if (a.dateObj && b.dateObj) {
-      return b.dateObj.getTime() - a.dateObj.getTime();
+      const timeDiff = b.dateObj.getTime() - a.dateObj.getTime();
+      if (timeDiff !== 0) return timeDiff;
+    } else if (a.dateObj && !b.dateObj) {
+      return -1;
+    } else if (!a.dateObj && b.dateObj) {
+      return 1;
     }
-    if (a.dateObj && !b.dateObj) return -1;
-    if (!a.dateObj && b.dateObj) return 1;
-    return 0;
+
+    // Tie breaker
+    const typeCompare = a.type.localeCompare(b.type);
+    if (typeCompare !== 0) return typeCompare;
+
+    return a.id.localeCompare(b.id);
+  });
+
+  const filteredEvents = events.filter(e => {
+    if (filter === 'Todos') return true;
+    if (filter === 'Observações') return e.type === 'Observation';
+    if (filter === 'Exames / Resultados') return e.type === 'DiagnosticReport';
+    if (filter === 'Medicamentos') return e.type === 'MedicationRequest';
+    if (filter === 'Documentos') return e.type === 'DocumentReference';
+    return true;
   });
 
   const handleKeyDown = (e: React.KeyboardEvent, event: ClinicalEvent) => {
@@ -145,18 +174,18 @@ export default function HistoricoClinicoPage() {
 
   const getBadgeColor = (type: string) => {
     switch (type) {
-        case 'Observation': return 'blue';
-        case 'DiagnosticReport': return 'grape';
-        case 'MedicationRequest': return 'orange';
-        case 'DocumentReference': return 'teal';
+        case 'Observation': return 'delchanInfo';
+        case 'DiagnosticReport': return 'delchanPrimary';
+        case 'MedicationRequest': return 'delchanWarning';
+        case 'DocumentReference': return 'delchanSuccess';
         default: return 'gray';
     }
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-        case 'Observation': return 'Exame / Sinal Vital';
-        case 'DiagnosticReport': return 'Resultado de Exame';
+        case 'Observation': return 'Observação';
+        case 'DiagnosticReport': return 'Relatório de Diagnóstico';
         case 'MedicationRequest': return 'Prescrição';
         case 'DocumentReference': return 'Documento Clínico';
         default: return 'Registro';
@@ -219,19 +248,28 @@ export default function HistoricoClinicoPage() {
 
   return (
     <Stack gap="lg" pb="xl">
-      <Title order={2} c="dark.9" fw={800} style={{ letterSpacing: '-0.5px' }}>
-        Histórico Clínico
-      </Title>
+      <Group justify="space-between" align="flex-end" wrap="wrap">
+        <Title order={2} c="dark.9" fw={800} style={{ letterSpacing: '-0.5px' }}>
+            Histórico Clínico
+        </Title>
+        <SegmentedControl
+            value={filter}
+            onChange={setFilter}
+            data={['Todos', 'Observações', 'Exames / Resultados', 'Medicamentos', 'Documentos']}
+            size="sm"
+            radius="md"
+        />
+      </Group>
 
-      {events.length === 0 ? (
+      {filteredEvents.length === 0 ? (
           <EmptyState
             icon={<IconClipboardList size={48} stroke={1.5} color="var(--mantine-color-teal-6)" />}
             title="Nenhum registro"
-            description="Você ainda não possui registros no seu histórico clínico."
+            description="Você ainda não possui registros no seu histórico clínico para este filtro."
           />
       ) : (
           <Stack gap="sm">
-             {events.map((e) => (
+             {filteredEvents.map((e) => (
                 <Card key={e.id} p={0} radius="md" withBorder>
                    <UnstyledButton
                      w="100%"
