@@ -59,11 +59,11 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
   // Navigation logic
   const getActiveTab = () => {
      if (pathname === '/patient' || pathname === '/patient/') return 'inicio';
-     if (pathname.startsWith('/patient/consultas')) return 'consultas';
-     if (pathname.startsWith('/patient/historico')) return 'historico';
-     if (pathname.startsWith('/patient/documentos')) return 'documentos';
-     if (pathname.startsWith('/patient/saude')) return 'saude';
-     if (pathname.startsWith('/patient/perfil')) return 'perfil';
+     if (pathname === '/patient/consultas' || pathname.startsWith('/patient/consultas/')) return 'consultas';
+     if (pathname === '/patient/historico' || pathname.startsWith('/patient/historico/')) return 'historico';
+     if (pathname === '/patient/documentos' || pathname.startsWith('/patient/documentos/')) return 'documentos';
+     if (pathname === '/patient/saude' || pathname.startsWith('/patient/saude/')) return 'saude';
+     if (pathname === '/patient/perfil' || pathname.startsWith('/patient/perfil/')) return 'perfil';
      return 'inicio';
   };
 
