@@ -52,8 +52,7 @@ describe('PatientAppShell Layout', () => {
   it('renders loading state when INITIALIZING', () => {
     mockUsePatientDashboardContext.mockReturnValue({ state: 'INITIALIZING', data: null, error: null });
     const { container } = renderWithProvider(<PatientAppShell><div>Conteúdo</div></PatientAppShell>);
-    // We check if the Loader component rendered with the correct prop
-    expect(container.querySelector('span[message="Carregando portal do paciente..."]')).toBeInTheDocument();
+    expect(screen.getByText('Carregando portal do paciente...')).toBeInTheDocument();
   });
 
   it('renders unauthorized state when UNAUTHORIZED', () => {

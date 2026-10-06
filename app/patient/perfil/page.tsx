@@ -2,6 +2,7 @@
 
 import { Stack, Title } from '@mantine/core';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { IconUser } from '@tabler/icons-react';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
 
 export default function PerfilPlaceholderPage() {
@@ -15,7 +16,7 @@ export default function PerfilPlaceholderPage() {
         Perfil e Configurações
       </Title>
       <EmptyState
-        icon={<span style={{ fontSize: '3rem' }}>👤</span>}
+        icon={<IconUser size={48} stroke={1.5} color="var(--mantine-color-teal-6)" />}
         title="Em breve"
         description="O gerenciamento de conta, privacidade e dependentes estará disponível em breve."
       />

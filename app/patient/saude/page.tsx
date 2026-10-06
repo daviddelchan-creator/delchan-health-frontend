@@ -2,6 +2,7 @@
 
 import { Stack, Title } from '@mantine/core';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { IconHeartbeat } from '@tabler/icons-react';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
 
 export default function SaudePlaceholderPage() {
@@ -15,7 +16,7 @@ export default function SaudePlaceholderPage() {
         Minha Saúde
       </Title>
       <EmptyState
-        icon={<span style={{ fontSize: '3rem' }}>❤️</span>}
+        icon={<IconHeartbeat size={48} stroke={1.5} color="var(--mantine-color-teal-6)" />}
         title="Em breve"
         description="A sincronização com Health Connect e métricas vitais estará disponível em breve."
       />

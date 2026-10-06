@@ -173,9 +173,9 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
               </UnstyledButton>
               <UnstyledButton onClick={() => router.push('/patient/documentos')} aria-label="Documentos e Resultados" style={{ flex: 1, borderRadius: 'var(--mantine-radius-md)', position: 'relative', top: '-10px' }}>
                 <Stack gap={4} align="center">
-                  <ThemeIcon size="xl" radius="xl" color="teal" variant={activeTab === 'documentos' ? 'filled' : 'light'} style={{ boxShadow: activeTab === 'documentos' ? 'var(--mantine-shadow-md)' : 'none', pointerEvents: 'none' }}>
+                  <ActionIcon size="xl" radius="xl" color="teal" variant={activeTab === 'documentos' ? 'filled' : 'light'} style={{ boxShadow: activeTab === 'documentos' ? 'var(--mantine-shadow-md)' : 'none', pointerEvents: 'none' }}>
                     <IconFolder size={22} stroke={2.5} />
-                  </ThemeIcon>
+                  </ActionIcon>
                   <Text size="xs" fw={700} c={activeTab === 'documentos' ? 'teal' : 'dimmed'}>Docs</Text>
                 </Stack>
               </UnstyledButton>

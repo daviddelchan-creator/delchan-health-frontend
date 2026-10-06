@@ -2,6 +2,7 @@
 
 import { Stack, Title } from '@mantine/core';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { IconFolder } from '@tabler/icons-react';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
 
 export default function DocumentosPlaceholderPage() {
@@ -15,7 +16,7 @@ export default function DocumentosPlaceholderPage() {
         Documentos e Resultados
       </Title>
       <EmptyState
-        icon={<span style={{ fontSize: '3rem' }}>📂</span>}
+        icon={<IconFolder size={48} stroke={1.5} color="var(--mantine-color-teal-6)" />}
         title="Em breve"
         description="O acesso direto aos laudos, receitas e termos de consentimento estará disponível em breve."
       />
