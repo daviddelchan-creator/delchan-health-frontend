@@ -52,7 +52,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/jest": "^29.5.14",
-    "@types/node": "22.19.1",
+    "@types/node": "^22.19.1",
     "@types/react": "19.2.4",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.1",
@@ -65,7 +65,7 @@
     "postcss-preset-mantine": "1.18.0",
     "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",
-    "typescript": "5.9.3"
+    "typescript": "^5.9.3"
   },
   "packageManager": "npm@10.9.4",
   "engines": {
