@@ -5,7 +5,7 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
 import { Loading } from '../../../components/ui/Loading';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
-import { IconFolder, IconX, IconChevronRight, IconFileText, IconDownload, IconAlertCircle } from '@tabler/icons-react';
+import { IconFolder, IconX, IconChevronRight, IconFileText, IconEye, IconAlertCircle } from '@tabler/icons-react';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
 import { DocumentReference } from '@medplum/fhirtypes';
 import { useState } from 'react';
@@ -93,12 +93,16 @@ export default function DocumentosPage() {
 
   const handleView = async (doc: DocumentReference) => {
       const details = parseDocumentDetails(doc);
-      if (!details.url || !details.url.startsWith('Binary/')) {
-          setViewError("Não é possível acessar o arquivo original.");
+
+      const validBinaryRegex = /^Binary\/([a-zA-Z0-9\-]+)$/;
+      const match = details.url ? details.url.match(validBinaryRegex) : null;
+
+      if (!match) {
+          setViewError("Referência de arquivo inválida ou não suportada.");
           return;
       }
 
-      const binaryId = details.url.split('/')[1];
+      const binaryId = match[1];
       const token = medplum.getAccessToken();
 
       if (!token) {
@@ -108,6 +112,17 @@ export default function DocumentosPage() {
 
       setIsViewing(true);
       setViewError(null);
+
+      // Open window synchronously to avoid popup blockers
+      const newWindow = window.open('', '_blank');
+      if (!newWindow) {
+          setViewError("Abertura bloqueada pelo navegador. Permita pop-ups para visualizar.");
+          setIsViewing(false);
+          return;
+      }
+
+      newWindow.document.write('Carregando documento seguro...');
+      newWindow.document.close();
 
       try {
           const response = await fetch(`/api/patient/binary/${binaryId}`, {
@@ -124,10 +139,7 @@ export default function DocumentosPage() {
           const blob = await response.blob();
           const objectUrl = window.URL.createObjectURL(blob);
 
-          const newWindow = window.open(objectUrl, '_blank');
-          if (!newWindow) {
-              setViewError("Abertura bloqueada pelo navegador. Permita pop-ups para visualizar.");
-          }
+          newWindow.location.href = objectUrl;
 
           // Clean up the URL object after some time to ensure it loads
           setTimeout(() => {
@@ -135,6 +147,7 @@ export default function DocumentosPage() {
           }, 60000);
 
       } catch (err: any) {
+          newWindow.close();
           setViewError("Não foi possível carregar o documento no momento.");
       } finally {
           setIsViewing(false);
@@ -188,7 +201,7 @@ export default function DocumentosPage() {
                         <Button
                             fullWidth
                             color="delchanPrimary"
-                            leftSection={<IconDownload size={18} />}
+                            leftSection={<IconEye size={18} />}
                             loading={isViewing}
                             onClick={() => handleView(selectedDocument)}
                         >

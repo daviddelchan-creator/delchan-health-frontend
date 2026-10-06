@@ -31,6 +31,14 @@ beforeEach(() => {
 
   // Mock global fetch
   global.fetch = jest.fn();
+
+  // Mock window URL search params to ensure we don't accidentally use them
+  Object.defineProperty(window, 'location', {
+      value: {
+          search: '?patientId=hacker123'
+      },
+      writable: true
+  });
 });
 
 const renderComponent = () => {
@@ -135,8 +143,13 @@ describe('DocumentosPage', () => {
         blob: async () => new Blob(['dummy content'], { type: 'application/pdf' })
     });
 
-    // Simulate window.open succeeding
-    (window.open as jest.Mock).mockReturnValue({ focus: jest.fn() });
+    // Simulate window.open succeeding with a fake window object
+    const fakeWindow = {
+        document: { write: jest.fn(), close: jest.fn() },
+        location: { href: '' },
+        close: jest.fn()
+    };
+    (window.open as jest.Mock).mockReturnValue(fakeWindow);
 
     renderComponent();
     fireEvent.click(screen.getByText('Receita Medica'));
@@ -145,11 +158,13 @@ describe('DocumentosPage', () => {
     fireEvent.click(viewBtn);
 
     await waitFor(() => {
+       expect(window.open).toHaveBeenCalledWith('', '_blank');
+       expect(fakeWindow.document.write).toHaveBeenCalledWith('Carregando documento seguro...');
        expect(global.fetch).toHaveBeenCalledWith('/api/patient/binary/abc1234', expect.objectContaining({
            headers: { 'Authorization': 'Bearer mock-token' }
        }));
        expect(window.URL.createObjectURL).toHaveBeenCalled();
-       expect(window.open).toHaveBeenCalledWith('blob:mock', '_blank');
+       expect(fakeWindow.location.href).toBe('blob:mock');
     });
   });
 
@@ -183,6 +198,32 @@ describe('DocumentosPage', () => {
 
     await waitFor(() => {
        expect(screen.getByText(/Abertura bloqueada pelo navegador/i)).toBeInTheDocument();
+    });
+  });
+
+  it('prevents fetching invalid binary references', async () => {
+    const documents = [
+        {
+          resourceType: 'DocumentReference',
+          id: 'doc1',
+          status: 'current',
+          type: { text: 'Fake Medica' },
+          content: [{ attachment: { contentType: 'application/pdf', url: 'Patient/123/Binary/456' } }] // Invalid format
+        }
+    ];
+
+    (usePatientDashboardContext as jest.Mock).mockReturnValue({ state: 'READY', data: { documents } });
+
+    renderComponent();
+    fireEvent.click(screen.getByText('Fake Medica'));
+
+    const viewBtn = await screen.findByRole('button', { name: /Visualizar documento/i });
+    fireEvent.click(viewBtn);
+
+    await waitFor(() => {
+       expect(screen.getByText(/Referência de arquivo inválida ou não suportada/i)).toBeInTheDocument();
+       expect(global.fetch).not.toHaveBeenCalled();
+       expect(window.open).not.toHaveBeenCalled();
     });
   });
 
@@ -253,7 +294,12 @@ describe('DocumentosPage', () => {
     (usePatientDashboardContext as jest.Mock).mockReturnValue({ state: 'READY', data: { documents: [] } });
     renderComponent();
 
-    expect(window.location.search).toBe('');
+    // Prove we setup the mock correctly
+    expect(window.location.search).toContain('patientId=hacker123');
+
+    // Prove our component completely ignored it (no fetch calls with patientId)
+    // The component strictly relies on usePatientDashboardContext.
+    // If it did make a direct Medplum call or fetch with URL params, it would fail here.
     expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('patientId'));
   });
 });
