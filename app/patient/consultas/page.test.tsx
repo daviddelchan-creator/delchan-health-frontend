@@ -249,7 +249,7 @@ describe('ConsultasPage', () => {
     btn.focus();
     expect(btn).toHaveFocus();
     fireEvent.keyDown(btn, { key: 'Enter', code: 'Enter', charCode: 13 });
-    fireEvent.click(btn);
+    fireEvent.click(btn); // fallback for unhandled key in dom
     const ctas = await screen.findAllByText('Acessar Telemedicina');
     expect(ctas.length).toBeGreaterThan(0);
   });
