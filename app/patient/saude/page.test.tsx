@@ -135,7 +135,15 @@ describe('PatientSaudePage', () => {
 
     const mockContextData = {
        profile: { name: [{ given: ['ContextUser'] }] },
-       observations: []
+       observations: [
+         {
+           resourceType: 'Observation',
+           id: 'obs-secure',
+           status: 'final',
+           code: { text: 'Métrica Segura' },
+           valueQuantity: { value: 100 }
+         }
+       ]
     };
     (usePatientDashboardContext as jest.Mock).mockReturnValue({
       state: 'READY',
@@ -153,9 +161,9 @@ describe('PatientSaudePage', () => {
     // Verify searchParams were not called in the component to read hacker123
     expect(navigation.useSearchParams).not.toHaveBeenCalled();
 
-    // Verify it renders the expected data cleanly from Context (EmptyState since array is empty)
+    // Verify it renders the expected data cleanly from the authenticated Context (and not the empty state or hacker context)
     expect(screen.getByText('Minha Saúde')).toBeInTheDocument();
-    expect(screen.getByText('Nenhuma métrica disponível')).toBeInTheDocument();
+    expect(screen.getByText('Métrica Segura')).toBeInTheDocument();
   });
 
   it('renders ErrorState on ERROR state', () => {
