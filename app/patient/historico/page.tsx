@@ -70,7 +70,7 @@ export default function HistoricoClinicoPage() {
             const syst = obs.component.find(c => c.code?.coding?.[0]?.code === '8480-6' || c.code?.text?.toLowerCase().includes('systolic'));
             const dias = obs.component.find(c => c.code?.coding?.[0]?.code === '8462-4' || c.code?.text?.toLowerCase().includes('diastolic'));
 
-            if (syst?.valueQuantity?.value && dias?.valueQuantity?.value) {
+            if (syst?.valueQuantity?.value !== undefined && dias?.valueQuantity?.value !== undefined) {
                 const unit = syst.valueQuantity.unit || dias.valueQuantity.unit;
                 if (unit) {
                     summary = `${syst.valueQuantity.value}/${dias.valueQuantity.value} ${unit}`;
