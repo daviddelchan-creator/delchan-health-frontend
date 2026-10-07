@@ -160,6 +160,59 @@ describe('HistoricoClinicoPage', () => {
     expect(screen.getByText('Histórico Clínico')).toBeInTheDocument();
   });
 
+  it('renders correctly with effectivePeriod.start, formats blood pressure correctly, and displays Health Connect provenance', async () => {
+    mockContext.mockReturnValue({
+      state: 'READY',
+      data: {
+        observations: {
+          entry: [
+            {
+              resource: {
+                resourceType: 'Observation',
+                id: 'obs-health-connect',
+                effectivePeriod: { start: '2023-11-01T10:00:00Z' },
+                code: { text: 'Pressão Arterial' },
+                extension: [{ url: 'http://delchan.site/health-connect-origin', valueBoolean: true }],
+                component: [
+                    { code: { coding: [{ code: '8480-6' }] }, valueQuantity: { value: 120, unit: 'mmHg' } },
+                    { code: { coding: [{ code: '8462-4' }] }, valueQuantity: { value: 80, unit: 'mmHg' } }
+                ]
+              },
+            },
+            {
+              resource: {
+                resourceType: 'Observation',
+                id: 'obs-no-date',
+                code: { text: 'Peso' },
+                valueQuantity: { value: 70, unit: 'kg' }
+              }
+            }
+          ],
+        },
+        diagnostics: { entry: [] },
+        medications: { entry: [] },
+        documents: { entry: [] },
+      },
+    });
+
+    renderWithMantine(<HistoricoClinicoPage />);
+
+    // Test that the blood pressure formatted value shows up
+    expect(screen.getByText('120/80 mmHg')).toBeInTheDocument();
+
+    // Test that the item with no date shows fallback text
+    expect(screen.getByText('Data não informada')).toBeInTheDocument();
+
+    // Open drawer to test provenance
+    const button = screen.getByRole('button', { name: /Ver detalhes de Pressão Arterial/i });
+    fireEvent.click(button);
+
+    await waitFor(() => {
+        expect(screen.getByText('Health Connect')).toBeInTheDocument();
+        expect(screen.getByText('Origem')).toBeInTheDocument();
+    });
+  });
+
   it('opens drawer on Enter and Space key presses explicitly', async () => {
     mockContext.mockReturnValue({
       state: 'READY',
