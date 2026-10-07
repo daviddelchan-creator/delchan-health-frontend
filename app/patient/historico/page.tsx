@@ -25,6 +25,13 @@ function parseDate(dateString?: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// Single helper to retrieve proper date strings specifically for Observations
+export function getObservationDate(obs: Observation): { dStr: string, dateObj: Date | null } {
+  const dateString = obs.effectiveDateTime || obs.effectivePeriod?.start || obs.issued;
+  const safeStr = dateString || 'Data não informada';
+  return { dStr: safeStr, dateObj: parseDate(dateString) };
+}
+
 export default function HistoricoClinicoPage() {
   const { state, data } = usePatientDashboardContext();
   const [selectedEvent, setSelectedEvent] = useState<ClinicalEvent | null>(null);
@@ -49,7 +56,7 @@ export default function HistoricoClinicoPage() {
     data.observations.entry.forEach((entry: any, index: number) => {
       if (entry.resource) {
         const obs = entry.resource as Observation;
-        const dStr = obs.effectiveDateTime || obs.effectivePeriod?.start || obs.issued;
+        const { dStr, dateObj } = getObservationDate(obs);
         let title = obs.code?.text || obs.code?.coding?.[0]?.display || 'Observação';
         let summary = undefined;
 
@@ -90,8 +97,8 @@ export default function HistoricoClinicoPage() {
           id: obs.id || `Observation-${index}`,
           type: 'Observation',
           title,
-          dateStr: dStr || 'Data não informada',
-          dateObj: parseDate(dStr),
+          dateStr: dStr,
+          dateObj: dateObj,
           raw: obs,
           summary
         });

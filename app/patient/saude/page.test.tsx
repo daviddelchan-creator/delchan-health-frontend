@@ -80,10 +80,14 @@ describe('SaudePlaceholderPage', () => {
       get: (key: string) => (key === 'patientId' ? 'hacker123' : null),
     });
 
-    // 2. Provide data by PatientDashboardContext
+    // 2. Provide data by PatientDashboardContext simulating a logged in context
+    const mockContextData = {
+       profile: { name: [{ given: ['ContextUser'] }] },
+       observations: []
+    };
     mockContext.mockReturnValue({
       state: 'READY',
-      data: {},
+      data: mockContextData,
     });
 
     // 3. Render the page
@@ -94,10 +98,10 @@ describe('SaudePlaceholderPage', () => {
       expect(globalFetch).not.toHaveBeenCalled();
     }
 
-    // 5. Verify the searchParams were not called in the component itself to select a patient
+    // 5. Verify the searchParams were not called in the component itself to try and read the hacker123 patientId
     expect(navigation.useSearchParams).not.toHaveBeenCalled();
 
-    // Verify it renders the Empty state
+    // 6. Verify it renders exactly the standard component and not anything associated with the malicious query
     expect(screen.getByText('Minha Saúde')).toBeInTheDocument();
     expect(screen.getByText('Em breve')).toBeInTheDocument();
   });

@@ -7,6 +7,7 @@ import { usePatientDashboardContext } from '../state/PatientDashboardContext';
 import { Appointment } from '@medplum/fhirtypes';
 import { StatusBadge, StatusSemanticType } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Loading } from '@/components/ui/Loading';
 
 // Helper to map FHIR Appointment status to UI Badge
 function mapStatus(status: string | undefined): { label: string; semantic: StatusSemanticType } {
@@ -47,7 +48,11 @@ export default function ConsultasPage() {
   const { state, data } = usePatientDashboardContext();
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
-  if (state === 'INITIALIZING' || state === 'LOADING' || state === 'UNAUTHORIZED' || state === 'FORBIDDEN' || state === 'ERROR') {
+  if (state === 'INITIALIZING' || state === 'LOADING') {
+      return <Loading centered minHeight="50vh" />;
+  }
+
+  if (state === 'UNAUTHORIZED' || state === 'FORBIDDEN' || state === 'ERROR') {
       return null;
   }
 

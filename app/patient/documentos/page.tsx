@@ -21,7 +21,7 @@ export default function DocumentosPage() {
   const [viewError, setViewError] = useState<string | null>(null);
 
   if (state === 'INITIALIZING' || state === 'LOADING') {
-    return <Loading />;
+    return <Loading centered minHeight="50vh" />;
   }
 
   if (state === 'UNAUTHORIZED' || state === 'FORBIDDEN') {

@@ -2,12 +2,18 @@
 
 import { Stack, Title } from '@mantine/core';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Loading } from '@/components/ui/Loading';
 import { IconUser } from '@tabler/icons-react';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
 
 export default function PerfilPlaceholderPage() {
   const { state } = usePatientDashboardContext();
-  if (state === 'INITIALIZING' || state === 'LOADING' || state === 'UNAUTHORIZED' || state === 'FORBIDDEN' || state === 'ERROR') {
+
+  if (state === 'INITIALIZING' || state === 'LOADING') {
+      return <Loading centered minHeight="50vh" />;
+  }
+
+  if (state === 'UNAUTHORIZED' || state === 'FORBIDDEN' || state === 'ERROR') {
       return null;
   }
   return (

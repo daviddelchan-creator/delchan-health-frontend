@@ -240,9 +240,10 @@ describe('HistoricoClinicoPage', () => {
     // 1. Execute keyDown with Enter
     fireEvent.keyDown(button, { key: 'Enter', code: 'Enter', charCode: 13 });
 
-    // 2. Verify Drawer appears
+    // 2. Verify Drawer appears with correct details
     await waitFor(() => {
         expect(screen.getByRole('button', { name: /Fechar detalhes/i })).toBeInTheDocument();
+        expect(screen.getAllByText('Atestado Médico').length).toBeGreaterThan(0);
     });
 
     // 3. Close the Drawer
@@ -252,12 +253,14 @@ describe('HistoricoClinicoPage', () => {
         expect(screen.queryByRole('button', { name: /Fechar detalhes/i })).not.toBeInTheDocument();
     });
 
-    // 4. Execute keyDown with Space
+    // 4. Re-focus and execute keyDown with Space
+    button.focus();
     fireEvent.keyDown(button, { key: ' ', code: 'Space', charCode: 32 });
 
-    // 5. Verify Drawer appears again
+    // 5. Verify Drawer appears again with correct details
     await waitFor(() => {
         expect(screen.getByRole('button', { name: /Fechar detalhes/i })).toBeInTheDocument();
+        expect(screen.getAllByText('Atestado Médico').length).toBeGreaterThan(0);
     });
   });
 
