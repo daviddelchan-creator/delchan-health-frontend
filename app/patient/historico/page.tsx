@@ -25,6 +25,13 @@ function parseDate(dateString?: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// Single helper to retrieve proper date strings specifically for Observations
+export function getObservationDate(obs: Observation): { dStr: string, dateObj: Date | null } {
+  const dateString = obs.effectiveDateTime || obs.effectivePeriod?.start || obs.issued;
+  const safeStr = dateString || 'Data não informada';
+  return { dStr: safeStr, dateObj: parseDate(dateString) };
+}
+
 export default function HistoricoClinicoPage() {
   const { state, data } = usePatientDashboardContext();
   const [selectedEvent, setSelectedEvent] = useState<ClinicalEvent | null>(null);
@@ -49,13 +56,41 @@ export default function HistoricoClinicoPage() {
     data.observations.entry.forEach((entry: any, index: number) => {
       if (entry.resource) {
         const obs = entry.resource as Observation;
-        const dStr = obs.effectiveDateTime || obs.effectivePeriod?.start || obs.issued;
+        const { dStr, dateObj } = getObservationDate(obs);
         let title = obs.code?.text || obs.code?.coding?.[0]?.display || 'Observação';
         let summary = undefined;
+
         if (obs.valueQuantity) {
-            summary = `${obs.valueQuantity.value ?? ''} ${obs.valueQuantity.unit ?? ''}`.trim();
+            summary = obs.valueQuantity.unit
+                ? `${obs.valueQuantity.value ?? ''} ${obs.valueQuantity.unit}`.trim()
+                : `${obs.valueQuantity.value ?? ''}`.trim();
         } else if (obs.valueString) {
             summary = obs.valueString;
+        } else if (obs.component && obs.component.length > 0) {
+            const syst = obs.component.find(c => c.code?.coding?.[0]?.code === '8480-6' || c.code?.text?.toLowerCase().includes('systolic'));
+            const dias = obs.component.find(c => c.code?.coding?.[0]?.code === '8462-4' || c.code?.text?.toLowerCase().includes('diastolic'));
+
+            if (syst?.valueQuantity?.value !== undefined && dias?.valueQuantity?.value !== undefined) {
+                const unit = syst.valueQuantity.unit || dias.valueQuantity.unit;
+                if (unit) {
+                    summary = `${syst.valueQuantity.value}/${dias.valueQuantity.value} ${unit}`;
+                } else {
+                    summary = `${syst.valueQuantity.value}/${dias.valueQuantity.value}`;
+                }
+            } else {
+                 const componentsText = obs.component.map(c => {
+                    if (c.valueQuantity) {
+                        return c.valueQuantity.unit ? `${c.valueQuantity.value} ${c.valueQuantity.unit}` : `${c.valueQuantity.value}`;
+                    } else if (c.valueString) {
+                        return c.valueString;
+                    }
+                    return null;
+                }).filter(Boolean).join(', ');
+
+                if (componentsText) {
+                    summary = componentsText;
+                }
+            }
         }
 
         events.push({
@@ -63,7 +98,7 @@ export default function HistoricoClinicoPage() {
           type: 'Observation',
           title,
           dateStr: dStr,
-          dateObj: parseDate(dStr),
+          dateObj: dateObj,
           raw: obs,
           summary
         });
@@ -241,6 +276,13 @@ export default function HistoricoClinicoPage() {
                 </Box>
             )}
 
+             {e.type === 'Observation' && (e.raw as Observation).extension?.some(ext => ext.url === 'http://delchan.site/health-connect-origin') && (
+                <Box mt="sm">
+                    <Text size="sm" fw={600} c="dark.7">Origem</Text>
+                    <Text size="sm" mt={4}>Health Connect</Text>
+                </Box>
+             )}
+
         </Stack>
     );
   };
@@ -287,9 +329,13 @@ export default function HistoricoClinicoPage() {
                                     <Badge size="sm" color={getBadgeColor(e.type)} variant="light">
                                         {getTypeLabel(e.type)}
                                     </Badge>
-                                    {e.dateObj && (
+                                    {e.dateObj ? (
                                         <Text size="xs" c="dimmed">
                                             {e.dateObj.toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                        </Text>
+                                    ) : (
+                                        <Text size="xs" c="dimmed">
+                                            {e.dateStr}
                                         </Text>
                                     )}
                                 </Group>

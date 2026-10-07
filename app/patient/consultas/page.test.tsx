@@ -40,8 +40,22 @@ describe('ConsultasPage', () => {
     jest.useRealTimers();
   });
 
-  it('renders nothing when state is LOADING or INITIALIZING (handled by layout)', () => {
+  it('renders Loading state when state is LOADING or INITIALIZING', () => {
     mockUsePatientDashboardContext.mockReturnValue({ state: 'LOADING', data: null, error: null });
+    const { container } = renderWithProvider(<ConsultasPage />);
+    expect(container.querySelector('.mantine-Loader-root')).toBeInTheDocument();
+
+    mockUsePatientDashboardContext.mockReturnValue({ state: 'INITIALIZING', data: null, error: null });
+    const { container: initContainer } = renderWithProvider(<ConsultasPage />);
+    expect(initContainer.querySelector('.mantine-Loader-root')).toBeInTheDocument();
+  });
+
+  it('returns null for ERROR, UNAUTHORIZED, and FORBIDDEN states', () => {
+    mockUsePatientDashboardContext.mockReturnValue({ state: 'ERROR', data: null, error: null });
+    renderWithProvider(<ConsultasPage />);
+    expect(screen.queryByText(/Minhas Consultas/i)).not.toBeInTheDocument();
+
+    mockUsePatientDashboardContext.mockReturnValue({ state: 'UNAUTHORIZED', data: null, error: null });
     renderWithProvider(<ConsultasPage />);
     expect(screen.queryByText(/Minhas Consultas/i)).not.toBeInTheDocument();
   });

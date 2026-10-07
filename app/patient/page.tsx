@@ -14,7 +14,11 @@ export default function PatientDashboardPage() {
      return <ErrorState message={error?.message || "Ocorreu um erro ao carregar o painel."} />;
   }
 
-  if (state === 'INITIALIZING' || state === 'LOADING' || state === 'UNAUTHORIZED' || state === 'FORBIDDEN') {
+  if (state === 'INITIALIZING' || state === 'LOADING') {
+      return <Loading centered minHeight="50vh" />;
+  }
+
+  if (state === 'UNAUTHORIZED' || state === 'FORBIDDEN') {
       return null; // Handled by layout
   }
 

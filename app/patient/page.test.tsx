@@ -20,11 +20,14 @@ describe('PatientDashboardPage', () => {
     mockUsePatientDashboardContext.mockRestore();
   });
 
-  it('renders nothing when state is LOADING or INITIALIZING (handled by layout)', () => {
+  it('renders Loading state when state is LOADING or INITIALIZING', () => {
     mockUsePatientDashboardContext.mockReturnValue({ state: 'LOADING', data: null, error: null });
     const { container } = renderWithProvider(<PatientDashboardPage />);
-    // Mantine injects style tags, so instead of tobeNull, we check if there's no actual content text
-    expect(screen.queryByText(/Bem-vindo/i)).not.toBeInTheDocument();
+    expect(container.querySelector('.mantine-Loader-root')).toBeInTheDocument();
+
+    mockUsePatientDashboardContext.mockReturnValue({ state: 'INITIALIZING', data: null, error: null });
+    const { container: initContainer } = renderWithProvider(<PatientDashboardPage />);
+    expect(initContainer.querySelector('.mantine-Loader-root')).toBeInTheDocument();
   });
 
   it('renders ErrorState when state is ERROR', () => {
