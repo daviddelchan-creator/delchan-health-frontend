@@ -12,11 +12,14 @@ O ambiente de desenvolvimento encapsula todo o back-end necessário para o Delch
 - **Postgres (5432):** Banco de dados relacional principal.
 - **Redis (6379):** Banco de dados em memória para cache, fila e Pub/Sub.
 - **Medplum Server (8103):** Back-end principal em Node.js (API FHIR, auth, bots).
-- **Medplum App (3000):** Painel administrativo/web UI oficial do Medplum.
+- **Medplum App (3000):** Painel administrativo/web UI oficial do Medplum (externo ao repositório Delchan).
 
 ### Serviços Nativos (Repositório Local)
-- **Delchan Web App (Next.js - 3001 ou superior):** Aplicação principal rodando via `npm run dev`.
+- **Delchan Web App (Next.js - 3001):** Aplicação principal rodando via `npm run dev -- -p 3001`. *Como a porta 3000 já está alocada para o Medplum App pelo Docker, o Next.js deve ser iniciado explicitamente na porta 3001.*
 - **Delchan Mobile App (Expo - 8081):** Aplicativo móvel rodando via `npm run start` dentro de `/mobile`.
+
+### Compatibilidade de Versões (NÃO VALIDADO)
+A Issue #28 requer a validação do pacote `@medplum/core/react/fhirtypes@5.0.4` utilizado pelo Delchan contra a versão exata servida pelo Medplum Server Docker (`latest` ou `5.0.4`). Esta validação ainda precisa ser executada na prática para garantir que não existam regressões de quebras de API.
 
 ## 2. Pré-requisitos (Windows)
 
@@ -49,63 +52,63 @@ docker compose up -d
 
 > **Aviso:** A inicialização completa pode demorar alguns minutos, pois o Medplum Server realiza migrações no banco de dados. Você pode checar o status com `docker compose logs -f medplum-server`.
 
-## 4. Variáveis de Ambiente do Delchan Health OS
+## 4. Variáveis de Ambiente e Configuração do Delchan Health OS
 
-Para que o Front-End do Delchan consiga se conectar ao Medplum recém-criado, algumas variáveis de ambiente nativas precisam ser ajustadas.
+Para que o Front-End do Delchan consiga se conectar ao Medplum recém-criado, é necessário um ajuste crítico no código base, além das variáveis de ambiente.
 
-### Criando o `.env.local`
+### 4.1 CONFIGURAÇÃO NECESSÁRIA: `next.config.mjs` (Bloqueador)
+Atualmente, o `next.config.mjs` possui um rewrite estático (hardcoded):
+```javascript
+source: '/api/medplum/:path*',
+destination: 'https://delchan-health-portal-medplum.6jpght.easypanel.host/:path*'
+```
+**Ação:** Esta linha sobrescreve qualquer variável de ambiente no Next.js. Para que o ambiente DEV funcione, este arquivo **precisa** ser alterado numa implementação futura para consumir uma variável (ex: `destination: \`${process.env.NEXT_PUBLIC_MEDPLUM_BASE_URL}:path*\``), do contrário, as chamadas de API do cliente continuarão indo para a Easypanel de staging/produção e não para o `localhost:8103`.
 
-Crie um arquivo `.env.local` na raiz do projeto do Delchan Health OS com as seguintes configurações:
+### 4.2 Criando o `.env.local`
+Após a correção do `next.config.mjs`, crie um arquivo `.env.local` na raiz do projeto do Delchan Health OS com as seguintes configurações:
 
 ```env
 # Apontamento base para o Medplum Server Docker
 MEDPLUM_BASE_URL="http://localhost:8103/"
 NEXT_PUBLIC_MEDPLUM_BASE_URL="http://localhost:8103/"
 
-# Caso tenha criado chaves específicas de cliente no painel Medplum App (localhost:3000)
-# MEDPLUM_CLIENT_ID="sua-client-id-local"
-# MEDPLUM_CLIENT_SECRET="seu-client-secret-local"
-
-# Configuração Next.js local
+# Configuração Next.js local (usando porta 3001 devido ao Medplum App)
 NEXT_PUBLIC_APP_URL="http://localhost:3001"
 ```
+*(A auditoria constatou que Client ID e Client Secret não são estritamente exigidos pelo código atual para os fluxos básicos de login web/mobile).*
 
-### Configurações Mobile
-
+### 4.3 Configurações Mobile
 Para o aplicativo móvel, em `/mobile/.env.local`:
 
 ```env
-EXPO_PUBLIC_API_URL="http://IP_DA_SUA_MAQUINA:8103/"
-# Ou apontando para o servidor Next.js que faz o proxy:
-# EXPO_PUBLIC_API_URL="http://IP_DA_SUA_MAQUINA:3001/api"
+# Apontando para o servidor Next.js na sua rede LAN, responsável por atuar como proxy das APIs
+EXPO_PUBLIC_API_URL="http://IP_DA_SUA_MAQUINA:3001/api"
 ```
-*(No mobile, não use `localhost` pois o emulador precisa do IP da máquina host).*
+*(No mobile, não use `localhost` e **não aponte diretamente para a porta 8103**. O mobile deve se comunicar com o Next.js (3001) para os fluxos de autenticação nativos do Delchan).*
 
 ## 5. Autenticação e Próximos Passos (Dados de Teste)
 
-### 5.1. O Primeiro Acesso (Super Admin)
-O Medplum cria por padrão um projeto interno, e a única forma de acessá-lo logo que os containers sobem é usar a porta **3000** (Medplum App). Você fará o login como Super Admin (utilizando a funcionalidade "Sign in with Google" simulada que o Medplum fornece em dev, ou criando um usuário via console do Medplum se configurado de outra forma, geralmente admin@medplum.com / medplum_admin ou similar conforme documentação do próprio Medplum de seeding).
+### 5.1. O Primeiro Acesso e Super Admin
+O login no Medplum App (Porta 3000) requer um Super Admin. A documentação do Compose não provê uma semente automática apenas por subir os containers.
+É mandatório definir variáveis de ambiente determinísticas (`MEDPLUM_DEFAULT_SUPER_ADMIN_EMAIL` e `MEDPLUM_DEFAULT_SUPER_ADMIN_PASSWORD`) no Docker Compose ou utilizar os scripts da CLI (`medplum create-superadmin`) para conseguir o acesso inicial verificável.
 
-*(Nota técnica: o `docker-compose.full-stack.yml` tem as chaves do Google preenchidas em dev `MEDPLUM_GOOGLE_CLIENT_ID` permitindo o fluxo simulado de autenticação para ambiente local)*.
-
-### 5.2. Criação do Projeto e Clientes (Bots)
+### 5.2. Criação do Projeto
 No Medplum App (`http://localhost:3000`):
-1. Crie um novo projeto "Delchan Health OS Local".
-2. Acesse a aba **Project** -> **Client Applications** e crie um cliente para o seu Back-End do Next.js.
-3. Copie o `Client ID` e o `Client Secret` gerados e cole no `.env.local` do projeto.
+1. Faça login como Super Admin.
+2. Crie um novo projeto "Delchan Health OS Local".
 
-### 5.3. Seeding de Dados de Teste
-Para o Delchan operar, ele exige que alguns dados básicos FHIR estejam no ambiente. Isso deve ser feito via POST pelo terminal, Insomnia/Postman ou usando scripts `.ts` providos na pasta `scripts/` (caso existam).
+### 5.3. Seeding de Dados Críticos
+Para conseguir autenticar no sistema Delchan e visualizar a rota `/patient`, o banco de dados deve obrigatoriamente possuir um recurso mínimo:
+- **Patient:** Criar o paciente e vinculá-lo ao Identity/Membership do Medplum para permitir login.
 
-Exemplos de recursos FHIR necessários para o Delchan funcionar com base na auditoria:
-- **Patient**: Criar pelo menos um paciente com ID, nome e `telecom`.
-- **Practitioner**: Criar médicos.
-- **Schedule / Slot**: Para que a interface de agendamentos (`/agenda`) não fique vazia.
-- **Appointment**: Consultas agendadas.
-- **Observation / DocumentReference**: Para o painel clínico e portal do paciente.
+*Outros dados, como Practitioner, Schedule, Slot, Appointment e Observation, são secundários. Devem ser populados apenas para validar o painel clínico ou fluxo de agenda, não bloqueando o login ou o acesso base ao portal.*
 
-## 6. Conclusão
+## 6. Persistência e Limpeza (Tear Down)
 
-Esta arquitetura isolada via Docker Compose não apenas impede conflitos de portas com outras instâncias (por exemplo, bancos Postgres existentes em projetos passados), mas permite recriar instantaneamente um banco de dados limpo para testes destrutivos.
+A persistência do Docker é mantida em volumes nomeados (`medplum-postgres-data`).
+- Para pausar e retomar os serviços **(Mantendo dados)**: `docker compose down` seguido de `docker compose up -d`.
+- Para recriar o ambiente limpo **(Perda total dos dados de teste)**: `docker compose down -v`.
 
-O repositório atual do Delchan (`next.config.mjs`, APIs) estava apontando as rotas de backend (Ex: `/api/medplum/:path*`) e a `MEDPLUM_BASE_URL` para o endereço remoto da easypanel. Com as configurações de ambiente do passo 4, essas chamadas serão perfeitamente roteadas para `localhost:8103`.
+## 7. Conclusão
+
+Esta arquitetura isolada resolve o requerimento do ambiente DEV no Windows de forma padronizada. Contudo, ela depende essencialmente da **remoção do rewrite estático no `next.config.mjs`** e do uso do **Next.js na porta 3001**.
