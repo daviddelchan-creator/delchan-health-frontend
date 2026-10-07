@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import { MantineProvider } from '@mantine/core';
 import PatientSaudePage from './page';
 import { usePatientDashboardContext } from '../state/PatientDashboardContext';
+import { getObservationDate, formatObservationValue } from './utils';
 
 // Custom render to wrap with MantineProvider
 function render(ui: React.ReactNode) {
@@ -23,6 +24,71 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/patient/saude',
   useSearchParams: jest.fn(() => new URLSearchParams()),
 }));
+
+describe('Observation Utilities', () => {
+  describe('getObservationDate', () => {
+    it('prioritizes effectiveDateTime over effectivePeriod.start', () => {
+      const obs: any = { effectiveDateTime: '2023-11-01T10:00:00Z', effectivePeriod: { start: '2023-10-01T10:00:00Z' } };
+      const { dStr, dateObj } = getObservationDate(obs);
+      expect(dStr).toBe('2023-11-01T10:00:00Z');
+      expect(dateObj?.getTime()).toBe(new Date('2023-11-01T10:00:00Z').getTime());
+    });
+
+    it('falls back to effectivePeriod.start', () => {
+      const obs: any = { effectivePeriod: { start: '2023-10-01T10:00:00Z' } };
+      const { dStr, dateObj } = getObservationDate(obs);
+      expect(dStr).toBe('2023-10-01T10:00:00Z');
+      expect(dateObj?.getTime()).toBe(new Date('2023-10-01T10:00:00Z').getTime());
+    });
+
+    it('returns Data não informada when missing both', () => {
+      const obs: any = {};
+      const { dStr, dateObj } = getObservationDate(obs);
+      expect(dStr).toBe('Data não informada');
+      expect(dateObj).toBeNull();
+    });
+  });
+
+  describe('formatObservationValue', () => {
+    it('formats systolic and diastolic components handling units correctly and individually', () => {
+      // Both have same unit
+      const obs1: any = {
+        component: [
+          { code: { coding: [{ code: '8480-6' }] }, valueQuantity: { value: 120, unit: 'mmHg' } },
+          { code: { coding: [{ code: '8462-4' }] }, valueQuantity: { value: 80, unit: 'mmHg' } }
+        ]
+      };
+      expect(formatObservationValue(obs1)).toBe('120/80 mmHg');
+
+      // Only diastolic has unit
+      const obs2: any = {
+        component: [
+          { code: { coding: [{ code: '8480-6' }] }, valueQuantity: { value: 130 } },
+          { code: { coding: [{ code: '8462-4' }] }, valueQuantity: { value: 90, unit: 'mmHg' } }
+        ]
+      };
+      expect(formatObservationValue(obs2)).toBe('130/90 mmHg');
+
+      // Only systolic has unit
+      const obs3: any = {
+        component: [
+          { code: { coding: [{ code: '8480-6' }] }, valueQuantity: { value: 110, unit: 'mmHg' } },
+          { code: { coding: [{ code: '8462-4' }] }, valueQuantity: { value: 70 } }
+        ]
+      };
+      expect(formatObservationValue(obs3)).toBe('110/70 mmHg');
+
+      // Neither has unit
+      const obs4: any = {
+        component: [
+          { code: { coding: [{ code: '8480-6' }] }, valueQuantity: { value: 110 } },
+          { code: { coding: [{ code: '8462-4' }] }, valueQuantity: { value: 70 } }
+        ]
+      };
+      expect(formatObservationValue(obs4)).toBe('110/70');
+    });
+  });
+});
 
 describe('PatientSaudePage', () => {
   beforeEach(() => {
