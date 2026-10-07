@@ -109,6 +109,24 @@ A persistência do Docker é mantida em volumes nomeados (`medplum-postgres-data
 - Para pausar e retomar os serviços **(Mantendo dados)**: `docker compose down` seguido de `docker compose up -d`.
 - Para recriar o ambiente limpo **(Perda total dos dados de teste)**: `docker compose down -v`.
 
-## 7. Conclusão
+## 7. Resumo e Status da Auditoria (PR #29)
 
-Esta arquitetura isolada resolve o requerimento do ambiente DEV no Windows de forma padronizada. Contudo, ela depende essencialmente da **remoção do rewrite estático no `next.config.mjs`** e do uso do **Next.js na porta 3001**.
+Esta arquitetura isolada resolve o requerimento do ambiente DEV no Windows de forma padronizada, porém a implementação prática exige ajustes no repositório.
+
+- **O que foi corrigido na documentação:**
+  - Identificação de portas exatas para DEV (Medplum=3000, Next.js=3001, Expo=8081).
+  - Configuração de proxy Mobile apontando para o Next.js local na rede LAN.
+  - Eliminação de suposições sobre Google Sign-in e credenciais default; focado apenas no determinismo (`MEDPLUM_DEFAULT_SUPER_ADMIN_EMAIL`).
+  - Remoção do Client ID/Secret dos requisitos obrigatórios, pois não estão hardcoded.
+  - Especificação clara de persistência e perda de dados em volumes Docker (`down` vs `down -v`).
+- **O que continua bloqueado:**
+  - O direcionamento de chamadas do Next.js para o Medplum local via `.env.local` não funcionará porque o `next.config.mjs` sobrescreve isso com um proxy estático (hardcoded).
+- **O que precisa ser implementado em uma próxima tarefa:**
+  - Alterar o `next.config.mjs` para consumir `process.env.NEXT_PUBLIC_MEDPLUM_BASE_URL`.
+  - Scripts/comandos oficiais para subir o Next.js na porta 3001.
+- **Quais pontos foram realmente verificados:**
+  - O conteúdo e formato do `docker-compose.full-stack.yml` atual (Redis, Postgres, Medplum Server/App, portas padrão).
+  - Onde o Delchan acessa essas rotas e qual variável (`EXPO_PUBLIC_API_URL`, `MEDPLUM_BASE_URL`) ele usa (grep do código local).
+- **Quais continuam não validados:**
+  - A compatibilidade rigorosa entre o `@medplum/core/react/fhirtypes@5.0.4` da web e a versão `latest` via imagem Docker.
+  - O comportamento em run-time da variável `MEDPLUM_DEFAULT_SUPER_ADMIN_EMAIL` sobre a imagem Docker.
