@@ -88,9 +88,11 @@ EXPO_PUBLIC_API_URL="http://IP_DA_SUA_MAQUINA:3001/api"
 
 ## 5. Autenticação e Próximos Passos (Dados de Teste)
 
-### 5.1. O Primeiro Acesso e Super Admin
+### 5.1. O Primeiro Acesso e Super Admin (NÃO VALIDADO)
 O login no Medplum App (Porta 3000) requer um Super Admin. A documentação do Compose não provê uma semente automática apenas por subir os containers.
-É mandatório definir variáveis de ambiente determinísticas (`MEDPLUM_DEFAULT_SUPER_ADMIN_EMAIL` e `MEDPLUM_DEFAULT_SUPER_ADMIN_PASSWORD`) no Docker Compose ou utilizar os scripts da CLI (`medplum create-superadmin`) para conseguir o acesso inicial verificável.
+
+A configuração oficial do Medplum cita o uso de variáveis de ambiente (`MEDPLUM_DEFAULT_SUPER_ADMIN_EMAIL` e `MEDPLUM_DEFAULT_SUPER_ADMIN_PASSWORD`) ou uso da CLI (`medplum create-superadmin`). Contudo, **o comportamento em runtime dessas variáveis ou da CLI contra a imagem Docker específica do Compose ainda não foi validado.**
+Qualquer método escolhido para a criação determinística do Super Admin precisará ser testado na prática em uma próxima implementação antes de ser considerado oficial para o repositório.
 
 ### 5.2. Criação do Projeto
 No Medplum App (`http://localhost:3000`):
