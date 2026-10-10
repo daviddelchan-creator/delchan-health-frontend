@@ -4,6 +4,7 @@ import { Title, Text, Card, Stack, Button, Badge, Group, ThemeIcon, Grid, Action
 import { usePatientDashboardContext } from './state/PatientDashboardContext';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { Loader, Center } from '@mantine/core';
 
 export default function PatientDashboardPage() {
   const { state, data, error } = usePatientDashboardContext();
@@ -15,7 +16,11 @@ export default function PatientDashboardPage() {
   }
 
   if (state === 'INITIALIZING' || state === 'LOADING') {
-      return <Loading centered minHeight="50vh" />;
+      return (
+        <Center style={{ minHeight: '50vh' }}>
+          <Loader size="lg" />
+        </Center>
+      );
   }
 
   if (state === 'UNAUTHORIZED' || state === 'FORBIDDEN') {
