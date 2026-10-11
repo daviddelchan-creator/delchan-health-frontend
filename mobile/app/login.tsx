@@ -26,6 +26,29 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     try {
+      const isDemoMode = process.env.EXPO_PUBLIC_DEMO_MODE === 'true';
+
+      if (isDemoMode) {
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        const dummyProfile = {
+            resourceType: "Patient",
+            id: "demo-patient-123",
+            name: [{ given: ["Maria"], family: "Demo" }],
+            birthDate: "1985-06-15",
+            gender: "female",
+            telecom: [{ system: "email", value: email || "maria@demo.com" }]
+        };
+
+        await SecureStore.setItemAsync('access_token', 'demo_access_token');
+        await SecureStore.setItemAsync('refresh_token', 'demo_refresh_token');
+        await AsyncStorage.setItem('profile', JSON.stringify(dummyProfile));
+
+        router.replace('/patient');
+        return;
+      }
+
       const baseUrl = process.env.EXPO_PUBLIC_API_URL;
       if (!baseUrl) {
           throw new Error('API URL não configurada. Configure a variável EXPO_PUBLIC_API_URL.');
