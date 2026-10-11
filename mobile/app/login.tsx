@@ -26,18 +26,28 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL;
-      if (!baseUrl) {
-          throw new Error('API URL não configurada. Configure a variável EXPO_PUBLIC_API_URL.');
+      let access_token = 'demo_token';
+      let refresh_token = 'demo_refresh';
+      let profile = { name: [{ given: ['Demo'], family: 'User' }] };
+      let branding = {};
+
+      if (process.env.EXPO_PUBLIC_DEMO_MODE !== 'true') {
+          const baseUrl = process.env.EXPO_PUBLIC_API_URL;
+          if (!baseUrl) {
+              throw new Error('API URL não configurada. Configure a variável EXPO_PUBLIC_API_URL.');
+          }
+
+          const response = await axios.post(`${baseUrl}/api/auth/mobile-login`, {
+            email,
+            password,
+            tenantId
+          });
+
+          access_token = response.data.access_token;
+          refresh_token = response.data.refresh_token;
+          profile = response.data.profile;
+          branding = response.data.branding;
       }
-
-      const response = await axios.post(`${baseUrl}/api/auth/mobile-login`, {
-        email,
-        password,
-        tenantId
-      });
-
-      const { access_token, refresh_token, profile, branding } = response.data;
 
       // Store sensitive tokens securely
       await SecureStore.setItemAsync('access_token', access_token);

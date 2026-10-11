@@ -99,6 +99,14 @@ function AdminPortalContent() {
         setClinicEmail(orgs[0].telecom?.find(t => t.system === 'email')?.value || '');
         const logoUrl = orgs[0].extension?.find(e => e.url === 'https://delchan.com/fhir/logo')?.valueUrl;
         if (logoUrl) setLogoPreview(logoUrl as string);
+
+        // Sync tenant config from Medplum Organization
+        const brandColorUrl = orgs[0].extension?.find(e => e.url === 'https://delchan.com/fhir/brand-color')?.valueString;
+        setTenantConfig({
+            ...tenantConfig,
+            name: orgs[0].name || tenantConfig.name,
+            internalColor: brandColorUrl || tenantConfig.internalColor,
+        });
       }
 
       const fBundle = await medplum.search('Questionnaire', '_sort=-date');
@@ -144,13 +152,18 @@ function AdminPortalContent() {
         const binary = await medplum.createBinary(logoFile, logoFile.name, logoFile.type);
         finalLogoUrl = binary.url;
       }
+
+      const extensions = [];
+      if (finalLogoUrl) extensions.push({ url: 'https://delchan.com/fhir/logo', valueUrl: finalLogoUrl });
+      if (tenantConfig.internalColor) extensions.push({ url: 'https://delchan.com/fhir/brand-color', valueString: tenantConfig.internalColor });
+
       const orgData: Organization = {
         resourceType: 'Organization', 
         id: organization?.id, 
         name: tenantConfig.name, 
         identifier: clinicCnpj ? [{ system: 'http://receita.fazenda.gov.br/sistemas/cnpj', value: clinicCnpj }] : undefined,
         telecom: [{ system: 'phone', value: clinicPhone, use: 'work' }, { system: 'email', value: clinicEmail, use: 'work' }],
-        extension: finalLogoUrl ? [{ url: 'https://delchan.com/fhir/logo', valueUrl: finalLogoUrl }] : undefined
+        extension: extensions.length > 0 ? extensions : undefined
       };
       if (organization?.id) await medplum.updateResource(orgData);
       else setOrganization(await medplum.createResource(orgData));
