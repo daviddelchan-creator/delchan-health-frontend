@@ -4,6 +4,7 @@ import { Title, Text, Card, Stack, Button, Badge, Group, ThemeIcon, Grid, Action
 import { usePatientDashboardContext } from './state/PatientDashboardContext';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { Loading } from '@/components/ui/Loading';
 
 export default function PatientDashboardPage() {
   const { state, data, error } = usePatientDashboardContext();
