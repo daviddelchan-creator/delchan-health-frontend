@@ -15,10 +15,41 @@ export default function PatientScreen() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
+        const isDemoMode = process.env.EXPO_PUBLIC_DEMO_MODE === 'true';
         const token = await SecureStore.getItemAsync('access_token');
-        if (!token) {
+
+        if (!token && !isDemoMode) {
            router.replace('/login');
            return;
+        }
+
+        if (isDemoMode) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            const dummyProfile = {
+                resourceType: "Patient",
+                id: "demo-patient-123",
+                name: [{ given: ["Maria"], family: "Demo" }],
+            };
+            const dummyDashboard = {
+                profile: dummyProfile,
+                appointments: [
+                    { id: 'appt-1', start: new Date(Date.now() + 86400000).toISOString(), status: 'booked' }
+                ],
+                documents: [
+                    { id: 'doc-1', date: new Date().toISOString() }
+                ],
+                diagnostics: [
+                    { id: 'diag-1', effectiveDateTime: new Date().toISOString() }
+                ],
+                observations: [
+                    { id: 'obs-1', code: { text: 'Pressão Arterial' }, valueQuantity: { value: 120, unit: 'mmHg' } }
+                ],
+                medications: []
+            };
+
+            setProfile(dummyProfile);
+            setDashboardData(dummyDashboard);
+            return;
         }
 
         const baseUrl = process.env.EXPO_PUBLIC_API_URL;

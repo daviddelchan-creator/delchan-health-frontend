@@ -19,9 +19,21 @@ export default function PatientDocumentsScreen() {
     try {
       setLoading(true);
       setError(null);
+      const isDemoMode = process.env.EXPO_PUBLIC_DEMO_MODE === 'true';
       const token = await SecureStore.getItemAsync('access_token');
-      if (!token) {
+
+      if (!token && !isDemoMode) {
          router.replace('/login');
+         return;
+      }
+
+      if (isDemoMode) {
+         await new Promise(resolve => setTimeout(resolve, 800));
+         const fakeDocs = [
+             { id: 'doc-1', date: new Date().toISOString(), content: [{ attachment: { title: 'Exame de Sangue.pdf' } }] }
+         ];
+         setDocuments(fakeDocs);
+         setProcessingStates({ 'doc-1': 'REVIEWED' });
          return;
       }
 
@@ -77,6 +89,15 @@ export default function PatientDocumentsScreen() {
         return;
       }
 
+      const isDemoMode = process.env.EXPO_PUBLIC_DEMO_MODE === 'true';
+      if (isDemoMode) {
+          setUploading(true);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          Alert.alert('Sucesso (Demo)', 'Documento simulado como enviado.');
+          setUploading(false);
+          return;
+      }
+
       const fileAsset = result.assets[0];
 
       const token = await SecureStore.getItemAsync('access_token');
@@ -116,6 +137,12 @@ export default function PatientDocumentsScreen() {
   };
 
   const handleOpenDocument = async (doc: any) => {
+      const isDemoMode = process.env.EXPO_PUBLIC_DEMO_MODE === 'true';
+      if (isDemoMode) {
+          Alert.alert('Documento Original (Demo)', 'Esta é uma demonstração visual. Nenhum documento real foi baixado.');
+          return;
+      }
+
       // Find the binary attachment url
       let binaryUrl = null;
       let title = 'documento';
