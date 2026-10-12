@@ -21,21 +21,40 @@ export default function PatientScreen() {
            return;
         }
 
-        const baseUrl = process.env.EXPO_PUBLIC_API_URL;
-        if (!baseUrl) {
-            setError('API URL não configurada.');
-            setLoading(false);
-            return;
+        let data: any;
+
+        if (process.env.EXPO_PUBLIC_DEMO_MODE === 'true') {
+           data = {
+               profile: { name: [{ given: ['Demo'], family: 'Patient' }] },
+               appointments: [
+                   { id: '1', start: new Date(Date.now() + 86400000).toISOString(), status: 'booked' }
+               ],
+               documents: [
+                   { id: '1', date: new Date().toISOString() }
+               ],
+               diagnostics: [],
+               observations: [
+                   { id: '1', code: { text: 'Pressão Arterial' }, valueQuantity: { value: 120, unit: 'mmHg' } }
+               ],
+               medications: []
+           };
+        } else {
+            const baseUrl = process.env.EXPO_PUBLIC_API_URL;
+            if (!baseUrl) {
+                setError('API URL não configurada.');
+                setLoading(false);
+                return;
+            }
+
+            // Fetch the authoritative identity and data from the server dashboard endpoint
+            const response = await axios.get(`${baseUrl}/api/patient/dashboard`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            data = response.data;
         }
 
-        // Fetch the authoritative identity and data from the server dashboard endpoint
-        const response = await axios.get(`${baseUrl}/api/patient/dashboard`, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-
-        const data = response.data;
         setProfile(data.profile);
         setDashboardData(data);
 

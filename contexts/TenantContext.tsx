@@ -17,6 +17,7 @@ export interface TenantInfo {
 export interface TenantConfig {
   name: string;
   internalColor: string;
+  logoUrl?: string;
   require2FA: boolean;
   activeTenantId?: string;
   activeModules?: {
@@ -80,11 +81,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   // Carrega configurações persistidas do localStorage ao iniciar
   useEffect(() => {
+    // Deprecated localStorage loading - Medplum handles organization data
     try {
-      const savedConfig = localStorage.getItem('delchan_tenant_config');
-      if (savedConfig) {
-        setTenantConfigState(JSON.parse(savedConfig));
-      }
       const savedTenants = localStorage.getItem('delchan_tenants_list');
       if (savedTenants) {
         setTenants(JSON.parse(savedTenants));
@@ -96,11 +94,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const setTenantConfig = (config: TenantConfig) => {
     setTenantConfigState(config);
-    try {
-      localStorage.setItem('delchan_tenant_config', JSON.stringify(config));
-    } catch (e) {
-      console.error('Erro ao persistir configurações:', e);
-    }
+    // Tenant config will be persisted directly to Medplum backend by the components
   };
 
   const switchTenant = (tenantId: string) => {
