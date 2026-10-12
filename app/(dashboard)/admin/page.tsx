@@ -77,7 +77,10 @@ function AdminPortalContent() {
   // ==========================================
   // MODELOS DE EVOLUÇÃO (TEMPLATES)
   // ==========================================
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([
+    { id: 'default-1', title: 'Modelo SOAP Padrão', desc: 'S (Subjetivo), O (Objetivo), A (Avaliação), P (Plano)', content: 'S (Subjetivo):\n\nO (Objetivo):\n\nA (Avaliação/CID):\n\nP (Plano/Conduta):' },
+    { id: 'default-2', title: 'Anamnese Básica', desc: 'HMA, HMP, Alergias e Medicações.', content: 'HMA (História da Doença Atual):\n\nHPP (História Patológica Pregressa):\n\nMedicamentos em uso:\n\nAlergias conhecidas:' },
+  ]);
   const [templateModal, setTemplateModal] = useState(false);
   const [newTemplate, setNewTemplate] = useState({ title: '', desc: '', content: '' });
 
@@ -119,7 +122,12 @@ function AdminPortalContent() {
                   content: res.extension?.find((ext: any) => ext.url === 'content')?.valueString || ''
               };
           });
-          setTemplates(parsedTemplates);
+          // Merge dynamic templates with default fallbacks safely
+          setTemplates(prev => {
+              const dynamics = parsedTemplates;
+              const defaults = prev.filter(p => p.id.startsWith('default-'));
+              return [...defaults, ...dynamics];
+          });
       }
     } catch (error) { 
       console.error(error); 
@@ -267,6 +275,10 @@ function AdminPortalContent() {
   };
 
   const deleteTemplate = async (id: string) => {
+    if(id.startsWith('default-')) {
+        return alert("Modelos padrão do sistema não podem ser excluídos, apenas os criados por você.");
+    }
+
     if(confirm('Excluir este modelo de evolução definitivamente?')) {
         try {
             await medplum.deleteResource('Basic', id);

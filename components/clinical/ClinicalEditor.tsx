@@ -18,41 +18,6 @@ interface ClinicalEditorProps {
   patientName?: string;
 }
 
-// SIMULAÇÃO DE MODELOS DINÂMICOS (SOAP, Anamnese, Estética)
-const dynamicTemplates = [
-  {
-    id: 'soap',
-    label: '📋 Modelo SOAP',
-    content: `
-      <h2>Evolução Clínica (SOAP)</h2>
-      <h3>S - Subjetivo</h3><p>Queixa principal e histórico relatado...</p>
-      <h3>O - Objetivo</h3><p>Exame físico, sinais vitais...</p>
-      <h3>A - Avaliação</h3><p>Hipótese diagnóstica / CID-10...</p>
-      <h3>P - Plano</h3><p>Conduta e prescrições...</p>
-    `
-  },
-  {
-    id: 'anamnese',
-    label: '📝 Anamnese Geral',
-    content: `
-      <h2>Anamnese Inicial</h2>
-      <p><strong>HMA:</strong> </p>
-      <p><strong>HMP:</strong> </p>
-      <p><strong>Alergias conhecidas:</strong> </p>
-    `
-  },
-  {
-    id: 'estetica',
-    label: '✨ Ficha Estética / Dermato',
-    content: `
-      <h2>Avaliação Dermatológica</h2>
-      <p><strong>Queixa Principal:</strong> </p>
-      <p><strong>Biotipo Cutâneo:</strong> [ ] Oleoso [ ] Seco [ ] Misto</p>
-      <p><strong>Histórico de Procedimentos:</strong> </p>
-    `
-  }
-];
-
 export function ClinicalEditor({ 
   onSave, 
   accentColor = '#14b8a6', 
@@ -61,6 +26,38 @@ export function ClinicalEditor({
   patientName,
 }: ClinicalEditorProps) {
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const medplum = useMedplum();
+  const [dynamicTemplates, setDynamicTemplates] = useState<any[]>([
+    {
+      id: 'default-soap',
+      label: '📋 Modelo SOAP Padrão',
+      content: '<h2>Evolução Clínica (SOAP)</h2><h3>S - Subjetivo</h3><p>Queixa principal e histórico relatado...</p><h3>O - Objetivo</h3><p>Exame físico, sinais vitais...</p><h3>A - Avaliação</h3><p>Hipótese diagnóstica / CID-10...</p><h3>P - Plano</h3><p>Conduta e prescrições...</p>'
+    },
+    {
+      id: 'default-anamnese',
+      label: '📝 Anamnese Básica',
+      content: '<h2>Anamnese Inicial</h2><p><strong>HMA:</strong> </p><p><strong>HMP:</strong> </p><p><strong>Alergias conhecidas:</strong> </p>'
+    }
+  ]);
+
+  useEffect(() => {
+      medplum.search('Basic', 'code=clinical-template').then((bundle) => {
+          if (bundle && bundle.entry) {
+              const fetched = bundle.entry.map((e: any) => {
+                  const res = e.resource;
+                  return {
+                      id: res.id,
+                      label: `📄 ${res.extension?.find((ext: any) => ext.url === 'title')?.valueString || 'Template Personalizado'}`,
+                      content: res.extension?.find((ext: any) => ext.url === 'content')?.valueString?.replace(/\n/g, '<br/>') || ''
+                  };
+              });
+              setDynamicTemplates(prev => {
+                  const defaults = prev.filter(p => p.id.startsWith('default-'));
+                  return [...defaults, ...fetched];
+              });
+          }
+      }).catch(console.error);
+  }, [medplum]);
 
   const editor = useEditor({
     extensions: [

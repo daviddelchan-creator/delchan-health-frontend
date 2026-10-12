@@ -77,14 +77,30 @@ export function DynamicIntakeForm({ medplum, clinicType, patient, onSuccess }: D
 
   useEffect(() => {
     if (medplum) {
-        medplum.search('Questionnaire', '_sort=-date').then((bundle: any) => {
+        medplum.search('Questionnaire', '_sort=-date').then(async (bundle: any) => {
             if (bundle && bundle.entry) {
                 // Pegar o Questionário ativo mais recente para Intake
-                setDynamicQuestionnaires(bundle.entry.map((e: any) => e.resource));
+                const questionnaires = bundle.entry.map((e: any) => e.resource);
+                setDynamicQuestionnaires(questionnaires);
+
+                // Se estamos editando um paciente, buscar as respostas prévias
+                if (patient?.id && questionnaires.length > 0) {
+                    const qResponseBundle = await medplum.search('QuestionnaireResponse', `subject=Patient/${patient.id}&questionnaire=Questionnaire/${questionnaires[0].id}&_sort=-authored`);
+                    if (qResponseBundle && qResponseBundle.entry && qResponseBundle.entry.length > 0) {
+                        const latestResponse = qResponseBundle.entry[0].resource;
+                        const initialAnswers: Record<string, any> = {};
+                        latestResponse.item?.forEach((it: any) => {
+                            if (it.answer && it.answer.length > 0) {
+                                initialAnswers[it.linkId] = it.answer[0].valueBoolean ?? it.answer[0].valueString ?? '';
+                            }
+                        });
+                        setDynamicAnswers(initialAnswers);
+                    }
+                }
             }
         }).catch(console.error);
     }
-  }, [medplum]);
+  }, [medplum, patient]);
 
   const handleDynamicChange = (linkId: string, value: any) => {
       setDynamicAnswers(prev => ({ ...prev, [linkId]: value }));
