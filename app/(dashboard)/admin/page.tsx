@@ -77,12 +77,7 @@ function AdminPortalContent() {
   // ==========================================
   // MODELOS DE EVOLUÇÃO (TEMPLATES)
   // ==========================================
-  const [templates, setTemplates] = useState([
-    { id: '1', title: 'Modelo SOAP', desc: 'Estrutura completa de Subjetivo, Objetivo, Avaliação e Plano.', content: 'S (Subjetivo):\n\nO (Objetivo):\n\nA (Avaliação/CID):\n\nP (Plano/Conduta):' },
-    { id: '2', title: 'Anamnese Geral', desc: 'História clínica pregressa, alergias e medicações em uso.', content: 'HDA (História da Doença Atual):\n\nHPP (História Patológica Pregressa):\n\nMedicamentos em uso:\n\nAlergias conhecidas:' },
-    { id: '3', title: 'Avaliação Estética & Dermatológica', desc: 'Queixa facial, biotipo cutâneo e histórico estético.', content: 'Queixa Principal:\nFototipo Cutâneo (Fitzpatrick):\nBiotipo:\nProcedimentos Anteriores:' },
-    { id: '4', title: 'Pediatria - Consulta de Puericultura', desc: 'Acompanhamento do desenvolvimento e vacinas.', content: 'Peso:\nAltura:\nPerímetro Cefálico:\nAlimentação / Aleitamento:\nVacinação em dia: [ ] Sim [ ] Não' }
-  ]);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [templateModal, setTemplateModal] = useState(false);
   const [newTemplate, setNewTemplate] = useState({ title: '', desc: '', content: '' });
 
@@ -106,11 +101,26 @@ function AdminPortalContent() {
             ...tenantConfig,
             name: orgs[0].name || tenantConfig.name,
             internalColor: brandColorUrl || tenantConfig.internalColor,
+            logoUrl: logoUrl as string | undefined
         });
       }
 
       const fBundle = await medplum.search('Questionnaire', '_sort=-date');
       setActiveForms(fBundle.entry?.map((e: any) => e.resource) || []);
+
+      const tBundle = await medplum.search('Basic', 'code=clinical-template');
+      if (tBundle && tBundle.entry) {
+          const parsedTemplates = tBundle.entry.map((e: any) => {
+              const res = e.resource;
+              return {
+                  id: res.id,
+                  title: res.extension?.find((ext: any) => ext.url === 'title')?.valueString || 'Sem Título',
+                  desc: res.extension?.find((ext: any) => ext.url === 'desc')?.valueString || '',
+                  content: res.extension?.find((ext: any) => ext.url === 'content')?.valueString || ''
+              };
+          });
+          setTemplates(parsedTemplates);
+      }
     } catch (error) { 
       console.error(error); 
     }
@@ -165,8 +175,13 @@ function AdminPortalContent() {
         telecom: [{ system: 'phone', value: clinicPhone, use: 'work' }, { system: 'email', value: clinicEmail, use: 'work' }],
         extension: extensions.length > 0 ? extensions : undefined
       };
-      if (organization?.id) await medplum.updateResource(orgData);
-      else setOrganization(await medplum.createResource(orgData));
+      const savedOrg = organization?.id ? await medplum.updateResource(orgData) : await medplum.createResource(orgData);
+      setOrganization(savedOrg);
+
+      setTenantConfig({
+        ...tenantConfig,
+        logoUrl: finalLogoUrl || tenantConfig.logoUrl
+      });
       alert('Configurações oficiais da clínica salvas com sucesso no FHIR!');
     } catch (error) { 
       alert('Erro ao salvar dados da clínica.'); 
@@ -231,14 +246,35 @@ function AdminPortalContent() {
   };
 
   // Modelos de Evolução
-  const saveNewTemplate = () => {
+  const saveNewTemplate = async () => {
     if(!newTemplate.title) return;
-    setTemplates([...templates, { id: Date.now().toString(), ...newTemplate }]);
-    setTemplateModal(false);
-    setNewTemplate({ title: '', desc: '', content: '' });
+    try {
+        const resource = await medplum.createResource({
+            resourceType: 'Basic',
+            code: { coding: [{ system: 'http://delchan.com/fhir/basic-type', code: 'clinical-template' }] },
+            extension: [
+                { url: 'title', valueString: newTemplate.title },
+                { url: 'desc', valueString: newTemplate.desc },
+                { url: 'content', valueString: newTemplate.content }
+            ]
+        });
+        setTemplates([...templates, { id: resource.id, ...newTemplate }]);
+        setTemplateModal(false);
+        setNewTemplate({ title: '', desc: '', content: '' });
+    } catch (e) {
+        alert("Erro ao salvar o template clínico.");
+    }
   };
-  const deleteTemplate = (id: string) => {
-    if(confirm('Excluir este modelo?')) setTemplates(templates.filter(t => t.id !== id));
+
+  const deleteTemplate = async (id: string) => {
+    if(confirm('Excluir este modelo de evolução definitivamente?')) {
+        try {
+            await medplum.deleteResource('Basic', id);
+            setTemplates(templates.filter(t => t.id !== id));
+        } catch (e) {
+            alert('Erro ao excluir template.');
+        }
+    }
   };
 
   const activeModules = tenantConfig.activeModules || { agenda: true, prontuario: true, faturamento: true, crm: true };

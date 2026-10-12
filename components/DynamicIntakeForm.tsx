@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Grid, TextInput, Select, Button, Avatar, Group, Text, 
-  FileButton, Indicator, Stack, Box, Alert, Divider
+  FileButton, Indicator, Stack, Box, Alert, Divider, Checkbox
 } from '@mantine/core';
 import { IconCameraPlus, IconUserCircle, IconAlertCircle } from '@tabler/icons-react';
 import { Patient, ContactPoint, Address, Identifier } from '@medplum/fhirtypes';
@@ -70,6 +70,25 @@ export function DynamicIntakeForm({ medplum, clinicType, patient, onSuccess }: D
   const [bairro, setBairro] = useState(addressObj?.district || '');
   const [cidade, setCidade] = useState(addressObj?.city || '');
   const [estado, setEstado] = useState<string | null>(addressObj?.state || '');
+
+  // 5. Formulários Dinâmicos (Questionnaires do Admin)
+  const [dynamicQuestionnaires, setDynamicQuestionnaires] = useState<any[]>([]);
+  const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    if (medplum) {
+        medplum.search('Questionnaire', '_sort=-date').then((bundle: any) => {
+            if (bundle && bundle.entry) {
+                // Pegar o Questionário ativo mais recente para Intake
+                setDynamicQuestionnaires(bundle.entry.map((e: any) => e.resource));
+            }
+        }).catch(console.error);
+    }
+  }, [medplum]);
+
+  const handleDynamicChange = (linkId: string, value: any) => {
+      setDynamicAnswers(prev => ({ ...prev, [linkId]: value }));
+  };
 
   const handlePhotoChange = (file: File | null) => {
     setPhotoFile(file);
@@ -200,6 +219,29 @@ export function DynamicIntakeForm({ medplum, clinicType, patient, onSuccess }: D
         savedPatient = { ...patientPayload, id: `local-${Date.now()}` };
       }
       
+      // Salvar Respostas Dinâmicas como QuestionnaireResponse
+      if (Object.keys(dynamicAnswers).length > 0 && dynamicQuestionnaires.length > 0 && medplum) {
+          try {
+              const activeQ = dynamicQuestionnaires[0];
+              const qResponse = {
+                  resourceType: 'QuestionnaireResponse',
+                  status: 'completed',
+                  questionnaire: `Questionnaire/${activeQ.id}`,
+                  subject: { reference: `Patient/${savedPatient.id}` },
+                  authored: new Date().toISOString(),
+                  item: Object.keys(dynamicAnswers).map(linkId => ({
+                      linkId,
+                      answer: typeof dynamicAnswers[linkId] === 'boolean'
+                                ? [{ valueBoolean: dynamicAnswers[linkId] }]
+                                : [{ valueString: String(dynamicAnswers[linkId]) }]
+                  }))
+              };
+              await medplum.createResource(qResponse);
+          } catch (qErr) {
+              console.error("Erro ao salvar respostas dinâmicas:", qErr);
+          }
+      }
+
       if (onSuccess) {
         onSuccess(savedPatient);
       }
@@ -473,6 +515,50 @@ export function DynamicIntakeForm({ medplum, clinicType, patient, onSuccess }: D
           />
         </Grid.Col>
       </Grid>
+
+      {/* 4. PERGUNTAS DINÂMICAS DO ADMIN CONSTRUTOR */}
+      {dynamicQuestionnaires.length > 0 && dynamicQuestionnaires[0].item && (
+          <>
+            <Divider my="xl" color="gray.2" />
+            <Text fw={700} size="sm" c="teal.7" mb="md" tt="uppercase" lts={1}>
+                4. Formulário Adicional Clínico: {dynamicQuestionnaires[0].title || 'Personalizado'}
+            </Text>
+            <Grid gutter="md" mb="xl">
+                {dynamicQuestionnaires[0].item?.map((item: any) => (
+                    <Grid.Col span={12} key={item.linkId}>
+                        {item.type === 'boolean' ? (
+                            <Checkbox
+                                label={item.text}
+                                checked={dynamicAnswers[item.linkId] || false}
+                                onChange={(e) => handleDynamicChange(item.linkId, e.currentTarget.checked)}
+                                color="teal"
+                                size="md"
+                            />
+                        ) : item.type === 'choice' ? (
+                            <Select
+                                label={item.text}
+                                data={item.answerOption?.map((opt:any) => opt.valueString) || []}
+                                value={dynamicAnswers[item.linkId] || ''}
+                                onChange={(val) => handleDynamicChange(item.linkId, val)}
+                                radius="md"
+                                size="md"
+                                placeholder="Selecione"
+                            />
+                        ) : (
+                            <TextInput
+                                label={item.text}
+                                value={dynamicAnswers[item.linkId] || ''}
+                                onChange={(e) => handleDynamicChange(item.linkId, e.currentTarget.value)}
+                                radius="md"
+                                size="md"
+                                placeholder={item.text}
+                            />
+                        )}
+                    </Grid.Col>
+                ))}
+            </Grid>
+          </>
+      )}
 
       <Group justify="flex-end" mt="xl" pt="md" style={{ borderTop: '1px solid #e2e8f0' }}>
         <Button 

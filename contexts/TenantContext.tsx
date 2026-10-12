@@ -17,6 +17,7 @@ export interface TenantInfo {
 export interface TenantConfig {
   name: string;
   internalColor: string;
+  logoUrl?: string;
   require2FA: boolean;
   activeTenantId?: string;
   activeModules?: {

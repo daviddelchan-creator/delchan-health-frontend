@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -8,6 +8,7 @@ import { RichTextEditor } from '@mantine/tiptap';
 import { Button, Group, Paper, Stack, Tooltip } from '@mantine/core';
 import { IconQrcode, IconPrinter } from '@tabler/icons-react';
 import { FormPrintDialog } from '../FormPrintDialog';
+import { useMedplum } from '@medplum/react-hooks';
 
 interface ClinicalEditorProps {
   onSave: (contentJson: object, contentHtml: string) => void;

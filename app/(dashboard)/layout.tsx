@@ -31,9 +31,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <AppShell.Header style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
           <Group h="100%" px="xl" justify="space-between">
             <Group>
-              <Center bg="teal.9" c="white" w={32} h={32} style={{ borderRadius: 8, fontWeight: 900 }}>+</Center>
+              {tenantConfig.logoUrl ? (
+                <img src={tenantConfig.logoUrl} alt="Logo da Clínica" style={{ height: 32, borderRadius: 8 }} />
+              ) : (
+                <Center bg={tenantConfig.internalColor || "teal.9"} c="white" w={32} h={32} style={{ borderRadius: 8, fontWeight: 900 }}>+</Center>
+              )}
               <Text component="div" fw={800} size="xl" c="dark.9" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                Delchan <Badge size="sm" variant="light" color="gray">OS</Badge>
+                {tenantConfig.name || 'Delchan'} <Badge size="sm" variant="light" color="gray">OS</Badge>
               </Text>
               <Group ml="xl" gap="sm">
                 <UnstyledButton onClick={() => router.push('/doctor')} px="md" py="xs" bg={pathname === '/doctor' ? 'dark.9' : 'transparent'} c={pathname === '/doctor' ? 'white' : '#64748b'} style={{ borderRadius: 20, fontWeight: 600 }}>Início</UnstyledButton>
@@ -58,9 +62,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {isAdmin && (
         <AppShell.Navbar p="md" style={{ borderRight: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
           <Group mb="xl" px="xs" wrap="nowrap">
-            <Center bg="dark.9" c="white" w={32} h={32} style={{ borderRadius: 8, fontWeight: 900 }}>+</Center>
+            {tenantConfig.logoUrl ? (
+                <img src={tenantConfig.logoUrl} alt="Logo" style={{ height: 32, borderRadius: 8 }} />
+            ) : (
+                <Center bg="dark.9" c="white" w={32} h={32} style={{ borderRadius: 8, fontWeight: 900 }}>+</Center>
+            )}
             <div>
-              <Text fw={900} size="lg" style={{ letterSpacing: '-0.5px' }} c="dark.9">Delchan</Text>
+              <Text fw={900} size="lg" style={{ letterSpacing: '-0.5px' }} c="dark.9">{tenantConfig.name ? tenantConfig.name.substring(0,12) : 'Delchan'}</Text>
               <Text size="xs" c="teal.6" fw={700} style={{ marginTop: '-4px' }}>HEALTH OS</Text>
             </div>
             <Badge color="teal" variant="light" size="xs" radius="sm">GOD MODE</Badge>
