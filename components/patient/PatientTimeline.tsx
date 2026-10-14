@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Patient, DocumentReference, ClinicalImpression, Communication } from '@medplum/fhirtypes';
 import { Box, Card, Text, Badge, Group, Stack, Center, Loader, Divider, Menu, ActionIcon, Button } from '@mantine/core';
+import DOMPurify from 'isomorphic-dompurify';
 import { IconDotsVertical, IconPrinter, IconFileText, IconMessage, IconClock, IconEye } from '@tabler/icons-react';
 import { useMedplum } from '@medplum/react-hooks';
 import { useTenant } from '../../contexts/TenantContext';
@@ -222,7 +223,7 @@ export function PatientTimeline({ patient }: PatientTimelineProps) {
                 {/* CONTEÚDO DO REGISTRO */}
                 {item.htmlContent ? (
                   <div
-                    dangerouslySetInnerHTML={{ __html: item.htmlContent }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.htmlContent) }}
                     style={{ fontSize: '14px', color: '#334155', lineHeight: 1.5 }}
                   />
                 ) : (
