@@ -37,6 +37,7 @@ export function ChannelManager({ mode = 'all', currentPractitionerId, onChannels
   const [doctorChannels, setDoctorChannels] = useState<ChannelAccount[]>(INITIAL_DOCTOR_CHANNELS);
   const [doctorsList, setDoctorsList] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Modal QR Code WhatsApp
   const [qrModalOpen, setQrModalOpen] = useState(false);
@@ -62,6 +63,7 @@ export function ChannelManager({ mode = 'all', currentPractitionerId, onChannels
     async function loadPractitioners() {
       try {
         setLoading(true);
+        setError(null);
         const docs = await medplum.searchResources('Practitioner', { _count: 30 }).catch(() => [] as Practitioner[]);
         if (docs && docs.length > 0) {
           const formatted = docs.map(d => ({
@@ -81,6 +83,7 @@ export function ChannelManager({ mode = 'all', currentPractitionerId, onChannels
         }
       } catch (e) {
         console.error('Erro ao carregar médicos para canais:', e);
+        setError('Ocorreu um erro ao carregar a lista de profissionais. Por favor, tente novamente mais tarde.');
       } finally {
         setLoading(false);
       }
@@ -306,6 +309,12 @@ export function ChannelManager({ mode = 'all', currentPractitionerId, onChannels
 
   return (
     <Stack gap="lg">
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} title="Erro" color="red" variant="light" onClose={() => setError(null)} withCloseButton>
+          {error}
+        </Alert>
+      )}
+
       {/* HEADER DE GESTÃO DE CANAIS */}
       <Group justify="space-between">
         <div>
