@@ -54,43 +54,43 @@ export function PatientTimeline({ patient }: PatientTimelineProps) {
         _count: 15,
       }).catch(() => []);
 
-      const parsedItems: TimelineItem[] = [];
+      // Processar DocumentReferences in parallel
+      const parsedItems: TimelineItem[] = await Promise.all(
+        docRefs.map(async (doc) => {
+          const dateStr = doc.date || doc.meta?.lastUpdated || new Date().toISOString();
+          const tracking = doc.identifier?.find((i) => i.system === 'urn:med-sistema:doc-tracker')?.value;
+          const author = doc.author?.[0]?.display || 'Profissional de Saúde';
 
-      // Processar DocumentReferences
-      for (const doc of docRefs) {
-        const dateStr = doc.date || doc.meta?.lastUpdated || new Date().toISOString();
-        const tracking = doc.identifier?.find((i) => i.system === 'urn:med-sistema:doc-tracker')?.value;
-        const author = doc.author?.[0]?.display || 'Profissional de Saúde';
-
-        // Tentar buscar conteúdo do Binary anexado se for HTML
-        let resolvedHtml: string | undefined = undefined;
-        const binaryAttachment = doc.content?.find((c) => c.attachment?.contentType?.includes('html') || c.attachment?.url?.includes('Binary/'));
-        if (binaryAttachment?.attachment?.url?.includes('Binary/')) {
-          const binaryId = binaryAttachment.attachment.url.split('Binary/')[1];
-          try {
-            const binary = await medplum.readResource('Binary', binaryId);
-            if (binary?.data) {
-              resolvedHtml = Buffer.from(binary.data, 'base64').toString('utf8');
+          // Tentar buscar conteúdo do Binary anexado se for HTML
+          let resolvedHtml: string | undefined = undefined;
+          const binaryAttachment = doc.content?.find((c) => c.attachment?.contentType?.includes('html') || c.attachment?.url?.includes('Binary/'));
+          if (binaryAttachment?.attachment?.url?.includes('Binary/')) {
+            const binaryId = binaryAttachment.attachment.url.split('Binary/')[1];
+            try {
+              const binary = await medplum.readResource('Binary', binaryId);
+              if (binary?.data) {
+                resolvedHtml = Buffer.from(binary.data, 'base64').toString('utf8');
+              }
+            } catch {
+              // Silencioso se não conseguir carregar no preview
             }
-          } catch {
-            // Silencioso se não conseguir carregar no preview
           }
-        }
 
-        parsedItems.push({
-          id: doc.id || Math.random().toString(),
-          type: 'docref',
-          title: doc.type?.text || 'Evolução Clínica Rastreável',
-          date: new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-          rawDate: dateStr,
-          htmlContent: resolvedHtml || doc.description,
-          textContent: doc.description,
-          docRefId: doc.id,
-          trackingCode: tracking,
-          author,
-          rawResource: doc,
-        });
-      }
+          return {
+            id: doc.id || Math.random().toString(),
+            type: 'docref',
+            title: doc.type?.text || 'Evolução Clínica Rastreável',
+            date: new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            rawDate: dateStr,
+            htmlContent: resolvedHtml || doc.description,
+            textContent: doc.description,
+            docRefId: doc.id,
+            trackingCode: tracking,
+            author,
+            rawResource: doc,
+          };
+        })
+      );
 
       // Processar ClinicalImpressions
       for (const imp of impressions) {
