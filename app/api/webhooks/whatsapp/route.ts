@@ -56,8 +56,6 @@ export async function POST(request: Request) {
       messageText = data.body || data.text || data.message || messageText;
     }
 
-    console.log(`[WHATSAPP WEBHOOK] Lead recebido: ${leadName} (${leadPhone}) -> "${messageText}"`);
-
     // Ingestão FHIR:
     // O webhook pode registrar no servidor Medplum via Client Credentials se configurado
     const medplumApiUrl = process.env.MEDPLUM_BASE_URL || 'https://delchan-health-portal-medplum.6jpght.easypanel.host/';
