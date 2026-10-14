@@ -179,9 +179,7 @@ export function VitalsModal({ opened, onClose, patientId, onSaved }: VitalsModal
         return;
       }
 
-      for (const obs of observationsToCreate) {
-        await medplum.createResource(obs);
-      }
+      await Promise.all(observationsToCreate.map(obs => medplum.createResource(obs)));
 
       // Limpar campos
       setSystolic('');
