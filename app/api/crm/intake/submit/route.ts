@@ -114,14 +114,16 @@ export async function POST(request: Request) {
         _count: 5
       }).catch(() => [] as Task[]);
 
-      for (const t of tasks) {
-        await medplum.updateResource({
-          ...t,
-          status: 'ready',
-          businessStatus: { text: 'anamnese_concluida' },
-          description: `${t.description || 'Lead CRM'} [Ficha Pré-Atendimento Preenchida & Consentimento Assinado]`
-        }).catch(() => null);
-      }
+      await Promise.all(
+        tasks.map(t =>
+          medplum.updateResource({
+            ...t,
+            status: 'ready',
+            businessStatus: { text: 'anamnese_concluida' },
+            description: `${t.description || 'Lead CRM'} [Ficha Pré-Atendimento Preenchida & Consentimento Assinado]`
+          }).catch(() => null)
+        )
+      );
     } catch {}
 
     return NextResponse.json({
