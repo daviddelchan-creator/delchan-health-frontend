@@ -42,16 +42,18 @@ export default function PatientDocumentsScreen() {
 
       // Fetch processing status for each document
       const states: Record<string, string> = {};
-      for (const doc of docs) {
-         try {
-             const statRes = await axios.get(`${baseUrl}/api/patient/documents/${doc.id}/processing`, {
-                  headers: { Authorization: `Bearer ${token}` }
-             });
-             states[doc.id] = statRes.data.status;
-         } catch(e) {
-             console.log('Failed to fetch status for doc', doc.id);
-         }
-      }
+      await Promise.all(
+          docs.map(async (doc: any) => {
+             try {
+                 const statRes = await axios.get(`${baseUrl}/api/patient/documents/${doc.id}/processing`, {
+                      headers: { Authorization: `Bearer ${token}` }
+                 });
+                 states[doc.id] = statRes.data.status;
+             } catch(e) {
+                 console.log('Failed to fetch status for doc', doc.id);
+             }
+          })
+      );
       setProcessingStates(states);
     } catch (err) {
       console.error('Falha ao buscar documentos', err);
