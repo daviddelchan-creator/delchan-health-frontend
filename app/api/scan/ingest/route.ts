@@ -44,11 +44,9 @@ export async function POST(req: NextRequest) {
       if (headerCode) {
         trackingCode = headerCode.trim();
       } else {
-        console.log(`[SCAN INGEST] Tentando decodificar QR Code automaticamente do arquivo: ${file.name} (${file.type})...`);
         const decodeResult = await decodeTrackingCodeFromFile(fileBuffer, file.type, file.name);
         if (decodeResult.trackingCode) {
           trackingCode = decodeResult.trackingCode;
-          console.log(`[SCAN INGEST] QR Tracking Code detectado via ${decodeResult.method}: ${trackingCode}`);
         }
       }
     }
