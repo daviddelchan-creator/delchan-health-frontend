@@ -144,7 +144,7 @@ export function ExamsTab({ patient }: ExamsTabProps) {
       }
 
       // 3. Carregar previews para imagens que têm binaryId
-      for (const it of items) {
+      const previewPromises = items.map(async (it) => {
         if (it.binaryId && it.attachment?.contentType?.startsWith('image/')) {
           try {
             const bin = await medplum.readResource('Binary', it.binaryId);
@@ -155,7 +155,8 @@ export function ExamsTab({ patient }: ExamsTabProps) {
             // Silencioso se der erro no preview individual
           }
         }
-      }
+      });
+      await Promise.all(previewPromises);
 
       // Ordenar decrescente por data
       items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
