@@ -8,6 +8,7 @@ import { ptBR } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
 import Barcode from 'react-barcode';
 import { getMothersName } from '@/utils/patientUtils';
+import DOMPurify from 'isomorphic-dompurify';
 
 export interface ProntuarioPrintViewProps {
   patient: Patient;
@@ -233,7 +234,7 @@ export const ProntuarioPrintView = forwardRef<HTMLDivElement, ProntuarioPrintVie
           <Divider mb="sm" color="#e2e8f0" />
           {historicalHtml ? (
             <div
-              dangerouslySetInnerHTML={{ __html: historicalHtml }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(historicalHtml) }}
               style={{ fontSize: '13px', lineHeight: 1.6, color: '#1e293b' }}
             />
           ) : (
