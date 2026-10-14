@@ -22,13 +22,13 @@ export async function isPractitionerAuthorizedForDocument(medplum: MedplumClient
 
     try {
         const patientId = docRef.subject.reference.replace('Patient/', '');
-        const patient = await medplum.readResource('Patient', patientId);
 
-        if (!patient) return false;
+        const [patient, roles] = await Promise.all([
+            medplum.readResource('Patient', patientId),
+            medplum.searchResources('PractitionerRole', { practitioner: `Practitioner/${profile.id}` })
+        ]);
 
-        const roles = await medplum.searchResources('PractitionerRole', { practitioner: `Practitioner/${profile.id}` });
-
-        if (!roles || roles.length === 0) {
+        if (!patient || !roles || roles.length === 0) {
             return false;
         }
 
