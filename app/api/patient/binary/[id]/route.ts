@@ -40,7 +40,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     let isAuthorizedBinary = false;
 
     const expectedReference = `Binary/${id}`;
+    const baseUrlParsed = new URL(process.env.MEDPLUM_BASE_URL as string);
 
+    outerLoop:
     for (const doc of docs) {
        if (doc.content) {
           for (const contentItem of doc.content) {
@@ -50,27 +52,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
              // Prioritize relative FHIR reference
              if (url === expectedReference) {
                  isAuthorizedBinary = true;
-                 break;
+                 break outerLoop;
              }
 
              // Strictly parse absolute URL if necessary, but only allow same Medplum server references
-             try {
-                const parsedUrl = new URL(url);
-                const baseUrlParsed = new URL(process.env.MEDPLUM_BASE_URL as string);
+             // Fast path to avoid slow try-catch and new URL() on strings that obviously aren't absolute URLs
+             if (url.includes('://')) {
+                 try {
+                    const parsedUrl = new URL(url);
 
-                // If it is absolute, it MUST be hosted on our authorized Medplum server domain
-                // AND the pathname must resolve to exactly `/Binary/{id}`.
-                if (parsedUrl.hostname === baseUrlParsed.hostname &&
-                    parsedUrl.pathname === `/Binary/${id}`) {
-                    isAuthorizedBinary = true;
-                    break;
-                }
-             } catch (e) {
-                // Not a valid absolute URL, already failed relative check, skip.
+                    // If it is absolute, it MUST be hosted on our authorized Medplum server domain
+                    // AND the pathname must resolve to exactly `/Binary/{id}`.
+                    if (parsedUrl.hostname === baseUrlParsed.hostname &&
+                        parsedUrl.pathname === `/Binary/${id}`) {
+                        isAuthorizedBinary = true;
+                        break outerLoop;
+                    }
+                 } catch (e) {
+                    // Not a valid absolute URL, already failed relative check, skip.
+                 }
              }
           }
        }
-       if (isAuthorizedBinary) break;
     }
 
     if (!isAuthorizedBinary) {
