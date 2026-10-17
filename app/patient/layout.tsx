@@ -35,7 +35,7 @@ function PatientAppShellInner({ children }: { children: ReactNode }) {
           <ErrorState
              title="Sessão Expirada"
              message="Por favor, faça login novamente para acessar o portal."
-             onRetry={() => window.location.href = '/'}
+             onRetry={() => window.location.href = '/login'}
              retryLabel="Fazer Login"
           />
        </div>
