@@ -8,12 +8,15 @@ import '@mantine/tiptap/styles.css';
 // @ts-ignore
 import '@mantine/charts/styles.css'; // <-- AÑADIDO: Fundamental para los gráficos del nuevo Dashboard SaaS
 
+import './globals.css';
+
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import type { Metadata } from 'next';
 import type { JSX, ReactNode } from 'react';
 import Root from './root';
 import { theme } from './theme';
 import { TenantProvider } from '../contexts/TenantContext';
+import { CookieBanner } from '../components/shared/CookieBanner';
 
 export const metadata: Metadata = {
   title: 'Delchan Health OS',
@@ -41,6 +44,7 @@ export default function RootLayout(props: { children: ReactNode }): JSX.Element 
             {/* 2. TENANTPROVIDER LEE EL TENANT Y CONTROLA EL GOD MODE */}
             <TenantProvider>
               {children}
+              <CookieBanner />
             </TenantProvider>
             
           </Root>
