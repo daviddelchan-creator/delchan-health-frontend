@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useMedplum, useMedplumProfile } from '@medplum/react-hooks';
 import { Patient, Appointment, Task, Practitioner } from '@medplum/fhirtypes';
 import { useTenant } from '@/contexts/TenantContext';
-import { PatientWorkspace } from '@/components/PatientWorkspace';
+import { PatientWorkspace } from '@/components/patient/PatientWorkspace';
 
 const INITIAL_FALLBACK_PATIENTS: any[] = [
   { id: 'pat-1', name: [{ given: ['Ana', 'Beatriz'], family: 'Albuquerque' }], birthDate: '1992-05-14', gender: 'female', telecom: [{ system: 'phone', value: '(11) 98765-4321' }], extension: [{ url: 'http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName', valueString: 'Maria Albuquerque' }] },
