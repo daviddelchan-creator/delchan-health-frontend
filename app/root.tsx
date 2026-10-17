@@ -14,8 +14,8 @@ const getBaseUrl = () => {
 const medplum = new MedplumClient({
   baseUrl: getBaseUrl(),
   onUnauthenticated: () => {
-    if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/api')) {
-      window.location.href = '/';
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login' && !window.location.pathname.startsWith('/api')) {
+      window.location.href = '/login';
     }
   },
 });
