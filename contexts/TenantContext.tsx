@@ -179,3 +179,11 @@ export const useTenant = () => {
   if (!context) throw new Error('useTenant deve ser usado dentro de um TenantProvider');
   return context;
 };
+
+export const useTenantModules = () => {
+  const { tenantConfig, toggleModule } = useTenant();
+  return {
+    activeModules: tenantConfig.activeModules ? Object.keys(tenantConfig.activeModules).filter(k => tenantConfig.activeModules![k as keyof typeof tenantConfig.activeModules]) : [],
+    toggleModule
+  };
+};
